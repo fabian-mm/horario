@@ -1,7 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import { BookOpen, Check, ChevronRight, CircleDot, Clock3, FileCheck2, Flag, GraduationCap, NotebookPen, Plus, ScrollText } from "lucide-react";
-import { calculateSubjectAverage, getMissionStatus, Mission, MissionStatus, statusMeta } from "@/lib/missions";
+import { calculateSubjectAverage, getMissionStatus, getMissionXp, Mission, MissionStatus, statusMeta } from "@/lib/missions";
 
 type Props = {
   missions: Mission[];
@@ -13,12 +14,21 @@ type Props = {
 };
 
 const subjectIcon = (index: number) => [BookOpen, GraduationCap, ScrollText, NotebookPen][index % 4];
+const taskDateFormatter = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", year: "numeric" });
 
 export function WorldMissions({ missions, selectedSubject, onSelectSubject, onEdit, onAdd, onStatusChange }: Props) {
-  const subjects = Array.from(new Set(missions.map((mission) => mission.subject))).sort((a, b) => a.localeCompare(b, "es"));
-  const subjectTasks = missions
-    .filter((mission) => mission.subject === selectedSubject)
-    .sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`));
+  const subjectGroups = useMemo(() => {
+    const grouped = new Map<string, Mission[]>();
+    missions.forEach((mission) => {
+      const subjectMissions = grouped.get(mission.subject);
+      if (subjectMissions) subjectMissions.push(mission);
+      else grouped.set(mission.subject, [mission]);
+    });
+    grouped.forEach((tasks, subject) => grouped.set(subject, [...tasks].sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`))));
+    return grouped;
+  }, [missions]);
+  const subjects = useMemo(() => Array.from(subjectGroups.keys()).sort((a, b) => a.localeCompare(b, "es")), [subjectGroups]);
+  const subjectTasks = selectedSubject ? subjectGroups.get(selectedSubject) ?? [] : [];
   const pendingCount = subjectTasks.filter((mission) => getMissionStatus(mission) === "pending").length;
   const impact = subjectTasks.reduce((sum, mission) => sum + (mission.weight ?? 0), 0);
   const selectedAverage = calculateSubjectAverage(subjectTasks);
@@ -34,7 +44,7 @@ export function WorldMissions({ missions, selectedSubject, onSelectSubject, onEd
         <div className="subject-bar" aria-label="Materias">
           {subjects.map((subject, index) => {
             const Icon = subjectIcon(index);
-            const tasks = missions.filter((mission) => mission.subject === subject);
+            const tasks = subjectGroups.get(subject) ?? [];
             const pending = tasks.filter((mission) => getMissionStatus(mission) === "pending").length;
             const result = calculateSubjectAverage(tasks);
             return (
@@ -80,7 +90,7 @@ export function WorldMissions({ missions, selectedSubject, onSelectSubject, onEd
                 const status = getMissionStatus(mission);
                 return (
                   <article key={mission.id} className={`world-task ${status}`}>
-                    <div className="task-topline"><span className={`status-pill ${status}`}><i />{statusMeta[status].label}</span><time><Clock3 size={12} />{new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${mission.date}T12:00:00`))}</time></div>
+                    <div className="task-topline"><span className={`status-pill ${status}`}><i />{statusMeta[status].label}</span><span className="task-reward">+{getMissionXp(mission)} XP</span><time><Clock3 size={12} />{taskDateFormatter.format(new Date(`${mission.date}T12:00:00`))}</time></div>
                     <button className="task-title" onClick={() => onEdit(mission)}><h3>{mission.title}</h3><ChevronRight size={16} /></button>
                     {(mission.notes || mission.grade || mission.weight) && (
                       <div className="task-details">

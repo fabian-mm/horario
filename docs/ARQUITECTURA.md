@@ -1,86 +1,47 @@
-# Arquitectura y funcionamiento
+# Arquitectura
 
-## Tecnologías
-
-- Next.js 16 con App Router.
-- React 19 y TypeScript estricto.
-- CSS global con puntos de quiebre adaptables.
-- Lucide React para iconos.
-- `localStorage` para persistencia local.
-
-La página se prerenderiza, pero el planificador es un componente cliente porque necesita interacción y acceso al almacenamiento del navegador.
-
-## Flujo general
+## Flujo
 
 ```text
 app/page.tsx
   -> MissionPlanner
-      -> useProfiles
-      -> useMissions(perfilActivo)
-      -> calendario y agenda
-      -> WorldMissions
+      -> useAuth -> /api/auth/* -> users
+      -> useMissions -> /api/missions* -> missions
+      -> AuthScreen | calendario | WorldMissions
       -> MissionForm
-      -> ProfileManager
+      -> AccountPanel
 ```
 
-## Responsabilidades
+## Capas
 
-### `components/mission-planner.tsx`
+- `components/`: interfaz y formularios.
+- `hooks/`: estado cliente y comunicación con las rutas API.
+- `lib/`: MongoDB, sesiones, validación, tipos y cálculos puros.
+- `app/api/`: autenticación, autorización y acceso a datos.
 
-Orquesta la navegación, el mes visible, el día seleccionado, los filtros y los modales. No contiene la lógica de persistencia.
+Los componentes nunca reciben `MONGODB_URI` ni acceden directamente a MongoDB.
 
-### `components/world-missions.tsx`
+## Autenticación
 
-Agrupa misiones por materia, ordena tareas, muestra estados y consume el cálculo ponderado.
+`useAuth` consulta `/api/auth/session`. Al registrarse o entrar, el servidor firma una sesión y la coloca en una cookie `httpOnly`. JavaScript del navegador no puede leer esa cookie.
 
-### `components/mission-form.tsx`
+Cada ruta de datos ejecuta `getSessionUserId()`. Las rutas de misiones no aceptan un `userId` del navegador; lo derivan de la sesión.
 
-Formulario compartido para crear y editar una misión. Mantener un único formulario evita diferencias entre calendario y Misiones de Mundo.
+## Persistencia rápida
 
-### `components/profile-manager.tsx`
+`useMissions` aplica cambios de forma optimista y después los guarda. Si MongoDB rechaza la operación, restaura el estado anterior y presenta un aviso.
 
-Administra los perfiles existentes en el dispositivo. No implementa autenticación remota.
+`lib/mongodb.ts` crea la conexión de forma diferida y reutiliza el `MongoClient`. El driver administra un pool de conexiones, evitando abrir una conexión nueva por tarea.
 
-### `hooks/use-profiles.ts`
+## Rutas
 
-Carga, crea, actualiza y selecciona perfiles locales.
-
-### `hooks/use-missions.ts`
-
-Expone las operaciones de misiones y persiste los cambios usando el identificador del perfil activo. Esta separación es el punto natural para sustituir `localStorage` por una API.
-
-### `lib/missions.ts`
-
-Contiene tipos, metadatos, fechas y `calculateSubjectAverage`. Los cálculos puros viven fuera de React para facilitar pruebas y reutilización.
-
-### `lib/profiles.ts`
-
-Define el modelo del perfil local, el perfil inicial y la generación de iniciales.
-
-## Modelo de misión
-
-```ts
-type Mission = {
-  id: string;
-  title: string;
-  subject: string;
-  date: string;
-  time: string;
-  priority: "normal" | "important" | "boss";
-  status?: "pending" | "submitted" | "completed";
-  completed: boolean;
-  notes?: string;
-  grade?: string;
-  weight?: number;
-};
-```
-
-`completed` se conserva por compatibilidad con los primeros datos. `status` es la fuente más expresiva para la interfaz.
-
-## Diseño adaptable
-
-- Más de 1120 px: calendario y agenda en dos columnas.
-- Entre 661 y 1120 px: agenda debajo del calendario.
-- Hasta 660 px: calendario reducido, controles táctiles y formularios en una columna.
-- Hasta 920 px: navegación lateral convertida en panel móvil.
-
+| Ruta | Método | Función |
+| --- | --- | --- |
+| `/api/auth/register` | POST | Crear usuario y sesión |
+| `/api/auth/login` | POST | Verificar credenciales |
+| `/api/auth/logout` | POST | Eliminar sesión |
+| `/api/auth/session` | GET | Obtener usuario actual |
+| `/api/account` | PUT | Actualizar cuenta |
+| `/api/missions` | GET/POST | Listar o guardar misión propia |
+| `/api/missions/[missionId]` | DELETE | Eliminar misión propia |
+| `/api/health` | GET | Comprobar conexión con MongoDB |

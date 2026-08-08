@@ -1,72 +1,56 @@
 # Bitácora del Navegante
 
-Planificador académico local con temática de mapa del tesoro. Convierte parciales, trabajos y tareas en misiones, permite agruparlas por materia, calcular promedios ponderados y mantener perfiles separados en un mismo dispositivo.
+Planificador académico con Next.js, React y MongoDB. Cada persona crea una cuenta por correo y conserva en la nube sus misiones, materias, notas, porcentajes y progreso.
 
 ## Inicio rápido
 
-Requisitos: Node.js 20 o superior y npm.
+Requisitos: Node.js 20 o superior, npm y una base de datos MongoDB.
 
 ```bash
 npm install
+```
+
+Copia `.env.example` como `.env.local` y completa sus valores. Después ejecuta:
+
+```bash
 npm run dev
 ```
 
-Abre `http://localhost:3000`.
+Abre `http://localhost:3000`. La primera pantalla no contiene ningún perfil ni dato de demostración: permite crear una cuenta o iniciar sesión.
 
-Para comprobar la versión de producción:
+## Variables de entorno
 
-```bash
-npm run build
-npm start
-```
+| Variable | Descripción |
+| --- | --- |
+| `MONGODB_URI` | Cadena privada de conexión de MongoDB |
+| `MONGODB_DB` | Nombre de la base; por defecto `bitacora` |
+| `MONGODB_DNS_SERVERS` | Opcional. DNS separados por coma si Node no resuelve registros SRV |
+| `SESSION_SECRET` | Secreto aleatorio largo para firmar sesiones |
 
-## Funciones actuales
+Genera un secreto con un administrador de contraseñas o con `openssl rand -base64 32`. Nunca publiques `.env.local`.
 
-- Calendario mensual y agenda diaria compacta.
-- Misiones normales, importantes y jefes finales.
-- Estados: pendiente, entregada y cumplida.
-- Misiones de Mundo agrupadas por materia.
-- Nota, porcentaje de impacto y promedio ponderado.
-- Perfiles locales separados dentro del mismo navegador.
-- Diseño adaptable a escritorio, tableta y celular.
-- Persistencia automática sin servidor mediante `localStorage`.
+## Funciones
 
-## ¿Dónde se guardan los datos?
-
-Los datos se guardan en el navegador del dispositivo. No salen a Internet y no necesitan una cuenta. Cada perfil posee una clave de misiones independiente.
-
-Esto significa que los datos:
-
-- permanecen al cerrar la aplicación;
-- no se sincronizan automáticamente con otro móvil o computador;
-- dependen del navegador utilizado;
-- pueden perderse si se borran los datos del sitio.
-
-Consulta [Datos y perfiles](docs/DATOS-Y-PERFILES.md) para conocer las claves utilizadas y el camino recomendado para añadir sincronización.
+- Registro e inicio de sesión con correo y contraseña.
+- Contraseñas cifradas con bcrypt.
+- Sesiones firmadas en cookies `httpOnly`.
+- Misiones aisladas por usuario en MongoDB.
+- Calendario, agenda diaria y Misiones de Mundo.
+- Progreso RPG con experiencia, niveles, rangos y recompensas según la importancia.
+- Notas, porcentajes y promedio ponderado.
+- Diseño adaptable a escritorio y celular.
+- Guardado optimista para una interfaz rápida.
 
 ## Documentación
 
 - [Guía de uso](docs/GUIA-DE-USO.md)
-- [Arquitectura y funcionamiento](docs/ARQUITECTURA.md)
-- [Datos, perfiles y futura sincronización](docs/DATOS-Y-PERFILES.md)
-- [Cómo extender la aplicación](docs/COMO-EXTENDER.md)
+- [Arquitectura](docs/ARQUITECTURA.md)
+- [Datos, seguridad y MongoDB](docs/DATOS-Y-SEGURIDAD.md)
+- [Cómo extender el proyecto](docs/COMO-EXTENDER.md)
 
-## Estructura principal
+## Verificación
 
-```text
-app/                 Rutas, layout y estilos globales
-components/          Interfaz reutilizable
-hooks/               Estado y persistencia local
-lib/                 Tipos, cálculos y utilidades
-docs/                Documentación funcional y técnica
+```bash
+npm run build
+npm audit
 ```
-
-## Comandos
-
-| Comando | Uso |
-| --- | --- |
-| `npm run dev` | Desarrollo local |
-| `npm run build` | Compilación y validación de TypeScript |
-| `npm start` | Ejecutar la compilación de producción |
-| `npm audit` | Revisar vulnerabilidades de dependencias |
-

@@ -13,6 +13,8 @@ export type Mission = {
   notes?: string;
   grade?: string;
   weight?: number;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export const statusMeta: Record<MissionStatus, { label: string; description: string }> = {
@@ -52,13 +54,41 @@ export const priorityMeta: Record<Priority, { label: string; shortLabel: string;
   boss: { label: "Jefe final", shortLabel: "Jefe final", icon: "✦" },
 };
 
-export const initialMissions: Mission[] = [
-  { id: "1", title: "Parcial de Cálculo II", subject: "Cálculo", date: "2026-08-04", time: "08:00", priority: "boss", completed: false, status: "pending", weight: 25, notes: "Repasar integrales por partes y series." },
-  { id: "2", title: "Entrega: Ensayo", subject: "Humanidades", date: "2026-08-06", time: "23:59", priority: "important", completed: true, status: "completed", grade: "4.5", weight: 15, notes: "Buen uso de fuentes y argumento central." },
-  { id: "3", title: "Taller de circuitos", subject: "Electrónica", date: "2026-08-11", time: "10:00", priority: "normal", completed: false, status: "submitted", weight: 10, notes: "Se entregó con las simulaciones de LTspice." },
-  { id: "4", title: "Exposición de proyecto", subject: "Programación", date: "2026-08-18", time: "14:00", priority: "important", completed: false, status: "pending", weight: 20 },
-  { id: "5", title: "Final de Física", subject: "Física", date: "2026-08-27", time: "07:00", priority: "boss", completed: false, status: "pending", weight: 30 },
+const XP_PER_LEVEL = 250;
+const priorityXp: Record<Priority, number> = {
+  normal: 25,
+  important: 50,
+  boss: 100,
+};
+
+const playerRanks = [
+  { level: 1, name: "Aprendiz del mapa" },
+  { level: 3, name: "Explorador del semestre" },
+  { level: 5, name: "Guardián de la brújula" },
+  { level: 8, name: "Maestre de misiones" },
+  { level: 12, name: "Leyenda académica" },
 ];
+
+export const getMissionXp = (mission: Mission) => priorityXp[mission.priority];
+
+export const calculatePlayerProgress = (missions: Mission[]) => {
+  const completedMissions = missions.filter((mission) => getMissionStatus(mission) === "completed");
+  const totalXp = completedMissions.reduce((sum, mission) => sum + getMissionXp(mission), 0);
+  const level = Math.floor(totalXp / XP_PER_LEVEL) + 1;
+  const xpInLevel = totalXp % XP_PER_LEVEL;
+  const rank = [...playerRanks].reverse().find((item) => level >= item.level)?.name ?? playerRanks[0].name;
+
+  return {
+    completed: completedMissions.length,
+    level,
+    progress: Math.round((xpInLevel / XP_PER_LEVEL) * 100),
+    rank,
+    totalXp,
+    xpInLevel,
+    xpToNextLevel: XP_PER_LEVEL - xpInLevel,
+    xpPerLevel: XP_PER_LEVEL,
+  };
+};
 
 export const toISODate = (date: Date) => {
   const year = date.getFullYear();
@@ -71,3 +101,23 @@ export const formatLongDate = (isoDate: string) =>
   new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "long", year: "numeric" }).format(
     new Date(`${isoDate}T12:00:00`),
   );
+
+export const calculateStreak = (missions: Mission[], referenceDate = new Date()) => {
+  const completedDates = new Set(
+    missions
+      .filter((mission) => getMissionStatus(mission) === "completed")
+      .map((mission) => mission.date),
+  );
+
+  let streak = 0;
+  const day = new Date(referenceDate);
+
+  while (true) {
+    const key = toISODate(day);
+    if (!completedDates.has(key)) break;
+    streak += 1;
+    day.setDate(day.getDate() - 1);
+  }
+
+  return streak;
+};

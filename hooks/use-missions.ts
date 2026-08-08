@@ -1,55 +1,104 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMissionStatus, initialMissions, Mission, MissionStatus } from "@/lib/missions";
-import { DEFAULT_PROFILE_ID } from "@/lib/profiles";
+import { getMissionStatus, Mission, MissionStatus } from "@/lib/missions";
 
-const LEGACY_STORAGE_KEY = "bitacora-misiones-v1";
-const storageKey = (profileId: string) => `bitacora-misiones-v2:${profileId}`;
-
-export function useMissions(profileId: string) {
-  const [missions, setMissions] = useState<Mission[]>(initialMissions);
-  const [loadedProfileId, setLoadedProfileId] = useState<string | null>(null);
+export function useMissions(enabled: boolean) {
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const profileKey = storageKey(profileId);
-      const stored = localStorage.getItem(profileKey)
-        ?? (profileId === DEFAULT_PROFILE_ID ? localStorage.getItem(LEGACY_STORAGE_KEY) : null);
-      if (stored) {
-        const parsed = JSON.parse(stored) as Mission[];
-        setMissions(parsed.map((mission) => ({ ...mission, status: getMissionStatus(mission) })));
-      } else setMissions(profileId === DEFAULT_PROFILE_ID ? initialMissions : []);
-    } catch {
-      setMissions(profileId === DEFAULT_PROFILE_ID ? initialMissions : []);
-    } finally {
-      setLoadedProfileId(profileId);
+    if (!enabled) {
+      setMissions([]);
+      setLoading(false);
+      return;
     }
-  }, [profileId]);
+    let canceled = false;
+    setLoading(true);
+    fetch("/api/missions")
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error ?? "No se pudieron cargar las misiones.");
+        return body as Mission[];
+      })
+      .then((data) => {
+        if (!canceled) {
+          setMissions(data.map((mission) => ({ ...mission, status: getMissionStatus(mission) })));
+          setError(null);
+        }
+      })
+      .catch((requestError) => {
+        if (!canceled) setError(requestError instanceof Error ? requestError.message : "No se pudieron cargar las misiones.");
+      })
+      .finally(() => { if (!canceled) setLoading(false); });
+    return () => { canceled = true; };
+  }, [enabled]);
 
-  useEffect(() => {
-    if (loadedProfileId === profileId) localStorage.setItem(storageKey(profileId), JSON.stringify(missions));
-  }, [missions, profileId, loadedProfileId]);
-
-  const upsert = (mission: Mission) =>
-    setMissions((current) => {
-      const exists = current.some((item) => item.id === mission.id);
-      return exists ? current.map((item) => (item.id === mission.id ? mission : item)) : [...current, mission];
+  const saveRemote = async (mission: Mission) => {
+    const response = await fetch("/api/missions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(mission),
     });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error ?? "No se pudo guardar la misión.");
+    return body as Mission;
+  };
 
-  const toggle = (id: string) =>
-    setMissions((current) =>
-      current.map((mission) => mission.id === id
-        ? { ...mission, completed: !mission.completed, status: mission.completed ? "pending" : "completed" }
-        : mission),
-    );
+  const upsert = (mission: Mission) => {
+    const previous = missions;
+    setMissions((current) => current.some((item) => item.id === mission.id)
+      ? current.map((item) => item.id === mission.id ? mission : item)
+      : [...current, mission]);
+    setError(null);
+    saveRemote(mission).catch((requestError) => {
+      setMissions(previous);
+      setError(requestError instanceof Error ? requestError.message : "No se pudo guardar la misión.");
+    });
+  };
 
-  const setStatus = (id: string, status: MissionStatus) =>
-    setMissions((current) => current.map((mission) =>
-      mission.id === id ? { ...mission, status, completed: status === "completed" } : mission,
-    ));
+  const updateMission = (id: string, transform: (mission: Mission) => Mission) => {
+    const previous = missions;
+    const current = missions.find((mission) => mission.id === id);
+    if (!current) return;
+    const updated = transform(current);
+    setMissions((items) => items.map((mission) => mission.id === id ? updated : mission));
+    setError(null);
+    saveRemote(updated).catch((requestError) => {
+      setMissions(previous);
+      setError(requestError instanceof Error ? requestError.message : "No se pudo actualizar la misión.");
+    });
+  };
 
-  const remove = (id: string) => setMissions((current) => current.filter((mission) => mission.id !== id));
+  const toggle = (id: string) => updateMission(id, (mission) => ({
+    ...mission,
+    completed: !mission.completed,
+    status: mission.completed ? "pending" : "completed",
+  }));
 
-  return { missions, upsert, toggle, setStatus, remove };
+  const setStatus = (id: string, status: MissionStatus) => updateMission(id, (mission) => ({
+    ...mission,
+    status,
+    completed: status === "completed",
+  }));
+
+  const remove = (id: string) => {
+    const previous = missions;
+    setMissions((current) => current.filter((mission) => mission.id !== id));
+    setError(null);
+    fetch(`/api/missions/${encodeURIComponent(id)}`, { method: "DELETE" })
+      .then(async (response) => {
+        if (!response.ok) {
+          const body = await response.json();
+          throw new Error(body.error ?? "No se pudo eliminar la misión.");
+        }
+      })
+      .catch((requestError) => {
+        setMissions(previous);
+        setError(requestError instanceof Error ? requestError.message : "No se pudo eliminar la misión.");
+      });
+  };
+
+  return { missions, loading, error, upsert, toggle, setStatus, remove };
 }

@@ -1,66 +1,52 @@
 # Guía de uso
 
-## Perfiles del dispositivo
+## Primer inicio
 
-Pulsa el nombre del usuario o **Ajustes** en la parte inferior del menú.
+La aplicación comienza sin perfiles y sin misiones. Selecciona **Crear cuenta** e introduce:
 
-Desde allí puedes:
+1. Tu nombre.
+2. Tu correo electrónico.
+3. Una contraseña de al menos ocho caracteres, con una letra y un número.
 
-1. Editar el nombre y la descripción del perfil activo.
-2. Crear otro perfil para una persona diferente.
-3. Cambiar de perfil pulsando su nombre.
+El correo identifica la cuenta. Después del registro se abre una bitácora vacía. Para usar la misma información en otro dispositivo, abre la aplicación allí e inicia sesión con el mismo correo y contraseña.
 
-Cada perfil tiene sus propias misiones, notas y promedios. Cambiar de perfil no elimina la información del perfil anterior.
+## Cuenta
 
-## Crear una misión
+Pulsa tu nombre o **Ajustes** en el menú lateral para:
 
-Pulsa **Nueva misión** o el botón `+` de la agenda diaria. Completa:
+- cambiar el nombre visible;
+- cambiar la descripción académica;
+- consultar el correo de la cuenta;
+- cerrar sesión.
 
-- nombre y materia;
-- fecha y hora;
-- importancia;
-- estado;
-- porcentaje de impacto;
-- nota obtenida, cuando exista;
-- observaciones.
+Cerrar sesión no elimina información: todo permanece en MongoDB.
 
-También puedes hacer doble clic sobre un día del calendario en computador.
+## Misiones
 
-## Calendario principal
+Pulsa **Nueva misión** y registra nombre, materia, fecha, hora, importancia, estado, nota, porcentaje y observaciones. En computador también puedes hacer doble clic sobre un día.
 
-El calendario y la agenda del día se muestran juntos en escritorio. Pulsa un día para actualizar la agenda lateral. En celular, la agenda aparece inmediatamente debajo del calendario.
+En el mapa principal, seleccionar un día actualiza su agenda. En **Misiones de Mundo**, seleccionar una materia abre su diario y permite cambiar estados rápidamente.
 
-Los colores indican la importancia de la misión. Pulsa el círculo de una actividad para marcarla como cumplida.
+## Progreso RPG
 
-## Misiones de Mundo
+Las misiones otorgan experiencia cuando quedan en estado **Cumplida**:
 
-Abre **Misiones de Mundo** y selecciona una materia. El diario de la materia muestra sus tareas de la más reciente a la más antigua.
+- misión normal: 25 XP;
+- misión importante: 50 XP;
+- jefe final: 100 XP.
 
-Los estados son:
+Cada 250 XP se sube un nivel. El HUD superior muestra el nivel de forma compacta y la tarjeta del menú lateral muestra el rango, la experiencia acumulada y cuánto falta para el siguiente nivel. Si una misión vuelve a pendiente o entregada, su experiencia deja de contar hasta que vuelva a cumplirse.
 
-- rojo: pendiente;
-- dorado: entregada;
-- verde: cumplida.
+## Promedio
 
-Los tres botones de cada tarea permiten cambiar el estado sin abrir el formulario.
-
-## Promedio ponderado
-
-Para que una tarea participe en el promedio debe tener nota y porcentaje de impacto.
+Solo participan tareas que tengan nota y porcentaje:
 
 ```text
 Promedio = suma(nota × porcentaje) / suma(porcentajes con nota)
 ```
 
-Ejemplo: una nota 4.0 con 30% y una nota 5.0 con 20% producen:
+La cobertura indica qué porcentaje de la materia ya fue evaluado.
 
-```text
-(4.0 × 30 + 5.0 × 20) / 50 = 4.40
-```
+## Estados de guardado
 
-La aplicación también muestra qué porcentaje de la materia ya tiene nota. Así se distingue un promedio parcial de uno basado en el 100% del curso.
-
-## Barra lateral
-
-En computador puedes plegar el menú con el botón circular situado en su borde. Los iconos permanecen disponibles. En celular, el menú se abre con el botón de la esquina superior izquierda.
-
+Los cambios aparecen inmediatamente y se envían a MongoDB en segundo plano. Si la conexión falla, la aplicación muestra **Sin guardar** y revierte el cambio para no presentar datos falsamente sincronizados.
