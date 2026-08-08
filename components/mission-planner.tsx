@@ -3,8 +3,11 @@
 import { useMemo, useState } from "react";
 import { CalendarDays, Check, ChevronLeft, ChevronRight, Compass, Flag, Globe2, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Swords, X } from "lucide-react";
 import { useMissions } from "@/hooks/use-missions";
+import { useProfiles } from "@/hooks/use-profiles";
 import { formatLongDate, Mission, Priority, priorityMeta, toISODate } from "@/lib/missions";
+import { getInitials } from "@/lib/profiles";
 import { MissionForm } from "./mission-form";
+import { ProfileManager } from "./profile-manager";
 import { WorldMissions } from "./world-missions";
 
 const WEEK_DAYS = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
@@ -23,7 +26,8 @@ function calendarDays(month: Date) {
 }
 
 export function MissionPlanner() {
-  const { missions, upsert, toggle, setStatus, remove } = useMissions();
+  const profileState = useProfiles();
+  const { missions, upsert, toggle, setStatus, remove } = useMissions(profileState.activeProfile.id);
   const [month, setMonth] = useState(new Date(2026, 7, 1));
   const [selectedDate, setSelectedDate] = useState(new Date(2026, 7, 4));
   const [editing, setEditing] = useState<Mission | null>(null);
@@ -35,6 +39,7 @@ export function MissionPlanner() {
   const [query, setQuery] = useState("");
   const [mobileNav, setMobileNav] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [profilesOpen, setProfilesOpen] = useState(false);
 
   const days = useMemo(() => calendarDays(month), [month]);
   const filtered = useMemo(() => missions.filter((mission) => {
@@ -93,8 +98,10 @@ export function MissionPlanner() {
             <div className="progress-track"><i style={{ width: `${progress}%` }} /></div>
             <small>{completed} de {missions.length} misiones completadas</small>
           </div>
-          <button className="settings"><Settings size={18} /> Ajustes</button>
-          <div className="profile"><span>SN</span><div><b>Stiven Navegante</b><small>Capitán de su destino</small></div></div>
+          <button className="settings" onClick={() => setProfilesOpen(true)}><Settings size={18} /> <span>Ajustes</span></button>
+          <button className="profile" onClick={() => setProfilesOpen(true)} aria-label="Administrar perfiles locales">
+            <span>{getInitials(profileState.activeProfile.name)}</span><div><b>{profileState.activeProfile.name}</b><small>{profileState.activeProfile.subtitle}</small></div>
+          </button>
         </div>
       </aside>
       {mobileNav && <div className="nav-backdrop" onClick={() => setMobileNav(false)} />}
@@ -186,6 +193,15 @@ export function MissionPlanner() {
       </section>
 
       <MissionForm open={modalOpen} initialDate={selectedDate} initialSubject={draftSubject} mission={editing} onClose={() => setModalOpen(false)} onSave={upsert} onDelete={remove} />
+      <ProfileManager
+        open={profilesOpen}
+        profiles={profileState.profiles}
+        activeProfileId={profileState.activeProfileId}
+        onClose={() => setProfilesOpen(false)}
+        onSelect={profileState.setActiveProfileId}
+        onCreate={profileState.createProfile}
+        onUpdate={profileState.updateProfile}
+      />
     </main>
   );
 }

@@ -56,7 +56,7 @@ nav button em { margin-left: auto; padding: 1px 7px; border-radius: 12px; color:
 .progress-track i { display: block; height: 100%; border-radius: inherit; background: #d6ad52; transition: width .3s; }
 .rank-card > small { display: block; margin-top: 7px; color: #9fb7aa; font-size: 9px; }
 .settings { padding-left: 7px; }
-.profile { display: flex; align-items: center; gap: 10px; padding: 14px 6px 2px; border-top: 1px solid rgba(255,255,255,.09); }
+.profile { width: 100%; display: flex; align-items: center; gap: 10px; padding: 14px 6px 2px; border: 0; border-top: 1px solid rgba(255,255,255,.09); color: inherit; background: transparent; cursor: pointer; text-align: left; }
 .profile > span { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #d3ab58; border-radius: 50%; color: #e4c677; background: rgba(225,190,108,.1); font-family: "Fraunces Variable", serif; font-size: 11px; }
 .profile b, .profile small { display: block; }
 .profile b { font-size: 11px; }
@@ -66,7 +66,7 @@ nav button em { margin-left: auto; padding: 1px 7px; border-radius: 12px; color:
 .sidebar-collapse:hover { transform: scale(1.06); background: #205249; }
 .sidebar.collapsed { width: 76px; padding-inline: 12px; }
 .sidebar.collapsed .brand { justify-content: center; padding-inline: 0; }
-.sidebar.collapsed .brand > div, .sidebar.collapsed .nav-label, .sidebar.collapsed nav button span, .sidebar.collapsed nav button em, .sidebar.collapsed .rank-card, .sidebar.collapsed .settings:not(:hover)::after, .sidebar.collapsed .profile div { display: none; }
+.sidebar.collapsed .brand > div, .sidebar.collapsed .nav-label, .sidebar.collapsed nav button span, .sidebar.collapsed nav button em, .sidebar.collapsed .rank-card, .sidebar.collapsed .settings span, .sidebar.collapsed .profile div { display: none; }
 .sidebar.collapsed nav button, .sidebar.collapsed .settings { justify-content: center; padding-inline: 0; }
 .sidebar.collapsed nav button.active { box-shadow: inset 0 -2px #d7af58; }
 .sidebar.collapsed .sidebar-footer { display: grid; justify-items: center; }
@@ -191,6 +191,30 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .secondary-button, .delete-button { border: 1px solid #d8d2c3; padding: 10px 14px; border-radius: 6px; background: transparent; cursor: pointer; font-size: 11px; font-weight: 600; }
 .delete-button { border-color: transparent; color: #b24f3d; }
 
+/* Perfiles locales */
+.profile-modal { width: min(720px, 100%); max-height: calc(100vh - 32px); overflow: hidden; border: 1px solid #d8c9a6; border-radius: 11px; background: #fffdf7; box-shadow: 0 30px 90px rgba(11,31,27,.34); animation: rise-in .22s ease-out; }
+.profile-manager-grid { display: grid; grid-template-columns: 280px 1fr; min-height: 390px; }
+.profile-list { padding: 16px; border-right: 1px solid #e5decc; background: #f6f0e1; }
+.local-data-note { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 13px; padding: 10px; border-radius: 7px; color: #6d786f; background: rgba(255,253,247,.78); font-size: 9px; line-height: 1.45; }
+.local-data-note svg { flex: none; color: #98702d; }
+.profile-list > button { width: 100%; display: flex; align-items: center; gap: 9px; margin-bottom: 7px; padding: 9px; border: 1px solid transparent; border-radius: 7px; color: var(--ink); background: transparent; cursor: pointer; text-align: left; }
+.profile-list > button:hover, .profile-list > button.active { border-color: rgba(170,125,53,.28); background: #fffaf0; }
+.profile-list > button > span { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: 50%; color: #3e6759; background: #e2ece5; font-size: 9px; font-weight: 700; }
+.profile-list > button div { min-width: 0; flex: 1; }
+.profile-list > button strong, .profile-list > button small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.profile-list > button strong { font-size: 10px; }
+.profile-list > button small { margin-top: 2px; color: #7c8983; font-size: 8px; }
+.profile-list > button > svg { color: #a77a33; }
+.profile-list .create-profile { justify-content: center; margin-top: 10px; border: 1px dashed #bda56d; color: #8e6728; font-size: 9px; font-weight: 700; }
+.profile-list .create-profile svg { width: 15px; height: 15px; }
+.profile-editor { display: flex; flex-direction: column; align-items: stretch; padding: 28px; }
+.large-avatar { width: 62px; height: 62px; display: grid; place-items: center; margin: 12px auto 20px; border: 1px solid #c8a960; border-radius: 50%; color: #8c6528; background: #f2e6c7; font-family: "Fraunces Variable", serif; font-size: 20px; }
+.profile-editor label { margin-bottom: 13px; color: #536760; font-size: 10px; font-weight: 600; }
+.profile-editor input { width: 100%; margin-top: 6px; padding: 10px 11px; border: 1px solid #d9d5c7; border-radius: 6px; outline: 0; color: var(--ink); background: #fffefa; font-size: 12px; }
+.profile-editor input:focus { border-color: #9a7a3f; box-shadow: 0 0 0 3px rgba(178,139,66,.11); }
+.profile-editor p { margin: 1px 0 17px; color: #78857f; font-size: 9px; line-height: 1.55; }
+.profile-editor .primary-button { align-self: flex-end; }
+
 /* Misiones de Mundo */
 .world-workspace { max-width: 1440px; }
 .world-layout { min-height: calc(100vh - 165px); display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 24px; }
@@ -278,7 +302,7 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .sidebar.open { transform: translateX(0); }
   .sidebar-collapse { display: none; }
   .sidebar.collapsed .brand { justify-content: flex-start; padding: 0 7px 34px; }
-  .sidebar.collapsed .brand > div, .sidebar.collapsed .nav-label, .sidebar.collapsed nav button span, .sidebar.collapsed nav button em, .sidebar.collapsed .rank-card, .sidebar.collapsed .profile div { display: block; }
+  .sidebar.collapsed .brand > div, .sidebar.collapsed .nav-label, .sidebar.collapsed nav button span, .sidebar.collapsed nav button em, .sidebar.collapsed .rank-card, .sidebar.collapsed .settings span, .sidebar.collapsed .profile div { display: block; }
   .sidebar.collapsed nav button, .sidebar.collapsed .settings { justify-content: flex-start; padding: 11px 12px; }
   .sidebar.collapsed nav button.active { box-shadow: inset 3px 0 #d7af58; }
   .sidebar.collapsed .sidebar-footer { display: block; }
@@ -333,6 +357,10 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .priority-options { grid-template-columns: 1fr; }
   .modal-actions { align-items: stretch; flex-direction: column-reverse; }
   .modal-actions > div { display: grid; grid-template-columns: 1fr 1fr; }
+  .profile-modal { overflow-y: auto; }
+  .profile-manager-grid { grid-template-columns: 1fr; }
+  .profile-list { border-right: 0; border-bottom: 1px solid #e5decc; }
+  .profile-editor { padding: 22px; }
   .form-row-metrics { grid-template-columns: 1fr; }
   .world-heading { align-items: flex-start; }
   .world-heading .primary-button { flex: none; }

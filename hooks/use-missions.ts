@@ -2,30 +2,34 @@
 
 import { useEffect, useState } from "react";
 import { getMissionStatus, initialMissions, Mission, MissionStatus } from "@/lib/missions";
+import { DEFAULT_PROFILE_ID } from "@/lib/profiles";
 
-const STORAGE_KEY = "bitacora-misiones-v1";
+const LEGACY_STORAGE_KEY = "bitacora-misiones-v1";
+const storageKey = (profileId: string) => `bitacora-misiones-v2:${profileId}`;
 
-export function useMissions() {
+export function useMissions(profileId: string) {
   const [missions, setMissions] = useState<Mission[]>(initialMissions);
-  const [ready, setReady] = useState(false);
+  const [loadedProfileId, setLoadedProfileId] = useState<string | null>(null);
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const profileKey = storageKey(profileId);
+      const stored = localStorage.getItem(profileKey)
+        ?? (profileId === DEFAULT_PROFILE_ID ? localStorage.getItem(LEGACY_STORAGE_KEY) : null);
       if (stored) {
         const parsed = JSON.parse(stored) as Mission[];
         setMissions(parsed.map((mission) => ({ ...mission, status: getMissionStatus(mission) })));
-      }
+      } else setMissions(profileId === DEFAULT_PROFILE_ID ? initialMissions : []);
     } catch {
-      // Keep the starter missions if local storage is unavailable or malformed.
+      setMissions(profileId === DEFAULT_PROFILE_ID ? initialMissions : []);
     } finally {
-      setReady(true);
+      setLoadedProfileId(profileId);
     }
-  }, []);
+  }, [profileId]);
 
   useEffect(() => {
-    if (ready) localStorage.setItem(STORAGE_KEY, JSON.stringify(missions));
-  }, [missions, ready]);
+    if (loadedProfileId === profileId) localStorage.setItem(storageKey(profileId), JSON.stringify(missions));
+  }, [missions, profileId, loadedProfileId]);
 
   const upsert = (mission: Mission) =>
     setMissions((current) => {
