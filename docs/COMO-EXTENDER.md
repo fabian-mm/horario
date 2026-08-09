@@ -25,6 +25,8 @@ La experiencia por prioridad, los 250 XP por nivel y los nombres de rango están
 
 ## Ampliar el horario semanal
 
+Para pedir una hora en un formulario, reutiliza `TimeField` de `components/time-field.tsx`. Entrega y recibe valores `HH:MM`; usa la propiedad `after` cuando un campo deba ser posterior a otro. Las conversiones y comparaciones comunes están disponibles en `lib/time.ts`.
+
 Los tipos `WeeklyQuest`, `DailyClassQuest` y la proyección por fechas viven en `lib/schedule.ts`. La validación del servidor está en `weeklyQuestSchema`, la persistencia en `/api/weekly-quests` y el estado optimista en `useWeeklyQuests`. Mantén la recurrencia como cálculo: no generes un documento de MongoDB por cada día del semestre.
 
 ## Usar materias globales

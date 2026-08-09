@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { BookOpen, CalendarRange, Check, Clock3, MapPin, Pencil, Plus, Power, ScrollText, Trash2, X } from "lucide-react";
 import { DailyClassQuest, getMondayIso, sortDailyMissionsByTime, Weekday, WeeklyQuest, weekdayMeta } from "@/lib/schedule";
 import { findSubject, Subject } from "@/lib/subjects";
+import { TimeField } from "@/components/time-field";
 
 type Props = {
   weeklyQuests: WeeklyQuest[];
@@ -187,7 +188,10 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
                 <button type="button" onClick={() => { setDailyModalOpen(false); onManageSubjects(); }}>{subjects.length ? "Administrar materias" : "+ Crear materia"}</button>
               </div>
               <div className="form-row"><label>Día<select value={dailyDraft.dayOfWeek} onChange={(event) => setDailyDraft({ ...dailyDraft, dayOfWeek: Number(event.target.value) as Weekday })}>{([1, 2, 3, 4, 5, 6, 7] as Weekday[]).map((day) => <option key={day} value={day}>{weekdayMeta[day].label}</option>)}</select></label><label>Lugar<input value={dailyDraft.location ?? ""} onChange={(event) => setDailyDraft({ ...dailyDraft, location: event.target.value })} placeholder="Aula 204" /></label></div>
-              <div className="form-row"><label>Comienza<input required type="time" value={dailyDraft.startTime} onChange={(event) => setDailyDraft({ ...dailyDraft, startTime: event.target.value })} /></label><label>Termina<input required type="time" min={dailyDraft.startTime} value={dailyDraft.endTime} onChange={(event) => setDailyDraft({ ...dailyDraft, endTime: event.target.value })} /></label></div>
+              <div className="form-row time-range-row">
+                <TimeField label="Comienza" required value={dailyDraft.startTime} onChange={(startTime) => setDailyDraft((current) => ({ ...current, startTime }))} />
+                <TimeField label="Termina" required after={dailyDraft.startTime} value={dailyDraft.endTime} onChange={(endTime) => setDailyDraft((current) => ({ ...current, endTime }))} />
+              </div>
               <label>Notas <span className="optional">(opcional)</span><textarea rows={3} value={dailyDraft.notes ?? ""} onChange={(event) => setDailyDraft({ ...dailyDraft, notes: event.target.value })} placeholder="Profesor, materiales o recordatorios..." /></label>
               <div className="modal-actions">
                 {dailyDraft.id ? <button type="button" className="delete-button" onClick={deleteDaily}><Trash2 size={14} /> Eliminar clase</button> : <span />}

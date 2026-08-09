@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Flag, Swords, X } from "lucide-react";
 import { Mission, MissionStatus, Priority, priorityMeta, statusMeta, toISODate } from "@/lib/missions";
 import { findSubject, Subject } from "@/lib/subjects";
+import { TimeField } from "@/components/time-field";
 
 type Props = {
   open: boolean;
@@ -84,7 +85,7 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
           </div>
           <div className="form-row">
             <label>Fecha<input required type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
-            <label>Hora<input required type="time" value={form.time} onChange={(event) => setForm({ ...form, time: event.target.value })} /></label>
+            <TimeField label="Hora" required value={form.time} onChange={(time) => setForm((current) => ({ ...current, time }))} />
           </div>
           <fieldset>
             <legend>Nivel de importancia</legend>

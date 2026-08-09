@@ -41,6 +41,7 @@ Genera un secreto con un administrador de contraseñas o con `openssl rand -base
 - Mapa de campaña cronológico con destinos interactivos y fortalezas para jefes finales.
 - Misiones semanales con clases diarias recurrentes, visibles también en el calendario.
 - Catálogo global de materias reutilizado por misiones, clases, mapas y promedios.
+- Control horario accesible: escritura flexible, ajustes de 15 minutos y validación visible.
 - Progreso RPG con experiencia, niveles, rangos y recompensas según la importancia.
 - Centro de mando con siguiente objetivo, urgencia, recompensa y filtros rápidos de campaña.
 - Celebraciones visuales de victoria y efectos especiales al derrotar jefes finales.

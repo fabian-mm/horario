@@ -37,6 +37,8 @@ Una misión semanal contiene sus `dailyMissions`. `getScheduledOccurrences()` en
 
 El catálogo `subjects` es la fuente global de materias. Las misiones y clases guardan `subjectId` y una copia compatible de `subject`. `resolveSubjectName()` prioriza el ID y admite alias para que un cambio de nombre se refleje inmediatamente. `/api/subjects` migra nombres antiguos y propaga los renombres a los documentos relacionados.
 
+`components/time-field.tsx` concentra la experiencia de entrada de horas en todos los formularios. La normalización y comparación viven en `lib/time.ts`, separadas de React, para reutilizarlas o probarlas sin duplicar reglas. Los datos siguen guardándose como `HH:MM`, por lo que las APIs y las proyecciones del calendario mantienen un formato estable.
+
 `lib/mongodb.ts` crea la conexión de forma diferida y reutiliza el `MongoClient`. El driver administra un pool de conexiones, evitando abrir una conexión nueva por tarea.
 
 ## Rutas
