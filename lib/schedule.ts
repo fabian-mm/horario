@@ -115,6 +115,21 @@ export const getWeekDates = (anchor = new Date()) => {
 
 export const getScheduledActivityXp = (activity: Pick<DailyClassQuest, "activityPoints">) => activity.activityPoints ?? 10;
 
+const sameText = (left?: string, right?: string) =>
+  Boolean(left?.trim() && right?.trim() && left.trim().localeCompare(right.trim(), "es", { sensitivity: "base" }) === 0);
+
+export const getScheduledActivityDetail = (activity: Pick<DailyClassQuest, "title" | "subject" | "activityCategory">) => {
+  const title = activity.title.trim();
+  if (activity.activityCategory === "class" && activity.subject && (!title || sameText(title, activity.subject))) return "";
+  return title;
+};
+
+export const getScheduledActivityLabel = (activity: Pick<DailyClassQuest, "title" | "subject" | "activityCategory" | "activityTypeName">) => {
+  const detail = getScheduledActivityDetail(activity);
+  if (activity.activityCategory === "class" && activity.subject) return detail ? `${activity.subject} · ${detail}` : activity.subject;
+  return detail || activity.activityTypeName || "Actividad";
+};
+
 export const getCompletedScheduleXp = (weeklyQuests: WeeklyQuest[]) =>
   weeklyQuests.reduce((total, weeklyQuest) => total + weeklyQuest.dailyMissions.reduce(
     (subtotal, activity) => subtotal + (activity.completedDates?.length ?? 0) * getScheduledActivityXp(activity),

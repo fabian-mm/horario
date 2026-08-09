@@ -10,7 +10,7 @@ import { useSubjects } from "@/hooks/use-subjects";
 import { useTheme } from "@/hooks/use-theme";
 import { useWeeklyQuests } from "@/hooks/use-weekly-quests";
 import { calculatePlayerProgress, calculateStreak, formatLongDate, getCrossedXpMilestone, getMissionStatus, getMissionXp, getNextXpMilestone, Mission, Priority, priorityMeta, sortMissionsByDateTime, toISODate } from "@/lib/missions";
-import { getScheduledActivityXp, getScheduledOccurrences, getWeekDates, getWeeklyFreeSlots, ScheduledOccurrence, sortDailyMissionsByTime, weekdayMeta } from "@/lib/schedule";
+import { getScheduledActivityLabel, getScheduledActivityXp, getScheduledOccurrences, getWeekDates, getWeeklyFreeSlots, ScheduledOccurrence, sortDailyMissionsByTime, weekdayMeta } from "@/lib/schedule";
 import { formatTime12Hour, formatTimeRange12Hour } from "@/lib/time";
 import { resolveActivityType } from "@/lib/activity-types";
 import { findMissionType, isTimedMissionType } from "@/lib/mission-types";
@@ -364,7 +364,7 @@ export function MissionPlanner() {
                   <button key={iso} className={`calendar-day ${outside ? "outside" : ""} ${selected ? "selected" : ""} ${hasBoss ? "has-boss" : ""} ${dayClasses.length ? "has-class" : ""}`} onClick={() => setSelectedDate(date)} onDoubleClick={() => openNew(date)}>
                     <span className="day-number">{date.getDate()}</span>
                     <div className="day-missions">
-                      {dayClasses.slice(0, calendarMode === "month" ? 1 : dayClasses.length).map((dailyClass) => <span key={dailyClass.occurrenceId} className={`mission-chip class-chip activity-tone-${resolveActivityType(activityTypes, dailyClass.activityTypeId, dailyClass.activityTypeName).tone} ${dailyClass.completed ? "done" : ""}`} onClick={(event) => { event.stopPropagation(); toggleScheduledActivity(dailyClass); }}><i>{dailyClass.activityCategory === "class" ? <BookOpen size={9} /> : <Activity size={9} />}</i>{formatTime12Hour(dailyClass.startTime)} {dailyClass.subject ? `${dailyClass.subject} · ` : ""}{dailyClass.title}</span>)}
+                      {dayClasses.slice(0, calendarMode === "month" ? 1 : dayClasses.length).map((dailyClass) => <span key={dailyClass.occurrenceId} className={`mission-chip class-chip activity-tone-${resolveActivityType(activityTypes, dailyClass.activityTypeId, dailyClass.activityTypeName).tone} ${dailyClass.completed ? "done" : ""}`} onClick={(event) => { event.stopPropagation(); toggleScheduledActivity(dailyClass); }}><i>{dailyClass.activityCategory === "class" ? <BookOpen size={9} /> : <Activity size={9} />}</i>{formatTime12Hour(dailyClass.startTime)} {getScheduledActivityLabel(dailyClass)}</span>)}
                       {dayMissions.slice(0, calendarMode === "month" ? (dayClasses.length ? 1 : 2) : dayMissions.length).map((mission) => (
                         <span key={mission.id} className={`mission-chip ${mission.priority} ${mission.completed ? "done" : ""}`} onClick={(event) => { event.stopPropagation(); openEdit(mission); }}>
                           <i>{priorityMeta[mission.priority].icon}</i>{mission.title} · {mission.subject}
@@ -392,7 +392,7 @@ export function MissionPlanner() {
                 <article key={dailyClass.occurrenceId} className={`mission-row schedule-row activity-tone-${resolveActivityType(activityTypes, dailyClass.activityTypeId, dailyClass.activityTypeName).tone} ${dailyClass.completed ? "completed" : ""}`}>
                   <button className="check-button" onClick={() => toggleScheduledActivity(dailyClass)} aria-label={dailyClass.completed ? "Marcar actividad pendiente" : "Completar actividad"}>{dailyClass.completed && <Check size={16} />}</button>
                   <span className="schedule-class-icon">{dailyClass.activityCategory === "class" ? <BookOpen size={16} /> : <Activity size={16} />}</span>
-                  <div className="mission-copy" onClick={() => { setFocusedWeeklyQuestId(dailyClass.weeklyQuestId); setView("weekly"); }}><span>{dailyClass.activityCategory === "class" ? "CLASE" : (dailyClass.activityTypeName ?? "ACTIVIDAD").toUpperCase()} · {dailyClass.weeklyQuestTitle}</span><h3>{dailyClass.subject ? `${dailyClass.subject} · ` : ""}{dailyClass.title}</h3><small>{formatTimeRange12Hour(dailyClass.startTime, dailyClass.endTime)}{dailyClass.location && <> · <MapPin size={10} /> {dailyClass.location}</>} <b className="xp-reward">+{getScheduledActivityXp(dailyClass)} XP</b></small></div>
+                  <div className="mission-copy" onClick={() => { setFocusedWeeklyQuestId(dailyClass.weeklyQuestId); setView("weekly"); }}><span>{dailyClass.activityCategory === "class" ? "CLASE" : (dailyClass.activityTypeName ?? "ACTIVIDAD").toUpperCase()} · {dailyClass.weeklyQuestTitle}</span><h3>{getScheduledActivityLabel(dailyClass)}</h3><small>{formatTimeRange12Hour(dailyClass.startTime, dailyClass.endTime)}{dailyClass.location && <> · <MapPin size={10} /> {dailyClass.location}</>} <b className="xp-reward">+{getScheduledActivityXp(dailyClass)} XP</b></small></div>
                   <button className="edit-button" onClick={() => { setFocusedWeeklyQuestId(dailyClass.weeklyQuestId); setView("weekly"); }}>Ver horario</button>
                 </article>
               ))}
