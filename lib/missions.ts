@@ -70,6 +70,21 @@ const playerRanks = [
   { level: 12, name: "Leyenda académica" },
 ];
 
+const parseTimeToMinutes = (time: string) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  return (Number.isFinite(hours) ? hours : 0) * 60 + (Number.isFinite(minutes) ? minutes : 0);
+};
+
+export const compareMissionsByDateTime = (a: Pick<Mission, "date" | "time" | "title">, b: Pick<Mission, "date" | "time" | "title">) => {
+  const dateDiff = a.date.localeCompare(b.date);
+  if (dateDiff !== 0) return dateDiff;
+  const timeDiff = parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time);
+  if (timeDiff !== 0) return timeDiff;
+  return a.title.localeCompare(b.title, "es", { sensitivity: "base" });
+};
+
+export const sortMissionsByDateTime = (missions: Mission[]) => [...missions].sort(compareMissionsByDateTime);
+
 export const getMissionXp = (mission: Mission) => priorityXp[mission.priority];
 
 export const calculatePlayerProgress = (missions: Mission[]) => {

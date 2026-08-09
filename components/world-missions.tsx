@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { BookOpen, Check, ChevronRight, CircleDot, Clock3, Crown, FileCheck2, Flag, GraduationCap, NotebookPen, Plus, ScrollText, Trophy } from "lucide-react";
-import { calculateSubjectAverage, getMissionStatus, getMissionXp, Mission, MissionStatus, statusMeta } from "@/lib/missions";
+import { calculateSubjectAverage, getMissionStatus, getMissionXp, Mission, MissionStatus, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
 
 type Props = {
   missions: Mission[];
@@ -24,7 +24,7 @@ export function WorldMissions({ missions, selectedSubject, onSelectSubject, onEd
       if (subjectMissions) subjectMissions.push(mission);
       else grouped.set(mission.subject, [mission]);
     });
-    grouped.forEach((tasks, subject) => grouped.set(subject, [...tasks].sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`))));
+    grouped.forEach((tasks, subject) => grouped.set(subject, sortMissionsByDateTime(tasks)));
     return grouped;
   }, [missions]);
   const subjects = useMemo(() => Array.from(subjectGroups.keys()).sort((a, b) => a.localeCompare(b, "es")), [subjectGroups]);

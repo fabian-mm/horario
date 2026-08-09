@@ -7,7 +7,7 @@ import { useMissions } from "@/hooks/use-missions";
 import { useSubjects } from "@/hooks/use-subjects";
 import { useTheme } from "@/hooks/use-theme";
 import { useWeeklyQuests } from "@/hooks/use-weekly-quests";
-import { calculatePlayerProgress, calculateStreak, formatLongDate, getMissionStatus, getMissionXp, Mission, Priority, priorityMeta, toISODate } from "@/lib/missions";
+import { calculatePlayerProgress, calculateStreak, formatLongDate, getMissionStatus, getMissionXp, Mission, Priority, priorityMeta, sortMissionsByDateTime, toISODate } from "@/lib/missions";
 import { getScheduledOccurrences, sortDailyMissionsByTime } from "@/lib/schedule";
 import { resolveSubjectName } from "@/lib/subjects";
 import { getUserInitials } from "@/lib/users";
@@ -61,7 +61,7 @@ export function MissionPlanner() {
 
   const days = useMemo(() => calendarDays(month), [month]);
   const normalizedQuery = query.trim().toLocaleLowerCase("es");
-  const catalogMissions = useMemo(() => missions.map((mission) => ({ ...mission, subject: resolveSubjectName(subjects, mission.subject, mission.subjectId) })), [missions, subjects]);
+  const catalogMissions = useMemo(() => sortMissionsByDateTime(missions.map((mission) => ({ ...mission, subject: resolveSubjectName(subjects, mission.subject, mission.subjectId) }))), [missions, subjects]);
   const catalogWeeklyQuests = useMemo(() => weeklyQuests.map((weeklyQuest) => ({
     ...weeklyQuest,
     dailyMissions: sortDailyMissionsByTime(weeklyQuest.dailyMissions.map((dailyMission) => ({
@@ -84,7 +84,7 @@ export function MissionPlanner() {
       if (dayMissions) dayMissions.push(mission);
       else grouped.set(mission.date, [mission]);
     });
-    return grouped;
+    return new Map(Array.from(grouped.entries()).map(([date, dayMissions]) => [date, sortMissionsByDateTime(dayMissions)]));
   }, [filtered]);
   const scheduleByDate = useMemo(() => {
     const grouped = new Map<string, ReturnType<typeof getScheduledOccurrences>>();
@@ -123,9 +123,7 @@ export function MissionPlanner() {
   const streak = useMemo(() => calculateStreak(missions), [missions]);
   const monthName = new Intl.DateTimeFormat("es-CO", { month: "long" }).format(month);
   const campaignProgress = missions.length ? Math.round((gameStats.completed / missions.length) * 100) : 0;
-  const nextObjective = useMemo(() => catalogMissions
-    .filter((mission) => getMissionStatus(mission) !== "completed")
-    .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))[0] ?? null, [catalogMissions]);
+  const nextObjective = useMemo(() => sortMissionsByDateTime(catalogMissions.filter((mission) => getMissionStatus(mission) !== "completed"))[0] ?? null, [catalogMissions]);
   const objectiveTiming = useMemo(() => {
     if (!nextObjective) return "Campaña completada";
     const today = new Date();
