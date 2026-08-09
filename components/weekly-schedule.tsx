@@ -8,6 +8,7 @@ import { resolveActivityType } from "@/lib/activity-types";
 import { DailyClassQuest, getMondayIso, sortDailyMissionsByTime, Weekday, WeeklyQuest, weekdayMeta } from "@/lib/schedule";
 import { findSubject, Subject } from "@/lib/subjects";
 import { TimeField } from "@/components/time-field";
+import { QuestTypeCards } from "@/components/quest-type-cards";
 
 type Props = {
   weeklyQuests: WeeklyQuest[];
@@ -158,13 +159,13 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
               const dayClasses = classesByDay.get(day) ?? [];
               return (
                 <div className={`schedule-day ${day > 5 ? "weekend" : ""}`} key={day}>
-                  <header><div><span>{weekdayMeta[day].short}</span><strong>{weekdayMeta[day].label}</strong></div><button type="button" onClick={() => openNewDaily(day)} aria-label={`Agregar clase el ${weekdayMeta[day].label}`}><Plus size={15} /></button></header>
+                  <header><div><span>{weekdayMeta[day].short}</span><strong>{weekdayMeta[day].label}</strong></div><button type="button" onClick={() => openNewDaily(day)} aria-label={`Agregar actividad el ${weekdayMeta[day].label}`}><Plus size={15} /></button></header>
                   <div className="schedule-day-list">
                     {dayClasses.map((dailyMission) => (
                       <button key={dailyMission.id} type="button" className={`daily-class-card activity-tone-${resolveActivityType(activityTypes, dailyMission.activityTypeId, dailyMission.activityTypeName).tone}`} onClick={() => openEditDaily(dailyMission)}>
                         <span className="class-time"><Clock3 size={11} />{dailyMission.startTime}</span>
-                        <strong>{dailyMission.title}</strong>
-                        <small>{dailyMission.activityCategory === "class" ? dailyMission.subject : dailyMission.activityTypeName ?? "Actividad"}</small>
+                        <strong>{dailyMission.activityCategory === "class" ? dailyMission.subject || "Materia sin asignar" : dailyMission.activityTypeName ?? "Actividad"}</strong>
+                        <small className="schedule-activity-title">{dailyMission.title}</small>
                         <b className="schedule-xp"><Sparkles size={10} />+{dailyMission.activityPoints ?? 10} XP</b>
                         {dailyMission.location && <span className="class-location"><MapPin size={10} />{dailyMission.location}</span>}
                       </button>
@@ -204,10 +205,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
             <div className="modal-heading"><div className="modal-icon">{selectedActivityType?.category === "class" ? <BookOpen size={20} /> : <Activity size={20} />}</div><div><span className="eyebrow">MISIÓN DIARIA</span><h2 id="daily-modal-title">{dailyDraft.id ? "Editar actividad" : "Nueva actividad"}</h2></div><button className="icon-button" type="button" onClick={() => setDailyModalOpen(false)} aria-label="Cerrar"><X size={20} /></button></div>
             <form onSubmit={saveDaily}>
               <label>Nombre de la actividad<input required autoFocus value={dailyDraft.title} onChange={(event) => setDailyDraft({ ...dailyDraft, title: event.target.value })} placeholder="Ej. Laboratorio, gimnasio o lectura" /></label>
-              <div className="activity-type-select-field">
-                <label>Tipo de actividad<select required value={selectedActivityType?.id ?? ""} onChange={(event) => { const type = activityTypes.find((item) => item.id === event.target.value); if (type) setDailyDraft({ ...dailyDraft, activityTypeId: type.id, activityTypeName: type.name, activityCategory: type.category, activityPoints: type.points, subject: type.category === "class" ? dailyDraft.subject ?? subjects[0]?.name : undefined, subjectId: type.category === "class" ? dailyDraft.subjectId ?? subjects[0]?.id : undefined }); }}><option value="" disabled>{activityTypes.length ? "Selecciona un tipo" : "Configura un tipo"}</option>{activityTypes.map((type) => <option key={type.id} value={type.id}>{type.name} · +{type.points} XP</option>)}</select></label>
-                <button type="button" onClick={() => setTypesModalOpen(true)}>Configurar tipos</button>
-              </div>
+              <QuestTypeCards label="¿Qué actividad se repite?" options={activityTypes.map((type) => ({ id: type.id, label: type.name, detail: `${type.category === "class" ? "Usa materia" : "Actividad general"} · +${type.points} XP`, tone: type.tone }))} selectedId={selectedActivityType?.id} onSelect={(activityTypeId) => { const type = activityTypes.find((item) => item.id === activityTypeId); if (type) setDailyDraft({ ...dailyDraft, activityTypeId: type.id, activityTypeName: type.name, activityCategory: type.category, activityPoints: type.points, subject: type.category === "class" ? dailyDraft.subject ?? subjects[0]?.name : undefined, subjectId: type.category === "class" ? dailyDraft.subjectId ?? subjects[0]?.id : undefined }); }} onManage={() => setTypesModalOpen(true)} />
               {selectedActivityType && <div className={`activity-reward-preview activity-tone-${selectedActivityType.tone}`}><span>{selectedActivityType.category === "class" ? <BookOpen size={15} /> : <Activity size={15} />}{selectedActivityType.category === "class" ? "Se vincula a una materia" : "Actividad general"}</span><strong><Sparkles size={13} /> +{selectedActivityType.points} XP</strong></div>}
               {selectedActivityType?.category === "class" && <div className="subject-select-field">
                 <label>Materia<select required value={selectedDailySubject?.id ?? ""} onChange={(event) => { const subject = subjects.find((item) => item.id === event.target.value); if (subject) setDailyDraft({ ...dailyDraft, subject: subject.name, subjectId: subject.id }); }}><option value="" disabled>{subjects.length ? "Selecciona una materia" : "Primero crea una materia"}</option>{subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select></label>

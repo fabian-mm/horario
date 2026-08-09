@@ -6,6 +6,7 @@ import { Mission, MissionStatus, Priority, priorityMeta, statusMeta, toISODate }
 import { findSubject, Subject } from "@/lib/subjects";
 import type { MissionType } from "@/lib/mission-types";
 import { TimeField } from "@/components/time-field";
+import { QuestTypeCards } from "@/components/quest-type-cards";
 
 type Props = {
   open: boolean;
@@ -26,7 +27,7 @@ const emptyForm = (date: Date, subject = "", subjects: Subject[] = [], missionTy
   const firstType = missionTypes[0];
   return {
     id: "",
-    title: firstType?.name ?? "",
+    title: "",
     missionTypeId: firstType?.id,
     subject: selectedSubject?.name ?? subject,
     subjectId: selectedSubject?.id,
@@ -54,7 +55,7 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
 
   if (!open) return null;
   const selectedSubject = findSubject(subjects, form.subject, form.subjectId);
-  const selectedMissionType = missionTypes.find((mt) => mt.id === form.missionTypeId) ?? missionTypes.find((mt) => mt.name === form.title);
+  const selectedMissionType = missionTypes.find((mt) => mt.id === form.missionTypeId) ?? missionTypes.find((mt) => mt.name === form.title) ?? missionTypes[0];
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -81,30 +82,8 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
         </div>
 
         <form onSubmit={submit}>
-          {/* Mission type selector */}
-          <div className="subject-select-field">
-            <label>
-              Tipo de misión
-              <select
-                required
-                value={selectedMissionType?.id ?? ""}
-                onChange={(event) => {
-                  const mt = missionTypes.find((item) => item.id === event.target.value);
-                  if (mt) setForm({ ...form, title: mt.name, missionTypeId: mt.id });
-                }}
-              >
-                <option value="" disabled>
-                  {missionTypes.length ? "Selecciona un tipo" : "Primero crea un tipo"}
-                </option>
-                {missionTypes.map((mt) => (
-                  <option key={mt.id} value={mt.id}>{mt.name}</option>
-                ))}
-              </select>
-            </label>
-            <button type="button" onClick={() => { onClose(); onManageMissionTypes(); }}>
-              {missionTypes.length ? "Administrar tipos" : "+ Crear tipo"}
-            </button>
-          </div>
+          <QuestTypeCards label="¿Qué clase de objetivo es?" options={missionTypes.map((type) => ({ id: type.id, label: type.name, detail: "Plantilla editable" }))} selectedId={selectedMissionType?.id} onSelect={(missionTypeId) => setForm({ ...form, missionTypeId })} onManage={() => { onClose(); onManageMissionTypes(); }} />
+          <label>Nombre del objetivo<input required autoFocus value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder={selectedMissionType ? `Ej. ${selectedMissionType.name} de la unidad 2` : "Ej. Entrega del informe final"} /></label>
 
           {/* Subject selector */}
           <div className="subject-select-field">

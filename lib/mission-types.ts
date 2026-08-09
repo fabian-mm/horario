@@ -7,6 +7,7 @@ export type MissionType = {
 };
 
 export const defaultMissionTypes: MissionType[] = [
+  { id: "preset-trabajo", name: "Trabajo" },
   { id: "preset-parcial", name: "Parcial" },
   { id: "preset-quiz", name: "Quiz" },
   { id: "preset-taller", name: "Taller" },

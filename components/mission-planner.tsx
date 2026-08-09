@@ -19,6 +19,7 @@ import { AdventureMap } from "./adventure-map";
 import { AuthScreen } from "./auth-screen";
 import { GameFeedback, RewardEvent } from "./game-feedback";
 import { MissionForm } from "./mission-form";
+import { MissionTypesManager } from "./mission-types-manager";
 import { WeeklySchedule } from "./weekly-schedule";
 import { WorldMissions } from "./world-missions";
 
@@ -62,6 +63,7 @@ export function MissionPlanner() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [focusedWeeklyQuestId, setFocusedWeeklyQuestId] = useState<string | null>(null);
   const [reward, setReward] = useState<RewardEvent | null>(null);
+  const [missionTypesOpen, setMissionTypesOpen] = useState(false);
 
   const days = useMemo(() => calendarDays(month), [month]);
   const normalizedQuery = query.trim().toLocaleLowerCase("es");
@@ -244,14 +246,14 @@ export function MissionPlanner() {
           <button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Abrir menú"><Menu /></button>
           <div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "world" ? "Buscar tarea o materia..." : view === "map" ? "Buscar un destino..." : view === "weekly" ? "Buscar una actividad..." : "Buscar una misión..."} /></div>
           <div className="top-actions">
-            {(missionsLoading || scheduleLoading || subjectsLoading || activityTypesLoading || missionsError || scheduleError || subjectsError || activityTypesError) && <span className={`sync-state ${missionsError || scheduleError || subjectsError || activityTypesError ? "error" : ""}`}>{missionsError || scheduleError || subjectsError || activityTypesError ? "Sin guardar" : "Sincronizando"}</span>}
+            {(missionsLoading || scheduleLoading || subjectsLoading || activityTypesLoading || missionTypesLoading || missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError) && <span className={`sync-state ${missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError ? "error" : ""}`}>{missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError ? "Sin guardar" : "Sincronizando"}</span>}
             <span className="level-hud" title={`${player.rank} · ${player.totalXp} XP total`}><Sparkles size={14} /><b>NIV. {player.level}</b><small>{player.xpInLevel}/{player.xpPerLevel} XP</small></span>
             <span className="streak">🔥 <b>{streak}</b><small> DÍAS DE RACHA</small></span>
             <button className="primary-button compact" onClick={() => openNew(selectedDate, view === "world" ? selectedSubject ?? undefined : undefined)}><Plus size={18} /> Nueva misión</button>
           </div>
         </header>
 
-        {(missionsError || scheduleError || subjectsError || activityTypesError) && <div className="sync-alert" role="alert"><AlertTriangle size={15} /><span><strong>No se pudo sincronizar.</strong> {missionsError ?? scheduleError ?? subjectsError ?? activityTypesError}</span></div>}
+        {(missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError) && <div className="sync-alert" role="alert"><AlertTriangle size={15} /><span><strong>No se pudo sincronizar.</strong> {missionsError ?? scheduleError ?? subjectsError ?? activityTypesError ?? missionTypesError}</span></div>}
 
         {view === "world" ? (
           <div className="workspace world-workspace">
@@ -334,7 +336,7 @@ export function MissionPlanner() {
                   <button key={iso} className={`calendar-day ${outside ? "outside" : ""} ${selected ? "selected" : ""} ${hasBoss ? "has-boss" : ""} ${dayClasses.length ? "has-class" : ""}`} onClick={() => setSelectedDate(date)} onDoubleClick={() => openNew(date)}>
                     <span className="day-number">{date.getDate()}</span>
                     <div className="day-missions">
-                      {dayClasses.slice(0, 1).map((dailyClass) => <span key={dailyClass.occurrenceId} className={`mission-chip class-chip activity-tone-${resolveActivityType(activityTypes, dailyClass.activityTypeId, dailyClass.activityTypeName).tone} ${dailyClass.completed ? "done" : ""}`} onClick={(event) => { event.stopPropagation(); toggleScheduledActivity(dailyClass); }}><i>{dailyClass.activityCategory === "class" ? <BookOpen size={9} /> : <Activity size={9} />}</i>{dailyClass.startTime} {dailyClass.title}</span>)}
+                      {dayClasses.slice(0, 1).map((dailyClass) => <span key={dailyClass.occurrenceId} className={`mission-chip class-chip activity-tone-${resolveActivityType(activityTypes, dailyClass.activityTypeId, dailyClass.activityTypeName).tone} ${dailyClass.completed ? "done" : ""}`} onClick={(event) => { event.stopPropagation(); toggleScheduledActivity(dailyClass); }}><i>{dailyClass.activityCategory === "class" ? <BookOpen size={9} /> : <Activity size={9} />}</i>{dailyClass.startTime} {dailyClass.subject ? `${dailyClass.subject} · ` : ""}{dailyClass.title}</span>)}
                       {dayMissions.slice(0, dayClasses.length ? 1 : 2).map((mission) => (
                         <span key={mission.id} className={`mission-chip ${mission.priority} ${mission.completed ? "done" : ""}`} onClick={(event) => { event.stopPropagation(); openEdit(mission); }}>
                           <i>{priorityMeta[mission.priority].icon}</i>{mission.title} · {mission.subject}
@@ -362,7 +364,7 @@ export function MissionPlanner() {
                 <article key={dailyClass.occurrenceId} className={`mission-row schedule-row activity-tone-${resolveActivityType(activityTypes, dailyClass.activityTypeId, dailyClass.activityTypeName).tone} ${dailyClass.completed ? "completed" : ""}`}>
                   <button className="check-button" onClick={() => toggleScheduledActivity(dailyClass)} aria-label={dailyClass.completed ? "Marcar actividad pendiente" : "Completar actividad"}>{dailyClass.completed && <Check size={16} />}</button>
                   <span className="schedule-class-icon">{dailyClass.activityCategory === "class" ? <BookOpen size={16} /> : <Activity size={16} />}</span>
-                  <div className="mission-copy" onClick={() => { setFocusedWeeklyQuestId(dailyClass.weeklyQuestId); setView("weekly"); }}><span>{dailyClass.activityCategory === "class" ? "CLASE" : (dailyClass.activityTypeName ?? "ACTIVIDAD").toUpperCase()} · {dailyClass.weeklyQuestTitle}</span><h3>{dailyClass.title}</h3><small>{dailyClass.subject ? `${dailyClass.subject} · ` : ""}{dailyClass.startTime}–{dailyClass.endTime}{dailyClass.location && <> · <MapPin size={10} /> {dailyClass.location}</>} <b className="xp-reward">+{getScheduledActivityXp(dailyClass)} XP</b></small></div>
+                  <div className="mission-copy" onClick={() => { setFocusedWeeklyQuestId(dailyClass.weeklyQuestId); setView("weekly"); }}><span>{dailyClass.activityCategory === "class" ? "CLASE" : (dailyClass.activityTypeName ?? "ACTIVIDAD").toUpperCase()} · {dailyClass.weeklyQuestTitle}</span><h3>{dailyClass.subject ? `${dailyClass.subject} · ` : ""}{dailyClass.title}</h3><small>{dailyClass.startTime}–{dailyClass.endTime}{dailyClass.location && <> · <MapPin size={10} /> {dailyClass.location}</>} <b className="xp-reward">+{getScheduledActivityXp(dailyClass)} XP</b></small></div>
                   <button className="edit-button" onClick={() => { setFocusedWeeklyQuestId(dailyClass.weeklyQuestId); setView("weekly"); }}>Ver horario</button>
                 </article>
               ))}
@@ -384,7 +386,8 @@ export function MissionPlanner() {
         </div>}
       </section>
 
-      <MissionForm open={modalOpen} initialDate={selectedDate} initialSubject={draftSubject} mission={editing} onClose={() => setModalOpen(false)} onSave={upsert} onDelete={remove} subjects={subjects} missionTypes={missionTypes} onManageSubjects={() => setView("world")} onManageMissionTypes={() => setView("world")} />
+      <MissionForm open={modalOpen} initialDate={selectedDate} initialSubject={draftSubject} mission={editing} onClose={() => setModalOpen(false)} onSave={upsert} onDelete={remove} subjects={subjects} missionTypes={missionTypes} onManageSubjects={() => setView("world")} onManageMissionTypes={() => setMissionTypesOpen(true)} />
+      <MissionTypesManager open={missionTypesOpen} missionTypes={missionTypes} missions={missions} onClose={() => setMissionTypesOpen(false)} onSave={upsertMissionType} onDelete={removeMissionType} />
       <AccountPanel
         open={accountOpen}
         user={auth.user}

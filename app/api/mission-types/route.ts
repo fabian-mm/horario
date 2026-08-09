@@ -27,28 +27,19 @@ export async function GET() {
     return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
   const db = await getDb();
   const collection = db.collection<MissionTypeDocument>("missionTypes");
-  const existingCount = await collection.countDocuments({ userId });
-  if (!existingCount) {
-    const now = new Date().toISOString();
-    await Promise.all(
-      defaultMissionTypes.map((missionType) =>
-        collection.updateOne(
-          { userId, id: missionType.id },
-          {
-            $setOnInsert: {
-              ...missionType,
-              aliases: [],
-              userId,
-              normalizedName: normalizeMissionTypeName(missionType.name),
-              createdAt: now,
-              updatedAt: now,
-            },
-          },
-          { upsert: true },
-        ),
+  const existingCatalog = await collection.find({ userId }).toArray();
+  const existingIds = new Set(existingCatalog.map((type) => type.id));
+  const existingNames = new Set(existingCatalog.map((type) => normalizeMissionTypeName(type.name)));
+  const now = new Date().toISOString();
+  await Promise.all(
+    defaultMissionTypes.filter((missionType) => !existingIds.has(missionType.id) && !existingNames.has(normalizeMissionTypeName(missionType.name))).map((missionType) =>
+      collection.updateOne(
+        { userId, id: missionType.id },
+        { $setOnInsert: { ...missionType, aliases: [], userId, normalizedName: normalizeMissionTypeName(missionType.name), createdAt: now, updatedAt: now } },
+        { upsert: true },
       ),
-    );
-  }
+    ),
+  );
   const missionTypes = await collection
     .find({ userId })
     .sort({ createdAt: 1, name: 1 })
@@ -107,12 +98,8 @@ export async function POST(request: Request) {
     { upsert: true },
   );
 
-  // Propagate rename to all missions
+  // Keep the objective title independent from its editable template name.
   if (existing && existing.name !== parsed.data.name) {
-    await db.collection("missions").updateMany(
-      { userId, missionTypeId: parsed.data.id },
-      { $set: { title: parsed.data.name } },
-    );
     await db.collection("missions").updateMany(
       {
         userId,
@@ -122,7 +109,6 @@ export async function POST(request: Request) {
       {
         $set: {
           missionTypeId: parsed.data.id,
-          title: parsed.data.name,
         },
       },
     );
