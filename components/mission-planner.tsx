@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { AlertTriangle, CalendarDays, Check, ChevronLeft, ChevronRight, Compass, Crown, Flag, Flame, Gem, Globe2, LoaderCircle, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Swords, Trophy, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Award, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, LoaderCircle, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Swords, Target, Trophy, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMissions } from "@/hooks/use-missions";
 import { useTheme } from "@/hooks/use-theme";
@@ -9,6 +9,7 @@ import { calculatePlayerProgress, calculateStreak, formatLongDate, getMissionSta
 import { getUserInitials } from "@/lib/users";
 import { AccountPanel } from "./account-panel";
 import { AuthScreen } from "./auth-screen";
+import { GameFeedback, RewardEvent } from "./game-feedback";
 import { MissionForm } from "./mission-form";
 import { WorldMissions } from "./world-missions";
 
@@ -46,6 +47,7 @@ export function MissionPlanner() {
   const [mobileNav, setMobileNav] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [reward, setReward] = useState<RewardEvent | null>(null);
 
   const days = useMemo(() => calendarDays(month), [month]);
   const normalizedQuery = query.trim().toLocaleLowerCase("es");
@@ -69,6 +71,12 @@ export function MissionPlanner() {
   const selectedIso = toISODate(selectedDate);
   const selectedMissions = missionsByDate.get(selectedIso) ?? [];
 
+  useEffect(() => {
+    if (!reward) return;
+    const timeout = window.setTimeout(() => setReward(null), 3600);
+    return () => window.clearTimeout(timeout);
+  }, [reward]);
+
   const openNew = (date = selectedDate, subject?: string) => { setSelectedDate(date); setDraftSubject(subject); setEditing(null); setModalOpen(true); };
   const openEdit = (mission: Mission) => { setDraftSubject(undefined); setEditing(mission); setModalOpen(true); };
   const moveMonth = (amount: number) => setMonth(new Date(month.getFullYear(), month.getMonth() + amount, 1));
@@ -86,6 +94,39 @@ export function MissionPlanner() {
   const pending = gameStats.pending;
   const streak = useMemo(() => calculateStreak(missions), [missions]);
   const monthName = new Intl.DateTimeFormat("es-CO", { month: "long" }).format(month);
+  const campaignProgress = missions.length ? Math.round((gameStats.completed / missions.length) * 100) : 0;
+  const nextObjective = useMemo(() => missions
+    .filter((mission) => getMissionStatus(mission) !== "completed")
+    .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))[0] ?? null, [missions]);
+  const objectiveTiming = useMemo(() => {
+    if (!nextObjective) return "Campaña completada";
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    const target = new Date(`${nextObjective.date}T12:00:00`);
+    const daysAway = Math.round((target.getTime() - today.getTime()) / 86_400_000);
+    if (daysAway < 0) return `Venció hace ${Math.abs(daysAway)} ${Math.abs(daysAway) === 1 ? "día" : "días"}`;
+    if (daysAway === 0) return "Objetivo de hoy";
+    if (daysAway === 1) return "Objetivo de mañana";
+    return `Faltan ${daysAway} días`;
+  }, [nextObjective]);
+
+  const showReward = (mission: Mission) => setReward({ id: Date.now(), title: mission.title, xp: getMissionXp(mission), boss: mission.priority === "boss" });
+  const toggleWithFeedback = (id: string) => {
+    const mission = missions.find((item) => item.id === id);
+    if (mission && getMissionStatus(mission) !== "completed") showReward(mission);
+    toggle(id);
+  };
+  const setStatusWithFeedback = (id: string, status: Parameters<typeof setStatus>[1]) => {
+    const mission = missions.find((item) => item.id === id);
+    if (mission && status === "completed" && getMissionStatus(mission) !== "completed") showReward(mission);
+    setStatus(id, status);
+  };
+  const openObjective = (mission: Mission) => {
+    const objectiveDate = new Date(`${mission.date}T12:00:00`);
+    setSelectedDate(objectiveDate);
+    setMonth(new Date(objectiveDate.getFullYear(), objectiveDate.getMonth(), 1));
+    openEdit(mission);
+  };
   const relics = [
     { label: "Primera victoria", unlocked: gameStats.completed >= 1, icon: <Trophy size={13} /> },
     { label: "Cazajefes", unlocked: gameStats.bossesDefeated >= 1, icon: <Swords size={13} /> },
@@ -173,7 +214,7 @@ export function MissionPlanner() {
               onSelectSubject={setSelectedSubject}
               onEdit={openEdit}
               onAdd={(subject) => openNew(selectedDate, subject)}
-              onStatusChange={setStatus}
+              onStatusChange={setStatusWithFeedback}
             />
           </div>
         ) : <div className="workspace">
@@ -186,11 +227,31 @@ export function MissionPlanner() {
             </div>
           </div>
 
-          <div className="campaign-hud" aria-label="Estado de la campaña">
-            <span><Flag size={15} /><small>MISIONES ACTIVAS</small><strong>{gameStats.pending}</strong></span>
-            <span><Trophy size={15} /><small>VICTORIAS</small><strong>{gameStats.completed}</strong></span>
-            <span className="boss-stat"><Crown size={15} /><small>JEFES DERROTADOS</small><strong>{gameStats.bossesDefeated}/{gameStats.bosses}</strong></span>
-            <span><Sparkles size={15} /><small>XP TOTAL</small><strong>{player.totalXp}</strong></span>
+          <div className="campaign-dashboard">
+            <section className={`quest-focus ${nextObjective?.priority ?? "cleared"}`} aria-labelledby="active-quest-title">
+              <div className="quest-route" aria-hidden="true"><i /><i /><i /><span>✦</span></div>
+              <div className="quest-focus-copy">
+                <span className="quest-kicker"><Target size={13} /> {nextObjective ? "OBJETIVO ACTIVO" : "MAPA DESPEJADO"}</span>
+                <h2 id="active-quest-title">{nextObjective?.title ?? "¡Campaña completada!"}</h2>
+                <p>{nextObjective ? `${nextObjective.subject} · ${formatLongDate(nextObjective.date)}` : "No quedan misiones pendientes. Puedes preparar la siguiente aventura."}</p>
+                <div className="quest-tags">
+                  <span><Clock3 size={12} /> {objectiveTiming}</span>
+                  {nextObjective && <span><Award size={12} /> {priorityMeta[nextObjective.priority].label}</span>}
+                  {nextObjective && <span className="quest-xp"><Sparkles size={12} /> +{getMissionXp(nextObjective)} XP</span>}
+                </div>
+              </div>
+              <div className="quest-focus-action">
+                <div className="campaign-ring" style={{ "--campaign-progress": `${campaignProgress * 3.6}deg` } as React.CSSProperties}><span><strong>{campaignProgress}%</strong><small>CAMPAÑA</small></span></div>
+                <button type="button" onClick={() => nextObjective ? openObjective(nextObjective) : openNew(selectedDate)}>{nextObjective ? "Abrir objetivo" : "Nueva aventura"}<ChevronRight size={15} /></button>
+              </div>
+            </section>
+
+            <div className="campaign-hud" aria-label="Filtros rápidos de campaña">
+              <button type="button" className={filter === "pending" ? "active" : ""} onClick={() => setFilter("pending")}><Flag size={15} /><small>MISIONES ACTIVAS</small><strong>{gameStats.pending}</strong></button>
+              <button type="button" className={filter === "completed" ? "active" : ""} onClick={() => setFilter("completed")}><Trophy size={15} /><small>VICTORIAS</small><strong>{gameStats.completed}</strong></button>
+              <button type="button" className={`boss-stat ${filter === "boss" ? "active" : ""}`} onClick={() => setFilter("boss")}><Crown size={15} /><small>JEFES DERROTADOS</small><strong>{gameStats.bossesDefeated}/{gameStats.bosses}</strong></button>
+              <button type="button" className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}><Sparkles size={15} /><small>XP TOTAL</small><strong>{player.totalXp}</strong></button>
+            </div>
           </div>
 
           <div className="planner-grid">
@@ -235,7 +296,7 @@ export function MissionPlanner() {
             <div className="mission-list">
               {selectedMissions.map((mission) => (
                 <article key={mission.id} className={`mission-row ${mission.priority} ${mission.completed ? "completed" : ""}`}>
-                  <button className="check-button" onClick={() => toggle(mission.id)} aria-label={mission.completed ? "Marcar pendiente" : "Completar misión"}>{mission.completed && <Check size={16} />}</button>
+                  <button className="check-button" onClick={() => toggleWithFeedback(mission.id)} aria-label={mission.completed ? "Marcar pendiente" : "Completar misión"}>{mission.completed && <Check size={16} />}</button>
                   <div className="mission-badge">{priorityMeta[mission.priority].icon}</div>
                   <div className="mission-copy" onClick={() => openEdit(mission)}><span>{priorityMeta[mission.priority].label}</span><h3>{mission.title}</h3><small>{mission.subject} · {mission.time} <b className="xp-reward">+{getMissionXp(mission)} XP</b></small></div>
                   <div className="reward-box" aria-label={`Recompensa ${getMissionXp(mission)} puntos de experiencia`}><small>RECOMPENSA</small><strong>+{getMissionXp(mission)} XP</strong></div>
@@ -261,6 +322,7 @@ export function MissionPlanner() {
         theme={theme}
         onThemeChange={setTheme}
       />
+      <GameFeedback reward={reward} onDismiss={() => setReward(null)} />
     </main>
   );
 }

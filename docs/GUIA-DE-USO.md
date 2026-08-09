@@ -44,6 +44,12 @@ Las misiones otorgan experiencia cuando quedan en estado **Cumplida**:
 
 Cada 250 XP se sube un nivel. El HUD superior muestra el nivel de forma compacta y la tarjeta del menú lateral muestra el rango, la experiencia acumulada y cuánto falta para el siguiente nivel. Si una misión vuelve a pendiente o entregada, su experiencia deja de contar hasta que vuelva a cumplirse.
 
+## Centro de mando
+
+Sobre el calendario aparece el siguiente objetivo de la campaña, con su materia, fecha, importancia, recompensa y urgencia. Pulsa **Abrir objetivo** para ir directamente a sus detalles.
+
+Los cuatro indicadores de campaña también son filtros: permiten mostrar misiones activas, victorias, jefes finales o todas las misiones. Al cumplir una tarea se actualizan inmediatamente el progreso, la XP, la racha y las reliquias; además aparece una celebración visual. Los jefes finales tienen un efecto de victoria especial.
+
 ## Promedio
 
 Solo participan tareas que tengan nota y porcentaje:
