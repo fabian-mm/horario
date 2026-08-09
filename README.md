@@ -39,6 +39,7 @@ Genera un secreto con un administrador de contraseñas o con `openssl rand -base
 - Misiones aisladas por usuario en MongoDB.
 - Calendario, agenda diaria y Misiones de Mundo.
 - Progreso RPG con experiencia, niveles, rangos y recompensas según la importancia.
+- Cinco temas de color intercambiables, incluido Reino Rosa, guardados en el navegador.
 - Notas, porcentajes y promedio ponderado.
 - Diseño adaptable a escritorio y celular.
 - Guardado optimista para una interfaz rápida.

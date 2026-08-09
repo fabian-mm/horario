@@ -17,9 +17,16 @@ Pulsa tu nombre o **Ajustes** en el menú lateral para:
 - cambiar el nombre visible;
 - cambiar la descripción académica;
 - consultar el correo de la cuenta;
+- elegir el tema de color de la aventura;
 - cerrar sesión.
 
 Cerrar sesión no elimina información: todo permanece en MongoDB.
+
+## Temas de color
+
+Abre **Ajustes** y selecciona una apariencia en **Tema de la aventura**. Hay cinco opciones: Bosque Esmeralda, Reino Rosa, Océano Abisal, Arcano Violeta y Forja Carmesí. El cambio se aplica de inmediato y se conserva en ese navegador, incluso al cerrar sesión o recargar la página.
+
+El tema es una preferencia visual local: no modifica las misiones ni las notas guardadas en MongoDB. Por eso puedes usar un tema distinto en cada dispositivo.
 
 ## Misiones
 

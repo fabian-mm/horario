@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, CalendarDays, Check, ChevronLeft, ChevronRight, Compass, Crown, Flag, Flame, Gem, Globe2, LoaderCircle, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Swords, Trophy, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMissions } from "@/hooks/use-missions";
+import { useTheme } from "@/hooks/use-theme";
 import { calculatePlayerProgress, calculateStreak, formatLongDate, getMissionStatus, getMissionXp, Mission, Priority, priorityMeta, toISODate } from "@/lib/missions";
 import { getUserInitials } from "@/lib/users";
 import { AccountPanel } from "./account-panel";
@@ -28,6 +29,7 @@ function calendarDays(month: Date) {
 
 export function MissionPlanner() {
   const auth = useAuth();
+  const { theme, setTheme } = useTheme();
   const { missions, loading: missionsLoading, error: missionsError, upsert, toggle, setStatus, remove } = useMissions(Boolean(auth.user));
   const [month, setMonth] = useState(() => {
     const today = new Date();
@@ -107,7 +109,7 @@ export function MissionPlanner() {
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-theme={theme}>
       <aside className={`sidebar ${mobileNav ? "open" : ""} ${sidebarCollapsed ? "collapsed" : ""}`}>
         <button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Cerrar menú"><X /></button>
         <button className="sidebar-collapse" onClick={() => setSidebarCollapsed((current) => !current)} aria-label={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"} title={sidebarCollapsed ? "Mostrar menú" : "Ocultar menú"}>
@@ -256,6 +258,8 @@ export function MissionPlanner() {
         onClose={() => setAccountOpen(false)}
         onLogout={auth.logout}
         onUpdate={auth.updateAccount}
+        theme={theme}
+        onThemeChange={setTheme}
       />
     </main>
   );
