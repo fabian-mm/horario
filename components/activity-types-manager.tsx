@@ -12,6 +12,7 @@ type Props = {
   onClose: () => void;
   onSave: (activityType: ActivityType) => void;
   onDelete: (id: string) => void;
+  selectOnSave?: boolean;
 };
 
 const tones: { id: ActivityTone; label: string }[] = [
@@ -21,7 +22,7 @@ const tones: { id: ActivityTone; label: string }[] = [
 
 const blankType = (): ActivityType => ({ id: "", name: "", category: "activity", points: 10, tone: "sage" });
 
-export function ActivityTypesManager({ open, activityTypes, weeklyQuests, onClose, onSave, onDelete }: Props) {
+export function ActivityTypesManager({ open, activityTypes, weeklyQuests, onClose, onSave, onDelete, selectOnSave = false }: Props) {
   const [draft, setDraft] = useState<ActivityType>(blankType());
   const usage = useMemo(() => new Map(activityTypes.map((type) => [type.id, weeklyQuests.reduce(
     (count, week) => count + week.dailyMissions.filter((activity) => activity.activityTypeId === type.id).length,
@@ -31,8 +32,9 @@ export function ActivityTypesManager({ open, activityTypes, weeklyQuests, onClos
 
   const save = (event: FormEvent) => {
     event.preventDefault();
-    onSave({ ...draft, id: draft.id || crypto.randomUUID(), name: draft.name.trim(), points: Number(draft.points) });
-    setDraft(blankType());
+    const savedType = { ...draft, id: draft.id || crypto.randomUUID(), name: draft.name.trim(), points: Number(draft.points) };
+    onSave(savedType);
+    setDraft(savedType);
   };
 
   return <div className="modal-backdrop" onMouseDown={onClose}>
@@ -56,7 +58,7 @@ export function ActivityTypesManager({ open, activityTypes, weeklyQuests, onClos
           <fieldset className="tone-picker"><legend>Color en el mapa</legend>{tones.map((tone) => <button key={tone.id} type="button" className={`tone-${tone.id} ${draft.tone === tone.id ? "selected" : ""}`} onClick={() => setDraft({ ...draft, tone: tone.id })}><i />{tone.label}</button>)}</fieldset>
           <div className="activity-type-actions">
             {draft.id && <button type="button" className="delete-button" disabled={(usage.get(draft.id) ?? 0) > 0 || activityTypes.length <= 1} title={(usage.get(draft.id) ?? 0) > 0 ? "Está en uso en el horario" : undefined} onClick={() => { onDelete(draft.id); setDraft(blankType()); }}><Trash2 size={14} /> Eliminar</button>}
-            <button type="submit" className="primary-button">Guardar tipo</button>
+            <button type="submit" className="primary-button">{draft.id ? "Guardar cambios" : selectOnSave ? "Crear y seleccionar" : "Crear tipo"}</button>
           </div>
         </form>
       </div>

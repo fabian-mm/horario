@@ -127,6 +127,8 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
   };
   const selectedDailySubject = findSubject(subjects, dailyDraft.subject, dailyDraft.subjectId);
   const selectedActivityType = resolveActivityType(activityTypes, dailyDraft.activityTypeId, dailyDraft.activityTypeName);
+  const selectActivityType = (type: ActivityType) => setDailyDraft((current) => ({ ...current, activityTypeId: type.id, activityTypeName: type.name, activityCategory: type.category, activityPoints: type.points, subject: type.category === "class" ? current.subject ?? subjects[0]?.name : undefined, subjectId: type.category === "class" ? current.subjectId ?? subjects[0]?.id : undefined }));
+  const saveAndSelectActivityType = (type: ActivityType) => { onSaveActivityType(type); if (dailyModalOpen) selectActivityType(type); };
   const currentDuration = Math.max(0, (timeToMinutes(dailyDraft.endTime) ?? 0) - (timeToMinutes(dailyDraft.startTime) ?? 0));
   const setDuration = (durationMinutes: 60 | 120) => setDailyDraft((current) => ({ ...current, endTime: shiftTime(current.startTime, durationMinutes) ?? current.endTime }));
   const setStartTime = (startTime: string) => setDailyDraft((current) => ({ ...current, startTime, endTime: shiftTime(startTime, currentDuration === 60 ? 60 : 120) ?? current.endTime }));
@@ -211,7 +213,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
             <div className="modal-heading"><div className="modal-icon">{selectedActivityType?.category === "class" ? <BookOpen size={20} /> : <Activity size={20} />}</div><div><span className="eyebrow">MISIÓN DIARIA</span><h2 id="daily-modal-title">{dailyDraft.id ? "Editar actividad" : "Nueva actividad"}</h2></div><button className="icon-button" type="button" onClick={() => setDailyModalOpen(false)} aria-label="Cerrar"><X size={20} /></button></div>
             <form onSubmit={saveDaily}>
               <label>Nombre de la actividad {selectedActivityType?.category === "class" && <span className="optional">(opcional)</span>}<input required={selectedActivityType?.category !== "class"} autoFocus value={dailyDraft.title} onChange={(event) => setDailyDraft({ ...dailyDraft, title: event.target.value })} placeholder={selectedActivityType?.category === "class" ? "Si lo dejas vacío, se usará la materia" : "Ej. Gimnasio, lectura o práctica"} /></label>
-              <QuestTypeCards label="¿Qué actividad se repite?" options={activityTypes.map((type) => ({ id: type.id, label: type.name, detail: `${type.category === "class" ? "Usa materia" : "Actividad general"} · +${type.points} XP`, tone: type.tone }))} selectedId={selectedActivityType?.id} onSelect={(activityTypeId) => { const type = activityTypes.find((item) => item.id === activityTypeId); if (type) setDailyDraft({ ...dailyDraft, activityTypeId: type.id, activityTypeName: type.name, activityCategory: type.category, activityPoints: type.points, subject: type.category === "class" ? dailyDraft.subject ?? subjects[0]?.name : undefined, subjectId: type.category === "class" ? dailyDraft.subjectId ?? subjects[0]?.id : undefined }); }} onManage={() => setTypesModalOpen(true)} />
+              <QuestTypeCards variant="large" label="¿Qué actividad se repite?" options={activityTypes.map((type) => ({ id: type.id, label: type.name, detail: `${type.category === "class" ? "Usa materia" : "Actividad general"} · +${type.points} XP`, tone: type.tone }))} selectedId={selectedActivityType?.id} onSelect={(activityTypeId) => { const type = activityTypes.find((item) => item.id === activityTypeId); if (type) selectActivityType(type); }} onManage={() => setTypesModalOpen(true)} />
               {selectedActivityType && <div className={`activity-reward-preview activity-tone-${selectedActivityType.tone}`}><span>{selectedActivityType.category === "class" ? <BookOpen size={15} /> : <Activity size={15} />}{selectedActivityType.category === "class" ? "Se vincula a una materia" : "Actividad general"}</span><strong><Sparkles size={13} /> +{selectedActivityType.points} XP</strong></div>}
               {selectedActivityType?.category === "class" && <div className="subject-select-field">
                 <label>Materia<select required value={selectedDailySubject?.id ?? ""} onChange={(event) => { const subject = subjects.find((item) => item.id === event.target.value); if (subject) setDailyDraft({ ...dailyDraft, subject: subject.name, subjectId: subject.id }); }}><option value="" disabled>{subjects.length ? "Selecciona una materia" : "Primero crea una materia"}</option>{subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select></label>
@@ -236,7 +238,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
           </section>
         </div>
       )}
-      <ActivityTypesManager open={typesModalOpen} activityTypes={activityTypes} weeklyQuests={weeklyQuests} onClose={() => setTypesModalOpen(false)} onSave={onSaveActivityType} onDelete={onDeleteActivityType} />
+      <ActivityTypesManager open={typesModalOpen} activityTypes={activityTypes} weeklyQuests={weeklyQuests} onClose={() => setTypesModalOpen(false)} onSave={saveAndSelectActivityType} onDelete={onDeleteActivityType} selectOnSave={dailyModalOpen} />
     </div>
   );
 }
