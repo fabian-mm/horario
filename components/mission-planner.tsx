@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, CalendarDays, Check, ChevronLeft, ChevronRight, Compass, Flag, Globe2, LoaderCircle, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Swords, X } from "lucide-react";
+import { AlertTriangle, CalendarDays, Check, ChevronLeft, ChevronRight, Compass, Crown, Flag, Flame, Gem, Globe2, LoaderCircle, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Swords, Trophy, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMissions } from "@/hooks/use-missions";
 import { calculatePlayerProgress, calculateStreak, formatLongDate, getMissionStatus, getMissionXp, Mission, Priority, priorityMeta, toISODate } from "@/lib/missions";
@@ -71,9 +71,25 @@ export function MissionPlanner() {
   const openEdit = (mission: Mission) => { setDraftSubject(undefined); setEditing(mission); setModalOpen(true); };
   const moveMonth = (amount: number) => setMonth(new Date(month.getFullYear(), month.getMonth() + amount, 1));
   const player = useMemo(() => calculatePlayerProgress(missions), [missions]);
-  const pending = useMemo(() => missions.filter((mission) => getMissionStatus(mission) === "pending").length, [missions]);
+  const gameStats = useMemo(() => missions.reduce((stats, mission) => {
+    const status = getMissionStatus(mission);
+    if (status === "pending") stats.pending += 1;
+    if (status === "completed") stats.completed += 1;
+    if (mission.priority === "boss") {
+      stats.bosses += 1;
+      if (status === "completed") stats.bossesDefeated += 1;
+    }
+    return stats;
+  }, { pending: 0, completed: 0, bosses: 0, bossesDefeated: 0 }), [missions]);
+  const pending = gameStats.pending;
   const streak = useMemo(() => calculateStreak(missions), [missions]);
   const monthName = new Intl.DateTimeFormat("es-CO", { month: "long" }).format(month);
+  const relics = [
+    { label: "Primera victoria", unlocked: gameStats.completed >= 1, icon: <Trophy size={13} /> },
+    { label: "Cazajefes", unlocked: gameStats.bossesDefeated >= 1, icon: <Swords size={13} /> },
+    { label: "Racha de 3 días", unlocked: streak >= 3, icon: <Flame size={13} /> },
+    { label: "Coleccionista", unlocked: missions.length >= 5, icon: <Gem size={13} /> },
+  ];
 
   const filters: { id: Filter; label: string; icon: React.ReactNode }[] = [
     { id: "all", label: "Todas las misiones", icon: <Compass size={18} /> },
@@ -121,6 +137,9 @@ export function MissionPlanner() {
             <div className="rank-identity"><span>{player.level}</span><div><strong>{player.rank}</strong><small>{player.totalXp} XP acumulada</small></div></div>
             <div className="progress-track"><i style={{ width: `${player.progress}%` }} /></div>
             <small>{player.xpInLevel}/{player.xpPerLevel} XP · faltan {player.xpToNextLevel} para subir</small>
+            <div className="relic-strip" aria-label="Reliquias de aventura">
+              {relics.map((relic) => <span key={relic.label} className={relic.unlocked ? "unlocked" : "locked"} title={`${relic.label}: ${relic.unlocked ? "desbloqueada" : "bloqueada"}`}>{relic.icon}</span>)}
+            </div>
           </div>
           <button className="settings" onClick={() => setAccountOpen(true)}><Settings size={18} /> <span>Ajustes</span></button>
           <button className="profile" onClick={() => setAccountOpen(true)} aria-label="Administrar mi cuenta">
@@ -165,8 +184,16 @@ export function MissionPlanner() {
             </div>
           </div>
 
+          <div className="campaign-hud" aria-label="Estado de la campaña">
+            <span><Flag size={15} /><small>MISIONES ACTIVAS</small><strong>{gameStats.pending}</strong></span>
+            <span><Trophy size={15} /><small>VICTORIAS</small><strong>{gameStats.completed}</strong></span>
+            <span className="boss-stat"><Crown size={15} /><small>JEFES DERROTADOS</small><strong>{gameStats.bossesDefeated}/{gameStats.bosses}</strong></span>
+            <span><Sparkles size={15} /><small>XP TOTAL</small><strong>{player.totalXp}</strong></span>
+          </div>
+
           <div className="planner-grid">
           <section className="map-card">
+            <div className="quest-board-ribbon"><span><Compass size={14} /> TABLERO DE CAMPAÑA</span><small>CAPÍTULO · {monthName.toUpperCase()}</small></div>
             <div className="map-ornament compass-rose">✣</div>
             <div className="map-ornament ship">♜</div>
             <div className="week-row">{WEEK_DAYS.map((day) => <span key={day}>{day}</span>)}</div>
@@ -175,9 +202,10 @@ export function MissionPlanner() {
                 const iso = toISODate(date);
                 const dayMissions = missionsByDate.get(iso) ?? [];
                 const outside = date.getMonth() !== month.getMonth();
-                const selected = iso === toISODate(selectedDate);
+                const selected = iso === selectedIso;
+                const hasBoss = dayMissions.some((mission) => mission.priority === "boss" && getMissionStatus(mission) !== "completed");
                 return (
-                  <button key={iso} className={`calendar-day ${outside ? "outside" : ""} ${selected ? "selected" : ""}`} onClick={() => setSelectedDate(date)} onDoubleClick={() => openNew(date)}>
+                  <button key={iso} className={`calendar-day ${outside ? "outside" : ""} ${selected ? "selected" : ""} ${hasBoss ? "has-boss" : ""}`} onClick={() => setSelectedDate(date)} onDoubleClick={() => openNew(date)}>
                     <span className="day-number">{date.getDate()}</span>
                     <div className="day-missions">
                       {dayMissions.slice(0, 2).map((mission) => (
@@ -208,6 +236,7 @@ export function MissionPlanner() {
                   <button className="check-button" onClick={() => toggle(mission.id)} aria-label={mission.completed ? "Marcar pendiente" : "Completar misión"}>{mission.completed && <Check size={16} />}</button>
                   <div className="mission-badge">{priorityMeta[mission.priority].icon}</div>
                   <div className="mission-copy" onClick={() => openEdit(mission)}><span>{priorityMeta[mission.priority].label}</span><h3>{mission.title}</h3><small>{mission.subject} · {mission.time} <b className="xp-reward">+{getMissionXp(mission)} XP</b></small></div>
+                  <div className="reward-box" aria-label={`Recompensa ${getMissionXp(mission)} puntos de experiencia`}><small>RECOMPENSA</small><strong>+{getMissionXp(mission)} XP</strong></div>
                   <button className="edit-button" onClick={() => openEdit(mission)}>Ver misión</button>
                 </article>
               ))}

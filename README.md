@@ -18,13 +18,15 @@ npm run dev
 
 Abre `http://localhost:3000`. La primera pantalla no contiene ningún perfil ni dato de demostración: permite crear una cuenta o iniciar sesión.
 
+Al desplegar en Vercel, no configures `MONGODB_DNS_SERVERS` y crea un despliegue nuevo después de guardar las variables. La lista completa para Atlas y Vercel está en [Datos, seguridad y MongoDB](docs/DATOS-Y-SEGURIDAD.md#lista-de-comprobación-para-vercel).
+
 ## Variables de entorno
 
 | Variable | Descripción |
 | --- | --- |
 | `MONGODB_URI` | Cadena privada de conexión de MongoDB |
 | `MONGODB_DB` | Nombre de la base; por defecto `bitacora` |
-| `MONGODB_DNS_SERVERS` | Opcional. DNS separados por coma si Node no resuelve registros SRV |
+| `MONGODB_DNS_SERVERS` | Solo desarrollo local. DNS separados por coma si Windows no resuelve SRV; déjala sin configurar en Vercel |
 | `SESSION_SECRET` | Secreto aleatorio largo para firmar sesiones |
 
 Genera un secreto con un administrador de contraseñas o con `openssl rand -base64 32`. Nunca publiques `.env.local`.

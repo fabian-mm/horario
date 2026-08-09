@@ -23,18 +23,30 @@ Existe un índice único compuesto por `userId + id` y otro para ordenar por usu
 
 El navegador solo conserva la cookie de sesión protegida. Usuarios, misiones y notas se almacenan en MongoDB. Ya no se utiliza `localStorage` para datos académicos.
 
-Si el DNS del sistema rechaza los registros SRV de Atlas, `MONGODB_DNS_SERVERS` permite configurar resolvedores para el proceso de Node. Debe dejarse vacío cuando la infraestructura ya resuelve Atlas correctamente.
+Si el DNS local de Windows rechaza los registros SRV de Atlas, `MONGODB_DNS_SERVERS` permite configurar resolvedores para el proceso de Node. Esta variable es solo para desarrollo local: no debe configurarse en Vercel, donde la aplicación utiliza el DNS de la plataforma.
 
 ## Si no permite crear una cuenta
 
 Consulta `GET /api/health`. Un estado `unavailable` incluye una causa general:
 
 - `authentication`: el usuario o la contraseña incluidos en `MONGODB_URI` no coinciden con un **Database User** de Atlas;
+- `authorization`: el Database User no tiene permisos sobre la base indicada;
+- `configuration`: la variable falta o tiene un formato inválido;
 - `dns`: no se puede resolver la dirección SRV; revisa `MONGODB_DNS_SERVERS` y el host;
 - `network`: revisa la lista de acceso de red del proyecto de Atlas;
+- `tls`: Atlas rechazó la conexión segura;
 - `unavailable`: fallo no clasificado de MongoDB.
 
 Para `authentication`, restablece la contraseña del Database User en Atlas, copia nuevamente la cadena de conexión y sustituye solamente `MONGODB_URI` en `.env.local`. Si la contraseña contiene caracteres reservados como `@`, `:`, `/`, `?` o `#`, deben estar codificados para una URL. Reinicia Next.js después de cambiar variables de entorno. No publiques la cadena de conexión ni la contraseña en el repositorio o en un chat.
+
+### Lista de comprobación para Vercel
+
+1. Configura `MONGODB_URI`, `MONGODB_DB` y `SESSION_SECRET` para el entorno correcto, normalmente **Production** y también **Preview** si se prueba una URL de vista previa.
+2. Elimina `MONGODB_DNS_SERVERS` de Vercel; solo resuelve un problema local de Windows.
+3. En Atlas, el Database User debe tener al menos `readWrite` sobre la base indicada por `MONGODB_DB`.
+4. En **Network Access**, permite la salida de Vercel. Los planes con IP estática pueden autorizar esas direcciones; en proyectos con salida dinámica se puede usar temporalmente `0.0.0.0/0`, manteniendo credenciales fuertes, o elegir una opción de red privada/estática.
+5. Crea un despliegue nuevo después de cambiar variables. Vercel no modifica despliegues ya existentes.
+6. Consulta `/api/health` en el dominio desplegado. La propiedad `issue` indica el siguiente punto a corregir sin revelar secretos.
 
 ## Controles implementados
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { BookOpen, Check, ChevronRight, CircleDot, Clock3, FileCheck2, Flag, GraduationCap, NotebookPen, Plus, ScrollText } from "lucide-react";
+import { BookOpen, Check, ChevronRight, CircleDot, Clock3, Crown, FileCheck2, Flag, GraduationCap, NotebookPen, Plus, ScrollText, Trophy } from "lucide-react";
 import { calculateSubjectAverage, getMissionStatus, getMissionXp, Mission, MissionStatus, statusMeta } from "@/lib/missions";
 
 type Props = {
@@ -32,6 +32,17 @@ export function WorldMissions({ missions, selectedSubject, onSelectSubject, onEd
   const pendingCount = subjectTasks.filter((mission) => getMissionStatus(mission) === "pending").length;
   const impact = subjectTasks.reduce((sum, mission) => sum + (mission.weight ?? 0), 0);
   const selectedAverage = calculateSubjectAverage(subjectTasks);
+  const selectedCompleted = subjectTasks.filter((mission) => getMissionStatus(mission) === "completed").length;
+  const selectedProgress = subjectTasks.length ? Math.round((selectedCompleted / subjectTasks.length) * 100) : 0;
+  const worldStats = useMemo(() => missions.reduce((stats, mission) => {
+    const completed = getMissionStatus(mission) === "completed";
+    if (completed) stats.completed += 1;
+    if (mission.priority === "boss") {
+      stats.bosses += 1;
+      if (completed) stats.bossesDefeated += 1;
+    }
+    return stats;
+  }, { bosses: 0, bossesDefeated: 0, completed: 0 }), [missions]);
 
   return (
     <div className="world-layout">
@@ -46,11 +57,13 @@ export function WorldMissions({ missions, selectedSubject, onSelectSubject, onEd
             const Icon = subjectIcon(index);
             const tasks = subjectGroups.get(subject) ?? [];
             const pending = tasks.filter((mission) => getMissionStatus(mission) === "pending").length;
+            const completed = tasks.filter((mission) => getMissionStatus(mission) === "completed").length;
+            const territoryProgress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
             const result = calculateSubjectAverage(tasks);
             return (
               <button key={subject} className={selectedSubject === subject ? "active" : ""} onClick={() => onSelectSubject(subject)}>
-                <span className="subject-icon"><Icon size={18} /></span>
-                <span><strong>{subject}</strong><small>{tasks.length} misiones · {pending} pendientes</small></span>
+                <span className="subject-icon"><Icon size={18} /><i>{index + 1}</i></span>
+                <span><strong>{subject}</strong><small>{tasks.length} misiones · {pending} pendientes</small><span className="territory-progress"><i style={{ width: `${territoryProgress}%` }} /></span></span>
                 <span className={`subject-average ${result.average === null ? "empty" : ""}`}>
                   <strong>{result.average === null ? "—" : result.average.toFixed(2)}</strong>
                   <small>{result.average === null ? "Sin notas" : `${result.coverage}% evaluado`}</small>
@@ -70,6 +83,7 @@ export function WorldMissions({ missions, selectedSubject, onSelectSubject, onEd
           <div className="status-guide">
             {(Object.keys(statusMeta) as MissionStatus[]).map((status) => <span key={status} className={status}><i />{statusMeta[status].label}</span>)}
           </div>
+          <div className="world-game-stats"><span><Trophy size={15} /><b>{worldStats.completed}</b> victorias</span><span><Crown size={15} /><b>{worldStats.bossesDefeated}/{worldStats.bosses}</b> jefes</span></div>
         </div>
       </section>
 
@@ -80,6 +94,7 @@ export function WorldMissions({ missions, selectedSubject, onSelectSubject, onEd
               <span className="eyebrow">DIARIO DE MISIONES</span>
               <h2>{selectedSubject}</h2>
               <div className="drawer-stats"><span><Flag size={14} /> {pendingCount} pendientes</span><span><CircleDot size={14} /> {impact}% registrado</span></div>
+              <div className="territory-rank"><span><small>PROGRESO DEL TERRITORIO</small><b>{selectedProgress}%</b></span><div><i style={{ width: `${selectedProgress}%` }} /></div></div>
               <div className={`average-summary ${selectedAverage.average === null ? "empty" : ""}`}>
                 <div><small>Promedio ponderado</small><strong>{selectedAverage.average === null ? "Sin notas" : selectedAverage.average.toFixed(2)}</strong></div>
                 <div className="average-coverage"><span><i style={{ width: `${Math.min(selectedAverage.coverage, 100)}%` }} /></span><small>{selectedAverage.coverage}% con nota · {selectedAverage.gradedTasks} tareas</small></div>
