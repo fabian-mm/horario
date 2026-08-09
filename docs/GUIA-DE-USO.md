@@ -48,15 +48,21 @@ Abre **Mapa de campaña** desde el menú lateral para ver las misiones como una 
 
 Selecciona cualquier destino para abrir su pergamino de información. Allí puedes consultar recompensa, fecha, hora, impacto, nota y observaciones, cambiar el estado de la misión o abrir su ficha completa. El buscador también filtra los destinos visibles del mapa.
 
-## Misiones semanales y horario
+## Horario semanal y actividades recurrentes
 
 Abre **Misiones semanales** desde el menú lateral y crea una rutina, por ejemplo **Horario del semestre**. Elige desde qué fecha empieza a repetirse y, si lo deseas, una fecha final.
 
-Dentro de la misión semanal, pulsa el botón **+** de un día para añadir una clase. Cada misión diaria admite nombre, materia, día, hora inicial, hora final, lugar y notas. Pulsa una clase existente para editarla o eliminarla.
+Dentro del horario semanal, pulsa el botón **+** de un día para añadir una actividad. Puede ser una clase, una sesión de estudio, un proyecto, ejercicio, una rutina personal o cualquier tipo creado por ti. Las clases solicitan una materia global; las demás actividades no la requieren.
+
+Pulsa **Tipos y XP** para administrar las opciones disponibles. La aplicación incluye cinco tipos iniciales que puedes renombrar, cambiar entre **Clase** y **Actividad general**, recolorear y asignarles entre 0 y 500 XP. También puedes crear tipos nuevos. Un tipo en uso no se puede eliminar hasta cambiar las actividades asociadas.
 
 Las horas de comienzo y final usan el mismo control accesible. Si la hora final no es posterior a la inicial, verás el aviso junto al campo y el formulario no se guardará hasta corregirla. En móvil aparecen en filas separadas para que los controles conserven un tamaño cómodo.
 
-Una rutina activa proyecta automáticamente sus clases sobre todas las fechas correspondientes del calendario principal. Las clases aparecen con un icono de libro y se incluyen en la agenda del día. Al pulsarlas, la aplicación abre directamente la misión semanal que las contiene. Puedes pausar una rutina para ocultar sus apariciones sin borrar el horario.
+Una rutina activa proyecta automáticamente sus actividades sobre todas las fechas correspondientes del calendario principal. Cada aparición se completa por separado desde la agenda del día: así, marcar la actividad de hoy no completa las semanas futuras. Al completarla recibes los puntos definidos por su tipo. Puedes volver a marcarla como pendiente o pausar toda la rutina sin borrarla.
+
+## Logros y felicitaciones
+
+Al completar misiones y actividades recurrentes acumulas la misma XP global. Al cruzar los hitos de **100, 250, 500, 1000, 2000 y 5000 XP** aparece una felicitación especial con un nuevo título. La tarjeta de rango del menú lateral muestra cuál es el siguiente logro y cuántos puntos llevas.
 
 ## Progreso RPG
 

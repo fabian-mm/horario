@@ -42,6 +42,8 @@ Genera un secreto con un administrador de contraseñas o con `openssl rand -base
 - Misiones semanales con clases diarias recurrentes, visibles también en el calendario.
 - Catálogo global de materias reutilizado por misiones, clases, mapas y promedios.
 - Control horario accesible: escritura flexible, ajustes de 15 minutos y validación visible.
+- Horario semanal general para clases y actividades, con tipos configurables y XP propia.
+- Mensajes especiales al alcanzar hitos de 100, 250, 500, 1000, 2000 y 5000 XP.
 - Progreso RPG con experiencia, niveles, rangos y recompensas según la importancia.
 - Centro de mando con siguiente objetivo, urgencia, recompensa y filtros rápidos de campaña.
 - Celebraciones visuales de victoria y efectos especiales al derrotar jefes finales.

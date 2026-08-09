@@ -35,6 +35,10 @@ Cada ruta de datos ejecuta `getSessionUserId()`. Las rutas de misiones no acepta
 
 Una misión semanal contiene sus `dailyMissions`. `getScheduledOccurrences()` en `lib/schedule.ts` proyecta esas clases recurrentes sobre una fecha concreta; no crea copias diarias en MongoDB. Así, editar una clase actualiza todas sus apariciones futuras.
 
+El horario ahora proyecta actividades generales. Cada elemento conserva `activityTypeId` y una instantánea compatible de nombre, categoría y puntos. Las fechas completadas se guardan en `completedDates`, de modo que una rutina recurrente se define una vez pero cada aparición se completa y puntúa independientemente. Los horarios antiguos se migran automáticamente al tipo preestablecido **Clase**.
+
+`activityTypes` es un catálogo por usuario. `/api/activity-types` crea los tipos iniciales, permite editarlos y propaga nombre, categoría y puntos a las actividades que los usan. `calculatePlayerProgress()` suma la XP de misiones terminadas y apariciones recurrentes completadas. Los umbrales y mensajes viven en `xpMilestones` dentro de `lib/missions.ts`.
+
 El catálogo `subjects` es la fuente global de materias. Las misiones y clases guardan `subjectId` y una copia compatible de `subject`. `resolveSubjectName()` prioriza el ID y admite alias para que un cambio de nombre se refleje inmediatamente. `/api/subjects` migra nombres antiguos y propaga los renombres a los documentos relacionados.
 
 `components/time-field.tsx` concentra la experiencia de entrada de horas en todos los formularios. La normalización y comparación viven en `lib/time.ts`, separadas de React, para reutilizarlas o probarlas sin duplicar reglas. Los datos siguen guardándose como `HH:MM`, por lo que las APIs y las proyecciones del calendario mantienen un formato estable.
@@ -54,6 +58,8 @@ El catálogo `subjects` es la fuente global de materias. Las misiones y clases g
 | `/api/missions/[missionId]` | DELETE | Eliminar misión propia |
 | `/api/weekly-quests` | GET/POST | Listar o guardar una misión semanal propia |
 | `/api/weekly-quests/[weeklyQuestId]` | DELETE | Eliminar una misión semanal propia |
+| `/api/activity-types` | GET/POST | Listar, crear o actualizar tipos de actividad y su XP |
+| `/api/activity-types/[activityTypeId]` | DELETE | Eliminar un tipo que no esté en uso |
 | `/api/subjects` | GET/POST | Migrar, listar, crear o renombrar materias propias |
 | `/api/subjects/[subjectId]` | DELETE | Eliminar una materia propia que no esté en uso |
 | `/api/health` | GET | Comprobar conexión con MongoDB |

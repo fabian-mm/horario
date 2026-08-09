@@ -27,6 +27,10 @@ La experiencia por prioridad, los 250 XP por nivel y los nombres de rango están
 
 Para pedir una hora en un formulario, reutiliza `TimeField` de `components/time-field.tsx`. Entrega y recibe valores `HH:MM`; usa la propiedad `after` cuando un campo deba ser posterior a otro. Las conversiones y comparaciones comunes están disponibles en `lib/time.ts`.
 
+Los tipos seleccionables se definen en `lib/activity-types.ts` y se persisten mediante `/api/activity-types`. Añadir otra propiedad global —por ejemplo un icono— requiere incorporarla a `ActivityType`, `activityTypeSchema`, el editor y la propagación del Route Handler. Mantén `activityTypeId` como identidad estable aunque el usuario cambie el nombre.
+
+Las apariciones completadas viven en `DailyClassQuest.completedDates`; no crees un documento por cada semana. Para cambiar la puntuación global, modifica los tipos del usuario. Para añadir nuevos mensajes de progreso, amplía `xpMilestones` en `lib/missions.ts`.
+
 Los tipos `WeeklyQuest`, `DailyClassQuest` y la proyección por fechas viven en `lib/schedule.ts`. La validación del servidor está en `weeklyQuestSchema`, la persistencia en `/api/weekly-quests` y el estado optimista en `useWeeklyQuests`. Mantén la recurrencia como cálculo: no generes un documento de MongoDB por cada día del semestre.
 
 ## Usar materias globales
