@@ -1,7 +1,7 @@
 import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
 import { createSession } from "@/lib/auth";
-import { getDb } from "@/lib/mongodb";
+import { getDatabaseErrorMessage, getDb } from "@/lib/mongodb";
 import { loginSchema } from "@/lib/validation";
 import type { UserDocument } from "@/lib/users";
 
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     await createSession(user.id);
     const { _id, passwordHash, ...safeUser } = user;
     return NextResponse.json({ user: safeUser });
-  } catch {
-    return NextResponse.json({ error: "No fue posible iniciar sesión." }, { status: 503 });
+  } catch (error) {
+    return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 503 });
   }
 }

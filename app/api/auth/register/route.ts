@@ -2,7 +2,7 @@ import { hash } from "bcryptjs";
 import { MongoServerError } from "mongodb";
 import { NextResponse } from "next/server";
 import { createSession } from "@/lib/auth";
-import { getDb } from "@/lib/mongodb";
+import { getDatabaseErrorMessage, getDb } from "@/lib/mongodb";
 import { registerSchema } from "@/lib/validation";
 import type { AppUser, UserDocument } from "@/lib/users";
 
@@ -33,6 +33,6 @@ export async function POST(request: Request) {
     if (error instanceof MongoServerError && error.code === 11000) {
       return NextResponse.json({ error: "Ya existe una cuenta con ese correo." }, { status: 409 });
     }
-    return NextResponse.json({ error: "No fue posible crear la cuenta. Intenta nuevamente." }, { status: 503 });
+    return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 503 });
   }
 }

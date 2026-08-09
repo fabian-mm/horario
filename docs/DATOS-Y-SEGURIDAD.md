@@ -25,6 +25,17 @@ El navegador solo conserva la cookie de sesión protegida. Usuarios, misiones y 
 
 Si el DNS del sistema rechaza los registros SRV de Atlas, `MONGODB_DNS_SERVERS` permite configurar resolvedores para el proceso de Node. Debe dejarse vacío cuando la infraestructura ya resuelve Atlas correctamente.
 
+## Si no permite crear una cuenta
+
+Consulta `GET /api/health`. Un estado `unavailable` incluye una causa general:
+
+- `authentication`: el usuario o la contraseña incluidos en `MONGODB_URI` no coinciden con un **Database User** de Atlas;
+- `dns`: no se puede resolver la dirección SRV; revisa `MONGODB_DNS_SERVERS` y el host;
+- `network`: revisa la lista de acceso de red del proyecto de Atlas;
+- `unavailable`: fallo no clasificado de MongoDB.
+
+Para `authentication`, restablece la contraseña del Database User en Atlas, copia nuevamente la cadena de conexión y sustituye solamente `MONGODB_URI` en `.env.local`. Si la contraseña contiene caracteres reservados como `@`, `:`, `/`, `?` o `#`, deben estar codificados para una URL. Reinicia Next.js después de cambiar variables de entorno. No publiques la cadena de conexión ni la contraseña en el repositorio o en un chat.
+
 ## Controles implementados
 
 - Validación de entradas con Zod en el servidor.
