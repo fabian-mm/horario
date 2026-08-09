@@ -2,11 +2,14 @@ import { hash } from "bcryptjs";
 import { MongoServerError } from "mongodb";
 import { NextResponse } from "next/server";
 import { createSession } from "@/lib/auth";
-import { getDatabaseErrorMessage, getDatabaseIssue, getDb, logDatabaseError } from "@/lib/mongodb";
+import { getDatabaseErrorMessage, getDb, getPublicDatabaseIssue, logDatabaseError } from "@/lib/mongodb";
 import { registerSchema } from "@/lib/validation";
 import type { AppUser, UserDocument } from "@/lib/users";
+import { checkRateLimit, getRequestAddress, rateLimitHeaders } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  const rateLimit = checkRateLimit(`register:${getRequestAddress(request)}`, 5, 60 * 60 * 1000);
+  if (!rateLimit.allowed) return NextResponse.json({ error: "Se alcanzó el límite temporal de registros. Intenta más tarde." }, { status: 429, headers: rateLimitHeaders(rateLimit) });
   const parsed = registerSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Datos inválidos." }, { status: 400 });
@@ -34,6 +37,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ya existe una cuenta con ese correo." }, { status: 409 });
     }
     logDatabaseError("auth.register", error);
-    return NextResponse.json({ error: getDatabaseErrorMessage(error), issue: getDatabaseIssue(error) }, { status: 503 });
+    const issue = getPublicDatabaseIssue(error);
+    return NextResponse.json({ error: getDatabaseErrorMessage(error), ...(issue ? { issue } : {}) }, { status: 503 });
   }
 }

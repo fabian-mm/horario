@@ -14,7 +14,7 @@ const customDnsServers = process.env.MONGODB_DNS_SERVERS?.split(",").map((server
 const isVercel = process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
 
 let clientPromise: Promise<MongoClient> | undefined;
-let indexesCreated = false;
+let indexesPromise: Promise<void> | undefined;
 
 function connectClient() {
   if (!uri) throw new Error("MONGODB_URI_MISSING");
@@ -105,6 +105,9 @@ export function logDatabaseError(context: string, error: unknown) {
 }
 
 export function getDatabaseErrorMessage(error: unknown) {
+  if (process.env.NODE_ENV === "production") {
+    return "El servicio de datos no está disponible en este momento. Intenta nuevamente en unos minutos.";
+  }
   switch (getDatabaseIssue(error)) {
     case "configuration":
       return "MONGODB_URI no está configurada correctamente en este despliegue. Revisa el valor en Vercel y vuelve a desplegar.";
@@ -123,9 +126,13 @@ export function getDatabaseErrorMessage(error: unknown) {
   }
 }
 
+export function getPublicDatabaseIssue(error: unknown) {
+  return process.env.NODE_ENV === "production" ? undefined : getDatabaseIssue(error);
+}
+
 async function ensureIndexes(db: Db) {
-  if (indexesCreated) return;
-  await Promise.all([
+  if (indexesPromise) return indexesPromise;
+  indexesPromise = Promise.all([
     db.collection("users").createIndex({ email: 1 }, { unique: true }),
     db.collection("users").createIndex({ id: 1 }, { unique: true }),
     db.collection("missions").createIndex({ userId: 1, id: 1 }, { unique: true }),
@@ -137,8 +144,9 @@ async function ensureIndexes(db: Db) {
     db.collection("activityTypes").createIndex({ userId: 1, normalizedName: 1 }, { unique: true }),
     db.collection("missionTypes").createIndex({ userId: 1, id: 1 }, { unique: true }),
     db.collection("missionTypes").createIndex({ userId: 1, normalizedName: 1 }, { unique: true }),
-  ]);
-  indexesCreated = true;
+  ]).then(() => undefined);
+  indexesPromise.catch(() => { indexesPromise = undefined; });
+  return indexesPromise;
 }
 
 export async function getDb() {

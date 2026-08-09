@@ -13,7 +13,7 @@ El correo y el ID tienen índices únicos. La contraseña original nunca se alma
 ### `missions`
 
 ```text
-id, userId, title, subject, date, time, priority, status,
+id, userId, title, subject, date, time, durationMinutes, priority, status,
 completed, notes, grade, weight, createdAt, updatedAt
 ```
 
@@ -27,7 +27,7 @@ Si el DNS local de Windows rechaza los registros SRV de Atlas, `MONGODB_DNS_SERV
 
 ## Si no permite crear una cuenta
 
-Consulta `GET /api/health`. Un estado `unavailable` incluye una causa general:
+En desarrollo local, consulta `GET /api/health`. Un estado `unavailable` incluye una causa general:
 
 - `authentication`: el usuario o la contraseña incluidos en `MONGODB_URI` no coinciden con un **Database User** de Atlas;
 - `authorization`: el Database User no tiene permisos sobre la base indicada;
@@ -46,24 +46,32 @@ Para `authentication`, restablece la contraseña del Database User en Atlas, cop
 3. En Atlas, el Database User debe tener al menos `readWrite` sobre la base indicada por `MONGODB_DB`.
 4. En **Network Access**, permite la salida de Vercel. Los planes con IP estática pueden autorizar esas direcciones; en proyectos con salida dinámica se puede usar temporalmente `0.0.0.0/0`, manteniendo credenciales fuertes, o elegir una opción de red privada/estática.
 5. Crea un despliegue nuevo después de cambiar variables. Vercel no modifica despliegues ya existentes.
-6. Consulta `/api/health` en el dominio desplegado. La propiedad `issue` indica el siguiente punto a corregir sin revelar secretos.
+6. Consulta `/api/health` en el dominio desplegado. En producción solo expone el estado general; la causa concreta queda registrada en los logs de Vercel para no revelar detalles de infraestructura.
 
 ## Controles implementados
 
 - Validación de entradas con Zod en el servidor.
 - Hash bcrypt con coste 12.
-- Cookie `httpOnly`, `sameSite=lax` y `secure` en producción.
+- Cookie `httpOnly`, `sameSite=lax`, prioridad alta y `secure` en producción.
 - JWT firmado con `SESSION_SECRET` y expiración de 30 días.
+- `SESSION_SECRET` obligatorio con un mínimo de 32 caracteres en producción.
 - Autorización por sesión en cada lectura, escritura y eliminación.
 - Índice único para impedir correos duplicados.
 - Proyección MongoDB para no devolver `passwordHash`.
+- Límite por instancia de 10 intentos de acceso cada 15 minutos y 5 registros por hora para cada dirección.
+- Comparación bcrypt ficticia cuando el correo no existe, reduciendo diferencias de tiempo observables.
+- Verificación de origen para operaciones que modifican datos y rechazo de cuerpos superiores a 128 KiB o formatos inesperados.
+- Respuestas de API privadas con `Cache-Control: no-store`.
+- Content Security Policy y cabeceras contra XSS, clickjacking, MIME sniffing y acceso innecesario a cámara, micrófono o ubicación.
+- Mensajes detallados de MongoDB solo en desarrollo; en producción quedan en logs privados.
+- Creación concurrente de índices compartida para evitar trabajo duplicado en cada instancia.
 
 ## Pendientes antes de una publicación pública
 
 - Verificación de correo.
 - Recuperación y cambio de contraseña.
-- Limitación de intentos de inicio de sesión.
-- Protección CSRF adicional si se añaden integraciones entre dominios.
+- Un limitador distribuido (Redis/KV) si el tráfico crece; el actual protege cada instancia de Vercel por separado.
+- Tokens CSRF explícitos si se añaden integraciones entre dominios o cookies con políticas diferentes.
 - Registro de auditoría y monitoreo.
 - Política de privacidad y eliminación de cuenta.
 

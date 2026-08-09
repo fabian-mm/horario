@@ -8,8 +8,8 @@ const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30;
 
 const sessionKey = () => {
   const secret = process.env.SESSION_SECRET;
-  if (!secret && process.env.NODE_ENV === "production") {
-    throw new Error("SESSION_SECRET es obligatorio en producción.");
+  if (process.env.NODE_ENV === "production" && (!secret || secret.length < 32)) {
+    throw new Error("SESSION_SECRET debe tener al menos 32 caracteres en producción.");
   }
   return new TextEncoder().encode(secret ?? "bitacora-development-secret-change-me");
 };
@@ -29,6 +29,8 @@ export async function createSession(userId: string) {
     sameSite: "lax",
     path: "/",
     expires: expiresAt,
+    maxAge: SESSION_DURATION_SECONDS,
+    priority: "high",
   });
 }
 

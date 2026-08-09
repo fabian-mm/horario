@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDatabaseIssue, getDb } from "@/lib/mongodb";
+import { getDb, getPublicDatabaseIssue } from "@/lib/mongodb";
 
 export async function GET() {
   try {
@@ -7,6 +7,7 @@ export async function GET() {
     await db.command({ ping: 1 });
     return NextResponse.json({ status: "ok" });
   } catch (error) {
-    return NextResponse.json({ status: "unavailable", issue: getDatabaseIssue(error) }, { status: 503 });
+    const issue = getPublicDatabaseIssue(error);
+    return NextResponse.json({ status: "unavailable", ...(issue ? { issue } : {}) }, { status: 503 });
   }
 }

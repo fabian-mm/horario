@@ -27,7 +27,7 @@ Al desplegar en Vercel, no configures `MONGODB_DNS_SERVERS` y crea un despliegue
 | `MONGODB_URI` | Cadena privada de conexión de MongoDB |
 | `MONGODB_DB` | Nombre de la base; por defecto `bitacora` |
 | `MONGODB_DNS_SERVERS` | Solo desarrollo local. DNS separados por coma si Windows no resuelve SRV; déjala sin configurar en Vercel |
-| `SESSION_SECRET` | Secreto aleatorio largo para firmar sesiones |
+| `SESSION_SECRET` | Secreto aleatorio de al menos 32 caracteres para firmar sesiones |
 
 Genera un secreto con un administrador de contraseñas o con `openssl rand -base64 32`. Nunca publiques `.env.local`.
 
@@ -35,7 +35,9 @@ Genera un secreto con un administrador de contraseñas o con `openssl rand -base
 
 - Registro e inicio de sesión con correo y contraseña.
 - Contraseñas cifradas con bcrypt.
-- Sesiones firmadas en cookies `httpOnly`.
+- Sesiones firmadas en cookies `httpOnly`, `secure` en producción y prioridad alta.
+- Protección contra fuerza bruta, solicitudes cruzadas y cuerpos excesivos.
+- CSP y cabeceras contra XSS, clickjacking y detección incorrecta de contenido.
 - Misiones aisladas por usuario en MongoDB.
 - Calendario, agenda diaria y Misiones de Mundo.
 - Mapa de campaña cronológico con destinos interactivos y fortalezas para jefes finales.
