@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
 import { getDb } from "@/lib/mongodb";
-import type { Mission } from "@/lib/missions";
+import { sortMissionsByDateTime, type Mission } from "@/lib/missions";
 import { missionSchema } from "@/lib/validation";
 
 type MissionDocument = Mission & { userId: string; createdAt: string; updatedAt: string };
@@ -16,7 +16,7 @@ export async function GET() {
     .project({ _id: 0, userId: 0 })
     .sort({ date: 1, time: 1 })
     .toArray();
-  return NextResponse.json(missions);
+  return NextResponse.json(sortMissionsByDateTime(missions));
 }
 
 export async function POST(request: Request) {

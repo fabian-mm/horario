@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMissionStatus, Mission, MissionStatus } from "@/lib/missions";
+import { getMissionStatus, Mission, MissionStatus, sortMissionsByDateTime } from "@/lib/missions";
 
 export function useMissions(enabled: boolean) {
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -24,7 +24,7 @@ export function useMissions(enabled: boolean) {
       })
       .then((data) => {
         if (!canceled) {
-          setMissions(data.map((mission) => ({ ...mission, status: getMissionStatus(mission) })));
+          setMissions(sortMissionsByDateTime(data.map((mission) => ({ ...mission, status: getMissionStatus(mission) }))));
           setError(null);
         }
       })
@@ -47,12 +47,13 @@ export function useMissions(enabled: boolean) {
   };
 
   const upsert = (mission: Mission) => {
+    const normalizedMission = sortMissionsByDateTime([mission])[0];
     const previous = missions;
-    setMissions((current) => current.some((item) => item.id === mission.id)
-      ? current.map((item) => item.id === mission.id ? mission : item)
-      : [...current, mission]);
+    setMissions((current) => sortMissionsByDateTime(current.some((item) => item.id === normalizedMission.id)
+      ? current.map((item) => item.id === normalizedMission.id ? normalizedMission : item)
+      : [...current, normalizedMission]));
     setError(null);
-    saveRemote(mission).catch((requestError) => {
+    saveRemote(normalizedMission).catch((requestError) => {
       setMissions(previous);
       setError(requestError instanceof Error ? requestError.message : "No se pudo guardar la misión.");
     });
@@ -62,8 +63,8 @@ export function useMissions(enabled: boolean) {
     const previous = missions;
     const current = missions.find((mission) => mission.id === id);
     if (!current) return;
-    const updated = transform(current);
-    setMissions((items) => items.map((mission) => mission.id === id ? updated : mission));
+    const updated = sortMissionsByDateTime([transform(current)])[0];
+    setMissions((items) => sortMissionsByDateTime(items.map((mission) => mission.id === id ? updated : mission)));
     setError(null);
     saveRemote(updated).catch((requestError) => {
       setMissions(previous);

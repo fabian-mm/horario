@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Check, ChevronRight, Clock3, Crown, FileCheck2, Flag, MapPinned, Plus, ScrollText, Sparkles, Swords } from "lucide-react";
-import { formatLongDate, getMissionStatus, getMissionXp, Mission, MissionStatus, priorityMeta, statusMeta } from "@/lib/missions";
+import { formatLongDate, getMissionStatus, getMissionXp, Mission, MissionStatus, priorityMeta, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
 
 type Props = {
   missions: Mission[];
@@ -12,7 +12,7 @@ type Props = {
 };
 
 export function AdventureMap({ missions, onAdd, onEdit, onStatusChange }: Props) {
-  const orderedMissions = useMemo(() => [...missions].sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`)), [missions]);
+  const orderedMissions = useMemo(() => sortMissionsByDateTime(missions), [missions]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedMission = orderedMissions.find((mission) => mission.id === selectedId) ?? orderedMissions.find((mission) => getMissionStatus(mission) !== "completed") ?? orderedMissions[0] ?? null;
   const completed = orderedMissions.filter((mission) => getMissionStatus(mission) === "completed").length;
