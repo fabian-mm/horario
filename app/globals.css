@@ -28,6 +28,12 @@
 .weekly-heading-actions, .world-heading-actions { display: flex; align-items: center; gap: 8px; }
 .schedule-xp { position: absolute; right: 6px; bottom: 5px; display: flex; align-items: center; gap: 2px; color: var(--gold); font-size: 6px; }
 .daily-class-card > small { padding-right: 34px; }
+.daily-class-card .scheduled-activity-name { display: block; overflow: visible; color: var(--ink); font: 700 13px/1.2 "Fraunces Variable", serif; white-space: normal; }
+.daily-class-card .scheduled-activity-caption { display: block; margin-top: 5px; padding-right: 42px; color: var(--activity-accent, var(--sage)); font-size: 6px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.automatic-schedule-name { --activity-accent: var(--sage); display: grid; gap: 4px; padding: 11px 13px; border: 1px solid color-mix(in srgb, var(--activity-accent) 30%, transparent); border-left: 4px solid var(--activity-accent); border-radius: 8px; background: linear-gradient(135deg, color-mix(in srgb, var(--activity-accent) 10%, var(--paper)), var(--paper)); }
+.automatic-schedule-name > span { color: var(--activity-accent); font-size: 7px; font-weight: 900; letter-spacing: .1em; }
+.automatic-schedule-name > strong { color: var(--ink); font: 700 15px/1.2 "Fraunces Variable", serif; }
+.automatic-schedule-name > small { color: var(--ink-soft); font-size: 8px; }
 .activity-tone-gold { --activity-accent: var(--gold); }
 .activity-tone-sage { --activity-accent: var(--sage); }
 .activity-tone-coral { --activity-accent: var(--coral); }

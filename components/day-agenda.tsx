@@ -63,7 +63,7 @@ export function DayAgenda({ missions, activities, activityTypes, onEditMission, 
           const type = resolveActivityType(activityTypes, activity.activityTypeId, activity.activityTypeName);
           return <article key={event.id} style={style} className={`day-agenda-event activity-event activity-tone-${type.tone} ${activity.completed ? "completed" : ""}`} onClick={() => onOpenActivity(activity)}>
             <button type="button" onClick={(click) => { click.stopPropagation(); onToggleActivity(activity); }} aria-label={activity.completed ? "Marcar actividad pendiente" : "Completar actividad"}>{activity.completed ? <Check size={13} /> : activity.activityCategory === "class" ? <BookOpen size={13} /> : <Activity size={13} />}</button>
-            <div><time><Clock3 size={11} />{formatTimeRange12Hour(activity.startTime, activity.endTime)}</time><strong>{getScheduledActivityLabel(activity)}</strong><small>{activity.activityTypeName ?? "Actividad"}{activity.location ? <><MapPin size={10} />{activity.location}</> : null}</small></div>
+            <div><time><Clock3 size={11} />{formatTimeRange12Hour(activity.startTime, activity.endTime)}</time><strong>{getScheduledActivityLabel(activity)}</strong><small>{activity.activityCategory === "class" ? "ACTIVIDAD · MATERIA" : "ACTIVIDAD GENERAL"}{activity.location ? <><MapPin size={10} />{activity.location}</> : null}</small></div>
           </article>;
         }
         const mission = event.mission;

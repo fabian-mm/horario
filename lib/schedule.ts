@@ -125,9 +125,9 @@ export const getScheduledActivityDetail = (activity: Pick<DailyClassQuest, "titl
 };
 
 export const getScheduledActivityLabel = (activity: Pick<DailyClassQuest, "title" | "subject" | "activityCategory" | "activityTypeName">) => {
-  const detail = getScheduledActivityDetail(activity);
-  if (activity.activityCategory === "class" && activity.subject) return detail ? `${activity.subject} · ${detail}` : activity.subject;
-  return detail || activity.activityTypeName || "Actividad";
+  const activityName = activity.activityTypeName?.trim() || (activity.activityCategory === "class" ? "Clase" : "Actividad");
+  const subject = activity.subject?.trim();
+  return subject ? `${activityName} · ${subject}` : activityName;
 };
 
 export const getCompletedScheduleXp = (weeklyQuests: WeeklyQuest[]) =>
