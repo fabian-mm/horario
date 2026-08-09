@@ -1,3 +1,6 @@
+import type { WeeklyQuest } from "@/lib/schedule";
+import { getCompletedScheduleCount, getCompletedScheduleXp } from "@/lib/schedule";
+
 export type Priority = "normal" | "important" | "boss";
 export type MissionStatus = "pending" | "submitted" | "completed";
 
@@ -70,6 +73,22 @@ const playerRanks = [
   { level: 12, name: "Leyenda académica" },
 ];
 
+export type XpMilestone = { threshold: number; title: string; message: string };
+
+export const xpMilestones: XpMilestone[] = [
+  { threshold: 100, title: "Primer cofre abierto", message: "Tu constancia ya empieza a dibujar una ruta propia." },
+  { threshold: 250, title: "Nuevo rango conquistado", message: "Cada actividad completada fortalece a tu aventurero." },
+  { threshold: 500, title: "Cartógrafo constante", message: "Ya convertiste la disciplina en territorio conquistado." },
+  { threshold: 1000, title: "Héroe de la rutina", message: "Tu horario dejó de ser un plan: ahora es una hazaña." },
+  { threshold: 2000, title: "Maestre del tiempo", message: "Dominas tus días como quien domina un mapa legendario." },
+  { threshold: 5000, title: "Leyenda de la bitácora", message: "Tu historia ya merece un lugar entre las grandes leyendas." },
+];
+
+export const getCrossedXpMilestone = (previousXp: number, currentXp: number) =>
+  [...xpMilestones].reverse().find((milestone) => previousXp < milestone.threshold && currentXp >= milestone.threshold);
+
+export const getNextXpMilestone = (totalXp: number) => xpMilestones.find((milestone) => milestone.threshold > totalXp);
+
 const parseTimeToMinutes = (time: string) => {
   const [hours, minutes] = time.split(":").map(Number);
   return (Number.isFinite(hours) ? hours : 0) * 60 + (Number.isFinite(minutes) ? minutes : 0);
@@ -87,15 +106,17 @@ export const sortMissionsByDateTime = (missions: Mission[]) => [...missions].sor
 
 export const getMissionXp = (mission: Mission) => priorityXp[mission.priority];
 
-export const calculatePlayerProgress = (missions: Mission[]) => {
+export const calculatePlayerProgress = (missions: Mission[], weeklyQuests: WeeklyQuest[] = []) => {
   const completedMissions = missions.filter((mission) => getMissionStatus(mission) === "completed");
-  const totalXp = completedMissions.reduce((sum, mission) => sum + getMissionXp(mission), 0);
+  const completedActivities = getCompletedScheduleCount(weeklyQuests);
+  const totalXp = completedMissions.reduce((sum, mission) => sum + getMissionXp(mission), 0) + getCompletedScheduleXp(weeklyQuests);
   const level = Math.floor(totalXp / XP_PER_LEVEL) + 1;
   const xpInLevel = totalXp % XP_PER_LEVEL;
   const rank = [...playerRanks].reverse().find((item) => level >= item.level)?.name ?? playerRanks[0].name;
 
   return {
     completed: completedMissions.length,
+    completedActivities,
     level,
     progress: Math.round((xpInLevel / XP_PER_LEVEL) * 100),
     rank,
@@ -118,12 +139,15 @@ export const formatLongDate = (isoDate: string) =>
     new Date(`${isoDate}T12:00:00`),
   );
 
-export const calculateStreak = (missions: Mission[], referenceDate = new Date()) => {
+export const calculateStreak = (missions: Mission[], weeklyQuests: WeeklyQuest[] = [], referenceDate = new Date()) => {
   const completedDates = new Set(
     missions
       .filter((mission) => getMissionStatus(mission) === "completed")
       .map((mission) => mission.date),
   );
+  weeklyQuests.forEach((weeklyQuest) => weeklyQuest.dailyMissions.forEach((activity) =>
+    activity.completedDates?.forEach((date) => completedDates.add(date)),
+  ));
 
   let streak = 0;
   const day = new Date(referenceDate);

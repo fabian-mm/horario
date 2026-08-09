@@ -1,15 +1,22 @@
+import type { ActivityCategory } from "@/lib/activity-types";
+
 export type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export type DailyClassQuest = {
   id: string;
   title: string;
-  subject: string;
+  subject?: string;
   subjectId?: string;
+  activityTypeId?: string;
+  activityTypeName?: string;
+  activityCategory?: ActivityCategory;
+  activityPoints?: number;
   dayOfWeek: Weekday;
   startTime: string;
   endTime: string;
   location?: string;
   notes?: string;
+  completedDates?: string[];
 };
 
 export type WeeklyQuest = {
@@ -28,6 +35,7 @@ export type ScheduledOccurrence = DailyClassQuest & {
   weeklyQuestId: string;
   weeklyQuestTitle: string;
   date: string;
+  completed: boolean;
 };
 
 export const weekdayMeta: Record<Weekday, { short: string; label: string }> = {
@@ -87,6 +95,21 @@ export const getScheduledOccurrences = (date: Date, weeklyQuests: WeeklyQuest[])
         occurrenceId: `${weeklyQuest.id}:${dailyMission.id}:${isoDate}`,
         weeklyQuestId: weeklyQuest.id,
         weeklyQuestTitle: weeklyQuest.title,
+        completed: dailyMission.completedDates?.includes(isoDate) ?? false,
       }));
   }).sort(compareDailyMissionsByTime);
 };
+
+export const getScheduledActivityXp = (activity: Pick<DailyClassQuest, "activityPoints">) => activity.activityPoints ?? 10;
+
+export const getCompletedScheduleXp = (weeklyQuests: WeeklyQuest[]) =>
+  weeklyQuests.reduce((total, weeklyQuest) => total + weeklyQuest.dailyMissions.reduce(
+    (subtotal, activity) => subtotal + (activity.completedDates?.length ?? 0) * getScheduledActivityXp(activity),
+    0,
+  ), 0);
+
+export const getCompletedScheduleCount = (weeklyQuests: WeeklyQuest[]) =>
+  weeklyQuests.reduce((total, weeklyQuest) => total + weeklyQuest.dailyMissions.reduce(
+    (subtotal, activity) => subtotal + (activity.completedDates?.length ?? 0),
+    0,
+  ), 0);

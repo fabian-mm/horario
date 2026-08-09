@@ -16,7 +16,7 @@ export async function GET() {
     .project({ _id: 0, userId: 0 })
     .sort({ date: 1, time: 1 })
     .toArray();
-  return NextResponse.json(sortMissionsByDateTime(missions));
+  return NextResponse.json(sortMissionsByDateTime(missions as unknown as Mission[]));
 }
 
 export async function POST(request: Request) {

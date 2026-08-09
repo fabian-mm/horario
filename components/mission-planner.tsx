@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Award, BookOpen, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, Library, LoaderCircle, MapPin, MapPinned, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Swords, Target, Trophy, X } from "lucide-react";
+import { Activity, AlertTriangle, Award, BookOpen, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, Library, LoaderCircle, MapPin, MapPinned, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Swords, Target, Trophy, X } from "lucide-react";
+import { useActivityTypes } from "@/hooks/use-activity-types";
 import { useAuth } from "@/hooks/use-auth";
 import { useMissions } from "@/hooks/use-missions";
 import { useSubjects } from "@/hooks/use-subjects";
 import { useTheme } from "@/hooks/use-theme";
 import { useWeeklyQuests } from "@/hooks/use-weekly-quests";
-import { calculatePlayerProgress, calculateStreak, formatLongDate, getMissionStatus, getMissionXp, Mission, Priority, priorityMeta, sortMissionsByDateTime, toISODate } from "@/lib/missions";
-import { getScheduledOccurrences, sortDailyMissionsByTime } from "@/lib/schedule";
+import { calculatePlayerProgress, calculateStreak, formatLongDate, getCrossedXpMilestone, getMissionStatus, getMissionXp, getNextXpMilestone, Mission, Priority, priorityMeta, sortMissionsByDateTime, toISODate } from "@/lib/missions";
+import { getScheduledActivityXp, getScheduledOccurrences, ScheduledOccurrence, sortDailyMissionsByTime } from "@/lib/schedule";
+import { resolveActivityType } from "@/lib/activity-types";
 import { resolveSubjectName } from "@/lib/subjects";
 import { getUserInitials } from "@/lib/users";
 import { AccountPanel } from "./account-panel";
@@ -16,13 +18,12 @@ import { AdventureMap } from "./adventure-map";
 import { AuthScreen } from "./auth-screen";
 import { GameFeedback, RewardEvent } from "./game-feedback";
 import { MissionForm } from "./mission-form";
-import { SubjectsView } from "./subjects-view";
 import { WeeklySchedule } from "./weekly-schedule";
 import { WorldMissions } from "./world-missions";
 
 const WEEK_DAYS = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
 type Filter = "all" | "pending" | "completed" | Priority;
-type View = "calendar" | "world" | "map" | "weekly" | "subjects";
+type View = "calendar" | "world" | "map" | "weekly";
 
 function calendarDays(month: Date) {
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
@@ -41,6 +42,7 @@ export function MissionPlanner() {
   const { missions, loading: missionsLoading, error: missionsError, upsert, toggle, setStatus, remove } = useMissions(Boolean(auth.user));
   const { weeklyQuests, loading: scheduleLoading, error: scheduleError, upsert: upsertWeeklyQuest, remove: removeWeeklyQuest } = useWeeklyQuests(Boolean(auth.user));
   const { subjects, loading: subjectsLoading, error: subjectsError, upsert: upsertSubject, remove: removeSubject } = useSubjects(Boolean(auth.user));
+  const { activityTypes, loading: activityTypesLoading, error: activityTypesError, upsert: upsertActivityType, remove: removeActivityType } = useActivityTypes(Boolean(auth.user));
   const [month, setMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -66,9 +68,10 @@ export function MissionPlanner() {
     ...weeklyQuest,
     dailyMissions: sortDailyMissionsByTime(weeklyQuest.dailyMissions.map((dailyMission) => ({
       ...dailyMission,
-      subject: resolveSubjectName(subjects, dailyMission.subject, dailyMission.subjectId),
+      ...(dailyMission.activityCategory === "activity" ? { subject: undefined, subjectId: undefined } : { subject: resolveSubjectName(subjects, dailyMission.subject ?? "", dailyMission.subjectId) }),
+      ...(() => { const type = resolveActivityType(activityTypes, dailyMission.activityTypeId, dailyMission.activityTypeName); return { activityTypeId: type.id, activityTypeName: type.name, activityCategory: type.category, activityPoints: type.points }; })(),
     }))),
-  })), [weeklyQuests, subjects]);
+  })), [weeklyQuests, subjects, activityTypes]);
   const filtered = useMemo(() => catalogMissions.filter((mission) => {
     const status = getMissionStatus(mission);
     const matchesFilter = filter === "all" || (filter === "pending" && status === "pending") || (filter === "completed" && status === "completed") || mission.priority === filter;
@@ -88,9 +91,9 @@ export function MissionPlanner() {
   }, [filtered]);
   const scheduleByDate = useMemo(() => {
     const grouped = new Map<string, ReturnType<typeof getScheduledOccurrences>>();
-    if (filter !== "all" && filter !== "pending") return grouped;
+    if (filter === "normal" || filter === "important" || filter === "boss") return grouped;
     days.forEach((date) => {
-      const occurrences = getScheduledOccurrences(date, catalogWeeklyQuests).filter((dailyMission) => !normalizedQuery || `${dailyMission.title} ${dailyMission.subject} ${dailyMission.location ?? ""}`.toLocaleLowerCase("es").includes(normalizedQuery));
+      const occurrences = getScheduledOccurrences(date, catalogWeeklyQuests).filter((dailyMission) => { const matchesStatus = filter === "all" || (filter === "pending" && !dailyMission.completed) || (filter === "completed" && dailyMission.completed); return matchesStatus && (!normalizedQuery || `${dailyMission.title} ${dailyMission.subject ?? ""} ${dailyMission.activityTypeName ?? ""} ${dailyMission.location ?? ""}`.toLocaleLowerCase("es").includes(normalizedQuery)); });
       if (occurrences.length) grouped.set(toISODate(date), occurrences);
     });
     return grouped;
@@ -108,7 +111,8 @@ export function MissionPlanner() {
   const openNew = (date = selectedDate, subject?: string) => { setSelectedDate(date); setDraftSubject(subject); setEditing(null); setModalOpen(true); };
   const openEdit = (mission: Mission) => { setDraftSubject(undefined); setEditing(mission); setModalOpen(true); };
   const moveMonth = (amount: number) => setMonth(new Date(month.getFullYear(), month.getMonth() + amount, 1));
-  const player = useMemo(() => calculatePlayerProgress(missions), [missions]);
+  const player = useMemo(() => calculatePlayerProgress(missions, catalogWeeklyQuests), [missions, catalogWeeklyQuests]);
+  const nextMilestone = useMemo(() => getNextXpMilestone(player.totalXp), [player.totalXp]);
   const gameStats = useMemo(() => missions.reduce((stats, mission) => {
     const status = getMissionStatus(mission);
     if (status === "pending") stats.pending += 1;
@@ -120,7 +124,7 @@ export function MissionPlanner() {
     return stats;
   }, { pending: 0, completed: 0, bosses: 0, bossesDefeated: 0 }), [missions]);
   const pending = gameStats.pending;
-  const streak = useMemo(() => calculateStreak(missions), [missions]);
+  const streak = useMemo(() => calculateStreak(missions, catalogWeeklyQuests), [missions, catalogWeeklyQuests]);
   const monthName = new Intl.DateTimeFormat("es-CO", { month: "long" }).format(month);
   const campaignProgress = missions.length ? Math.round((gameStats.completed / missions.length) * 100) : 0;
   const nextObjective = useMemo(() => sortMissionsByDateTime(catalogMissions.filter((mission) => getMissionStatus(mission) !== "completed"))[0] ?? null, [catalogMissions]);
@@ -136,7 +140,7 @@ export function MissionPlanner() {
     return `Faltan ${daysAway} días`;
   }, [nextObjective]);
 
-  const showReward = (mission: Mission) => setReward({ id: Date.now(), title: mission.title, xp: getMissionXp(mission), boss: mission.priority === "boss" });
+  const showReward = (mission: Mission) => { const xp = getMissionXp(mission); setReward({ id: Date.now(), title: mission.title, xp, boss: mission.priority === "boss", milestone: getCrossedXpMilestone(player.totalXp, player.totalXp + xp) }); };
   const toggleWithFeedback = (id: string) => {
     const mission = missions.find((item) => item.id === id);
     if (mission && getMissionStatus(mission) !== "completed") showReward(mission);
@@ -146,6 +150,14 @@ export function MissionPlanner() {
     const mission = missions.find((item) => item.id === id);
     if (mission && status === "completed" && getMissionStatus(mission) !== "completed") showReward(mission);
     setStatus(id, status);
+  };
+  const toggleScheduledActivity = (occurrence: ScheduledOccurrence) => {
+    const weeklyQuest = weeklyQuests.find((item) => item.id === occurrence.weeklyQuestId);
+    if (!weeklyQuest) return;
+    const completing = !occurrence.completed;
+    const xp = getScheduledActivityXp(occurrence);
+    upsertWeeklyQuest({ ...weeklyQuest, dailyMissions: weeklyQuest.dailyMissions.map((activity) => { if (activity.id !== occurrence.id) return activity; const completedDates = new Set(activity.completedDates ?? []); if (completing) completedDates.add(occurrence.date); else completedDates.delete(occurrence.date); return { ...activity, completedDates: [...completedDates].sort() }; }) });
+    if (completing) setReward({ id: Date.now(), title: occurrence.title, xp, boss: false, activity: true, milestone: getCrossedXpMilestone(player.totalXp, player.totalXp + xp) });
   };
   const openObjective = (mission: Mission) => {
     const objectiveDate = new Date(`${mission.date}T12:00:00`);
@@ -198,9 +210,6 @@ export function MissionPlanner() {
           <button className={view === "weekly" ? "active" : ""} onClick={() => { setFocusedWeeklyQuestId(null); setView("weekly"); setMobileNav(false); }}>
             <CalendarRange size={18} /><span>Misiones semanales</span>
           </button>
-          <button className={view === "subjects" ? "active" : ""} onClick={() => { setView("subjects"); setMobileNav(false); }}>
-            <Library size={18} /><span>Mis materias</span>
-          </button>
           {filters.map((item) => (
             <button key={item.id} className={view === "calendar" && filter === item.id ? "active" : ""} onClick={() => { setView("calendar"); setFilter(item.id); setMobileNav(false); }}>
               {item.icon}<span>{item.label}</span>
@@ -219,6 +228,7 @@ export function MissionPlanner() {
               {relics.map((relic) => <span key={relic.label} className={relic.unlocked ? "unlocked" : "locked"} title={`${relic.label}: ${relic.unlocked ? "desbloqueada" : "bloqueada"}`}>{relic.icon}</span>)}
             </div>
           </div>
+          {nextMilestone && <div className="next-milestone-card"><span><Award size={13} /> PRÓXIMO LOGRO</span><strong>{nextMilestone.title}</strong><div className="progress-track"><i style={{ width: `${Math.min(100, (player.totalXp / nextMilestone.threshold) * 100)}%` }} /></div><small>{player.totalXp}/{nextMilestone.threshold} XP · faltan {nextMilestone.threshold - player.totalXp}</small></div>}
           <button className="settings" onClick={() => setAccountOpen(true)}><Settings size={18} /> <span>Ajustes</span></button>
           <button className="profile" onClick={() => setAccountOpen(true)} aria-label="Administrar mi cuenta">
             <span>{getUserInitials(auth.user.name)}</span><div><b>{auth.user.name}</b><small>{auth.user.email}</small></div>
@@ -230,26 +240,30 @@ export function MissionPlanner() {
       <section className={`content ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
         <header className="topbar">
           <button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Abrir menú"><Menu /></button>
-          <div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "world" ? "Buscar tarea o materia..." : view === "map" ? "Buscar un destino..." : view === "weekly" ? "Buscar una clase..." : view === "subjects" ? "Buscar una materia..." : "Buscar una misión..."} /></div>
+          <div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "world" ? "Buscar tarea o materia..." : view === "map" ? "Buscar un destino..." : view === "weekly" ? "Buscar una actividad..." : "Buscar una misión..."} /></div>
           <div className="top-actions">
-            {(missionsLoading || scheduleLoading || subjectsLoading || missionsError || scheduleError || subjectsError) && <span className={`sync-state ${missionsError || scheduleError || subjectsError ? "error" : ""}`}>{missionsError || scheduleError || subjectsError ? "Sin guardar" : "Sincronizando"}</span>}
+            {(missionsLoading || scheduleLoading || subjectsLoading || activityTypesLoading || missionsError || scheduleError || subjectsError || activityTypesError) && <span className={`sync-state ${missionsError || scheduleError || subjectsError || activityTypesError ? "error" : ""}`}>{missionsError || scheduleError || subjectsError || activityTypesError ? "Sin guardar" : "Sincronizando"}</span>}
             <span className="level-hud" title={`${player.rank} · ${player.totalXp} XP total`}><Sparkles size={14} /><b>NIV. {player.level}</b><small>{player.xpInLevel}/{player.xpPerLevel} XP</small></span>
             <span className="streak">🔥 <b>{streak}</b><small> DÍAS DE RACHA</small></span>
             <button className="primary-button compact" onClick={() => openNew(selectedDate, view === "world" ? selectedSubject ?? undefined : undefined)}><Plus size={18} /> Nueva misión</button>
           </div>
         </header>
 
-        {(missionsError || scheduleError || subjectsError) && <div className="sync-alert" role="alert"><AlertTriangle size={15} /><span><strong>No se pudo sincronizar.</strong> {missionsError ?? scheduleError ?? subjectsError}</span></div>}
+        {(missionsError || scheduleError || subjectsError || activityTypesError) && <div className="sync-alert" role="alert"><AlertTriangle size={15} /><span><strong>No se pudo sincronizar.</strong> {missionsError ?? scheduleError ?? subjectsError ?? activityTypesError}</span></div>}
 
         {view === "world" ? (
           <div className="workspace world-workspace">
             <WorldMissions
+              subjects={subjects.filter((subject) => !normalizedQuery || subject.name.toLocaleLowerCase("es").includes(normalizedQuery))}
               missions={worldMissions}
+              weeklyQuests={catalogWeeklyQuests}
               selectedSubject={selectedSubject}
               onSelectSubject={setSelectedSubject}
               onEdit={openEdit}
               onAdd={(subject) => openNew(selectedDate, subject)}
               onStatusChange={setStatusWithFeedback}
+              onSaveSubject={upsertSubject}
+              onDeleteSubject={removeSubject}
             />
           </div>
         ) : view === "map" ? (
@@ -258,11 +272,7 @@ export function MissionPlanner() {
           </div>
         ) : view === "weekly" ? (
           <div className="workspace weekly-workspace">
-            <WeeklySchedule weeklyQuests={catalogWeeklyQuests.filter((weeklyQuest) => !normalizedQuery || weeklyQuest.dailyMissions.some((dailyMission) => `${dailyMission.title} ${dailyMission.subject} ${dailyMission.location ?? ""}`.toLocaleLowerCase("es").includes(normalizedQuery)) || weeklyQuest.title.toLocaleLowerCase("es").includes(normalizedQuery))} loading={scheduleLoading} focusedWeeklyQuestId={focusedWeeklyQuestId} subjects={subjects} onManageSubjects={() => setView("subjects")} onSave={upsertWeeklyQuest} onDelete={removeWeeklyQuest} />
-          </div>
-        ) : view === "subjects" ? (
-          <div className="workspace subjects-workspace">
-            <SubjectsView subjects={subjects.filter((subject) => !normalizedQuery || subject.name.toLocaleLowerCase("es").includes(normalizedQuery))} missions={catalogMissions} weeklyQuests={catalogWeeklyQuests} loading={subjectsLoading} onSave={upsertSubject} onDelete={removeSubject} />
+            <WeeklySchedule weeklyQuests={catalogWeeklyQuests.filter((weeklyQuest) => !normalizedQuery || weeklyQuest.dailyMissions.some((dailyMission) => `${dailyMission.title} ${dailyMission.subject ?? ""} ${dailyMission.activityTypeName ?? ""} ${dailyMission.location ?? ""}`.toLocaleLowerCase("es").includes(normalizedQuery)) || weeklyQuest.title.toLocaleLowerCase("es").includes(normalizedQuery))} loading={scheduleLoading || activityTypesLoading} focusedWeeklyQuestId={focusedWeeklyQuestId} subjects={subjects} activityTypes={activityTypes} onManageSubjects={() => setView("world")} onSave={upsertWeeklyQuest} onDelete={removeWeeklyQuest} onSaveActivityType={upsertActivityType} onDeleteActivityType={removeActivityType} />
           </div>
         ) : <div className="workspace">
           <div className="page-heading">
@@ -322,7 +332,7 @@ export function MissionPlanner() {
                   <button key={iso} className={`calendar-day ${outside ? "outside" : ""} ${selected ? "selected" : ""} ${hasBoss ? "has-boss" : ""} ${dayClasses.length ? "has-class" : ""}`} onClick={() => setSelectedDate(date)} onDoubleClick={() => openNew(date)}>
                     <span className="day-number">{date.getDate()}</span>
                     <div className="day-missions">
-                      {dayClasses.slice(0, 1).map((dailyClass) => <span key={dailyClass.occurrenceId} className="mission-chip class-chip" onClick={(event) => { event.stopPropagation(); setFocusedWeeklyQuestId(dailyClass.weeklyQuestId); setView("weekly"); }}><i><BookOpen size={9} /></i>{dailyClass.startTime} {dailyClass.title}</span>)}
+                      {dayClasses.slice(0, 1).map((dailyClass) => <span key={dailyClass.occurrenceId} className={`mission-chip class-chip activity-tone-${resolveActivityType(activityTypes, dailyClass.activityTypeId, dailyClass.activityTypeName).tone} ${dailyClass.completed ? "done" : ""}`} onClick={(event) => { event.stopPropagation(); toggleScheduledActivity(dailyClass); }}><i>{dailyClass.activityCategory === "class" ? <BookOpen size={9} /> : <Activity size={9} />}</i>{dailyClass.startTime} {dailyClass.title}</span>)}
                       {dayMissions.slice(0, dayClasses.length ? 1 : 2).map((mission) => (
                         <span key={mission.id} className={`mission-chip ${mission.priority} ${mission.completed ? "done" : ""}`} onClick={(event) => { event.stopPropagation(); openEdit(mission); }}>
                           <i>{priorityMeta[mission.priority].icon}</i>{mission.title}
@@ -347,9 +357,10 @@ export function MissionPlanner() {
             </div>
             <div className="mission-list">
               {selectedClasses.map((dailyClass) => (
-                <article key={dailyClass.occurrenceId} className="mission-row schedule-row">
-                  <span className="schedule-class-icon"><BookOpen size={16} /></span>
-                  <div className="mission-copy" onClick={() => { setFocusedWeeklyQuestId(dailyClass.weeklyQuestId); setView("weekly"); }}><span>CLASE DEL HORARIO · {dailyClass.weeklyQuestTitle}</span><h3>{dailyClass.title}</h3><small>{dailyClass.subject} · {dailyClass.startTime}–{dailyClass.endTime}{dailyClass.location && <> · <MapPin size={10} /> {dailyClass.location}</>}</small></div>
+                <article key={dailyClass.occurrenceId} className={`mission-row schedule-row activity-tone-${resolveActivityType(activityTypes, dailyClass.activityTypeId, dailyClass.activityTypeName).tone} ${dailyClass.completed ? "completed" : ""}`}>
+                  <button className="check-button" onClick={() => toggleScheduledActivity(dailyClass)} aria-label={dailyClass.completed ? "Marcar actividad pendiente" : "Completar actividad"}>{dailyClass.completed && <Check size={16} />}</button>
+                  <span className="schedule-class-icon">{dailyClass.activityCategory === "class" ? <BookOpen size={16} /> : <Activity size={16} />}</span>
+                  <div className="mission-copy" onClick={() => { setFocusedWeeklyQuestId(dailyClass.weeklyQuestId); setView("weekly"); }}><span>{dailyClass.activityCategory === "class" ? "CLASE" : (dailyClass.activityTypeName ?? "ACTIVIDAD").toUpperCase()} · {dailyClass.weeklyQuestTitle}</span><h3>{dailyClass.title}</h3><small>{dailyClass.subject ? `${dailyClass.subject} · ` : ""}{dailyClass.startTime}–{dailyClass.endTime}{dailyClass.location && <> · <MapPin size={10} /> {dailyClass.location}</>} <b className="xp-reward">+{getScheduledActivityXp(dailyClass)} XP</b></small></div>
                   <button className="edit-button" onClick={() => { setFocusedWeeklyQuestId(dailyClass.weeklyQuestId); setView("weekly"); }}>Ver horario</button>
                 </article>
               ))}
@@ -371,7 +382,7 @@ export function MissionPlanner() {
         </div>}
       </section>
 
-      <MissionForm open={modalOpen} initialDate={selectedDate} initialSubject={draftSubject} mission={editing} onClose={() => setModalOpen(false)} onSave={upsert} onDelete={remove} subjects={subjects} onManageSubjects={() => setView("subjects")} />
+      <MissionForm open={modalOpen} initialDate={selectedDate} initialSubject={draftSubject} mission={editing} onClose={() => setModalOpen(false)} onSave={upsert} onDelete={remove} subjects={subjects} onManageSubjects={() => setView("world")} />
       <AccountPanel
         open={accountOpen}
         user={auth.user}

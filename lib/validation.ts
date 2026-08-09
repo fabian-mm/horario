@@ -37,13 +37,18 @@ export const missionSchema = z.object({
 const dailyClassQuestSchema = z.object({
   id: z.string().min(1).max(100),
   title: z.string().trim().min(1).max(140),
-  subject: z.string().trim().min(1).max(100),
+  subject: z.string().trim().max(100).optional(),
   subjectId: z.string().min(1).max(100).optional(),
+  activityTypeId: z.string().min(1).max(100).optional(),
+  activityTypeName: z.string().trim().max(100).optional(),
+  activityCategory: z.enum(["class", "activity"]).optional(),
+  activityPoints: z.number().int().min(0).max(500).optional(),
   dayOfWeek: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7)]),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
   location: z.string().trim().max(140).optional(),
   notes: z.string().trim().max(1000).optional(),
+  completedDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(1000).optional(),
 }).refine((value) => value.endTime > value.startTime, { message: "La hora final debe ser posterior a la inicial." });
 
 export const weeklyQuestSchema = z.object({
@@ -58,4 +63,12 @@ export const weeklyQuestSchema = z.object({
 export const subjectSchema = z.object({
   id: z.string().min(1).max(100),
   name: z.string().trim().min(1, "Escribe el nombre de la materia.").max(100),
+});
+
+export const activityTypeSchema = z.object({
+  id: z.string().min(1).max(100),
+  name: z.string().trim().min(1, "Escribe el nombre del tipo.").max(100),
+  category: z.enum(["class", "activity"]),
+  points: z.number().int().min(0).max(500),
+  tone: z.enum(["gold", "sage", "coral", "ocean", "violet"]),
 });
