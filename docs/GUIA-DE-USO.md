@@ -34,6 +34,12 @@ Pulsa **Nueva misión** y registra nombre, materia, fecha, hora, importancia, es
 
 En el mapa principal, seleccionar un día actualiza su agenda. En **Misiones de Mundo**, seleccionar una materia abre su diario y permite cambiar estados rápidamente.
 
+## Mapa de campaña
+
+Abre **Mapa de campaña** desde el menú lateral para ver las misiones como una ruta cronológica de destinos. Cada nodo muestra la fecha, la materia y la importancia; los jefes finales aparecen como fortalezas especiales.
+
+Selecciona cualquier destino para abrir su pergamino de información. Allí puedes consultar recompensa, fecha, hora, impacto, nota y observaciones, cambiar el estado de la misión o abrir su ficha completa. El buscador también filtra los destinos visibles del mapa.
+
 ## Progreso RPG
 
 Las misiones otorgan experiencia cuando quedan en estado **Cumplida**:

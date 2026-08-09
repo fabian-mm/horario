@@ -38,6 +38,7 @@ Genera un secreto con un administrador de contraseñas o con `openssl rand -base
 - Sesiones firmadas en cookies `httpOnly`.
 - Misiones aisladas por usuario en MongoDB.
 - Calendario, agenda diaria y Misiones de Mundo.
+- Mapa de campaña cronológico con destinos interactivos y fortalezas para jefes finales.
 - Progreso RPG con experiencia, niveles, rangos y recompensas según la importancia.
 - Centro de mando con siguiente objetivo, urgencia, recompensa y filtros rápidos de campaña.
 - Celebraciones visuales de victoria y efectos especiales al derrotar jefes finales.

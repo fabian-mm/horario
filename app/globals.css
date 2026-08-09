@@ -565,6 +565,103 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .territory-rank > div i { height: 100%; display: block; border-radius: inherit; background: linear-gradient(90deg, #b27b28, #e0bd65); box-shadow: 0 0 7px rgba(210,167,75,.3); }
 .world-task.completed { background-image: linear-gradient(110deg, rgba(75,138,94,.06), transparent 42%); }
 
+/* Mapa de campaña */
+.adventure-map-workspace { max-width: 1480px; }
+.adventure-map-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 14px; }
+.adventure-map-heading p { margin-bottom: 0; color: var(--ink-soft); font-size: 12px; }
+.map-expedition-hud { display: grid; grid-template-columns: repeat(3, minmax(0, 155px)) minmax(190px, 1fr); align-items: center; gap: 8px; margin-bottom: 12px; }
+.map-expedition-hud > span { min-width: 0; display: grid; grid-template-columns: 31px 1fr auto; align-items: center; gap: 7px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: color-mix(in srgb, var(--paper) 84%, transparent); box-shadow: 0 4px 13px rgba(42,57,51,.045); }
+.map-expedition-hud > span svg { width: 29px; height: 29px; padding: 6px; border-radius: 7px; color: var(--forest); background: color-mix(in srgb, var(--sage) 14%, var(--paper)); }
+.map-expedition-hud > span small { overflow: hidden; color: var(--ink-soft); font-size: 6px; font-weight: 900; letter-spacing: .1em; white-space: nowrap; text-overflow: ellipsis; }
+.map-expedition-hud > span strong { color: var(--forest); font-family: "Fraunces Variable", serif; font-size: 16px; }
+.map-expedition-hud .fortress-counter svg { color: var(--coral); background: color-mix(in srgb, var(--coral) 12%, var(--paper)); }
+.map-expedition-hud .fortress-counter strong { color: var(--coral); }
+.map-expedition-hud > div { padding: 9px 11px; border: 1px solid color-mix(in srgb, var(--gold) 24%, transparent); border-radius: 7px; background: color-mix(in srgb, var(--paper) 82%, var(--gold)); }
+.map-expedition-hud > div > span { height: 5px; display: block; overflow: hidden; border-radius: 8px; background: color-mix(in srgb, var(--gold) 13%, transparent); }
+.map-expedition-hud > div > span i { height: 100%; display: block; border-radius: inherit; background: linear-gradient(90deg, var(--forest), var(--gold)); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 28%, transparent); transition: width .35s; }
+.map-expedition-hud > div small { display: block; margin-top: 5px; color: var(--ink-soft); font-size: 7px; }
+.adventure-map-grid { display: grid; grid-template-columns: minmax(0, 1fr) 350px; align-items: start; gap: 16px; }
+.treasure-route { min-height: 680px; position: relative; overflow: hidden; padding: 30px 24px 42px; border: 1px solid color-mix(in srgb, var(--gold) 42%, transparent); border-radius: 11px; background: radial-gradient(circle at 9% 13%, color-mix(in srgb, var(--sage) 10%, transparent), transparent 23%), radial-gradient(circle at 91% 76%, color-mix(in srgb, var(--gold) 15%, transparent), transparent 24%), color-mix(in srgb, var(--paper) 87%, var(--parchment)); box-shadow: var(--shadow), inset 0 0 0 4px color-mix(in srgb, var(--gold) 5%, transparent); }
+.treasure-route::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .17; background-image: radial-gradient(color-mix(in srgb, var(--ink) 42%, transparent) .5px, transparent .7px), repeating-linear-gradient(118deg, transparent 0 21px, color-mix(in srgb, var(--gold) 18%, transparent) 22px, transparent 23px 45px); background-size: 5px 5px, auto; }
+.treasure-route::after { content: ""; position: absolute; right: -42px; bottom: -55px; width: 190px; height: 190px; pointer-events: none; border: 2px solid color-mix(in srgb, var(--gold) 11%, transparent); border-radius: 50%; box-shadow: inset 0 0 0 14px color-mix(in srgb, var(--gold) 4%, transparent), inset 0 0 0 37px color-mix(in srgb, var(--gold) 3%, transparent); }
+.map-sea-label { position: absolute; z-index: 0; color: color-mix(in srgb, var(--forest) 18%, transparent); font-family: "Fraunces Variable", serif; font-size: 9px; font-style: italic; letter-spacing: .18em; transform: rotate(-8deg); }
+.sea-north { top: 23px; left: 25px; }
+.sea-south { right: 30px; bottom: 28px; transform: rotate(6deg); }
+.map-compass { position: absolute; z-index: 0; top: 28px; right: 31px; width: 58px; height: 58px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--gold) 18%, transparent); border-radius: 50%; color: color-mix(in srgb, var(--gold) 25%, transparent); }
+.map-compass span { position: absolute; top: -12px; font-size: 7px; font-weight: 900; }
+.map-compass i { font-family: serif; font-size: 29px; font-style: normal; }
+.map-route-list { position: relative; z-index: 1; max-width: 780px; margin: 36px auto 0; padding: 0 0 22px; list-style: none; }
+.map-route-list::before { content: ""; position: absolute; z-index: 0; top: 7px; bottom: 38px; left: 50%; border-left: 3px dashed color-mix(in srgb, var(--gold) 36%, transparent); transform: translateX(-1.5px); }
+.map-route-item { min-height: 102px; position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 62px minmax(0, 1fr); align-items: center; }
+.route-objective { min-width: 0; position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr) 17px; align-items: center; gap: 9px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: color-mix(in srgb, var(--paper) 91%, transparent); box-shadow: 0 7px 18px rgba(49,58,52,.07); cursor: pointer; text-align: left; transition: transform .2s, border-color .2s, box-shadow .2s; }
+.map-route-item:nth-child(odd) .route-objective { grid-column: 1; grid-row: 1; }
+.map-route-item:nth-child(even) .route-objective { grid-column: 3; grid-row: 1; }
+.map-route-item:nth-child(odd) .route-objective::after, .map-route-item:nth-child(even) .route-objective::before { content: ""; position: absolute; top: 50%; width: 31px; border-top: 1px dashed color-mix(in srgb, var(--gold) 43%, transparent); }
+.map-route-item:nth-child(odd) .route-objective::after { left: 100%; }
+.map-route-item:nth-child(even) .route-objective::before { right: 100%; }
+.route-objective:hover { z-index: 2; transform: translateY(-2px); border-color: color-mix(in srgb, var(--gold) 52%, transparent); box-shadow: 0 11px 24px rgba(49,58,52,.11); }
+.map-route-item.selected .route-objective { border-color: var(--gold); box-shadow: inset 3px 0 var(--gold), 0 10px 23px color-mix(in srgb, var(--gold) 12%, transparent); }
+.map-route-item.boss .route-objective { border-color: color-mix(in srgb, var(--coral) 43%, transparent); background: linear-gradient(125deg, color-mix(in srgb, var(--paper) 93%, white), color-mix(in srgb, var(--coral) 10%, var(--paper))); }
+.map-route-item.boss.selected .route-objective { border-color: var(--coral); box-shadow: inset 3px 0 var(--coral), 0 10px 23px color-mix(in srgb, var(--coral) 14%, transparent); }
+.map-route-item.completed .route-objective { opacity: .65; background: color-mix(in srgb, var(--sage) 8%, var(--paper)); }
+.route-date { width: 40px; height: 40px; display: grid; align-content: center; border: 1px solid color-mix(in srgb, var(--gold) 24%, transparent); border-radius: 7px; color: var(--gold); background: color-mix(in srgb, var(--gold) 8%, var(--paper)); text-align: center; }
+.route-date strong, .route-date small { display: block; line-height: 1; }
+.route-date strong { font-family: "Fraunces Variable", serif; font-size: 16px; }
+.route-date small { margin-top: 2px; font-size: 6px; font-weight: 800; text-transform: uppercase; }
+.route-copy { min-width: 0; }
+.route-copy > small, .route-copy > strong, .route-copy > span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.route-copy > small { color: var(--gold); font-size: 6px; font-weight: 900; letter-spacing: .12em; }
+.map-route-item.boss .route-copy > small { color: var(--coral); }
+.route-copy > strong { margin: 3px 0; font-family: "Fraunces Variable", serif; font-size: 13px; }
+.route-copy > span { color: var(--ink-soft); font-size: 7px; }
+.route-objective > svg { color: color-mix(in srgb, var(--gold) 55%, var(--ink-soft)); }
+.route-marker { z-index: 1; grid-column: 2; grid-row: 1; display: grid; place-items: center; }
+.route-marker > i { width: 35px; height: 35px; display: grid; place-items: center; border: 2px solid var(--gold); border-radius: 50%; color: var(--paper); background: var(--forest); box-shadow: 0 0 0 5px color-mix(in srgb, var(--paper) 92%, transparent), 0 0 0 7px color-mix(in srgb, var(--gold) 23%, transparent); font-size: 9px; font-style: normal; font-weight: 900; transition: transform .2s; }
+.map-route-item:hover .route-marker > i, .map-route-item.selected .route-marker > i { transform: scale(1.12); }
+.map-route-item.boss .route-marker > i { width: 43px; height: 43px; border-color: color-mix(in srgb, var(--coral) 82%, white); background: var(--coral); box-shadow: 0 0 0 5px color-mix(in srgb, var(--paper) 92%, transparent), 0 0 17px color-mix(in srgb, var(--coral) 28%, transparent); animation: fortress-pulse 2.5s ease-in-out infinite; }
+.map-route-item.completed .route-marker > i { border-color: color-mix(in srgb, var(--sage) 76%, white); background: var(--sage); }
+.route-treasure { position: relative; z-index: 2; display: grid; justify-items: center; gap: 6px; margin-top: 6px; color: var(--gold); }
+.route-treasure span { width: 46px; height: 46px; display: grid; place-items: center; border: 2px solid var(--gold); border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 6px color-mix(in srgb, var(--gold) 10%, transparent), 0 0 21px color-mix(in srgb, var(--gold) 23%, transparent); font-size: 21px; animation: treasure-pulse 2.2s ease-in-out infinite; }
+.route-treasure strong { font-size: 6px; letter-spacing: .14em; }
+.map-empty-state { min-height: 520px; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--ink-soft); text-align: center; }
+.map-empty-state svg { color: var(--gold); }
+.map-empty-state h2 { margin: 13px 0 5px; color: var(--ink); font-family: "Fraunces Variable", serif; }
+.map-empty-state p { max-width: 330px; font-size: 10px; }
+.map-empty-state button { border: 0; color: var(--gold); background: transparent; cursor: pointer; font-size: 10px; font-weight: 800; }
+.map-objective-sheet { position: sticky; top: 86px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent); border-radius: 11px; background: color-mix(in srgb, var(--paper) 94%, var(--parchment)); box-shadow: 0 14px 35px rgba(40,53,47,.1), inset 0 0 0 3px color-mix(in srgb, var(--gold) 4%, transparent); }
+.map-objective-sheet.boss { border-color: color-mix(in srgb, var(--coral) 45%, transparent); }
+.sheet-banner { display: flex; align-items: center; gap: 10px; padding: 15px; color: #fffaf0; background: linear-gradient(135deg, var(--forest), var(--forest-deep)); }
+.map-objective-sheet.boss .sheet-banner { background: linear-gradient(135deg, color-mix(in srgb, var(--coral) 78%, #43251f), #3a2526); }
+.sheet-banner > span { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid rgba(240,210,139,.45); border-radius: 50%; color: #f1cf7a; background: rgba(237,198,108,.1); }
+.sheet-banner small, .sheet-banner strong { display: block; }
+.sheet-banner small { color: #c8d7d0; font-size: 6px; font-weight: 900; letter-spacing: .13em; }
+.sheet-banner strong { margin-top: 2px; font-family: "Fraunces Variable", serif; font-size: 13px; }
+.sheet-content { padding: 17px; }
+.sheet-content h2 { margin: 9px 0 2px; font-family: "Fraunces Variable", serif; font-size: 24px; line-height: 1.08; }
+.sheet-subject { margin-bottom: 14px; color: var(--ink-soft); font-size: 9px; }
+.sheet-reward { display: flex; align-items: center; gap: 9px; margin-bottom: 13px; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--gold) 22%, transparent); border-radius: 7px; color: var(--gold); background: color-mix(in srgb, var(--gold) 8%, var(--paper)); }
+.sheet-reward span small, .sheet-reward span strong { display: block; }
+.sheet-reward small { color: var(--ink-soft); font-size: 5px; font-weight: 900; letter-spacing: .1em; }
+.sheet-reward strong { font-size: 11px; }
+.objective-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; overflow: hidden; margin: 0 0 13px; border: 1px solid var(--line); border-radius: 7px; background: var(--line); }
+.objective-stats > div { min-width: 0; padding: 9px; background: color-mix(in srgb, var(--paper) 95%, transparent); }
+.objective-stats dt { color: var(--ink-soft); font-size: 6px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.objective-stats dd { overflow: hidden; display: flex; align-items: center; gap: 3px; margin: 3px 0 0; color: var(--ink); font-size: 8px; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+.objective-clue { margin-bottom: 13px; padding: 10px; border-left: 2px solid var(--gold); background: color-mix(in srgb, var(--parchment) 48%, transparent); }
+.objective-clue small { color: var(--gold); font-size: 6px; font-weight: 900; letter-spacing: .12em; }
+.objective-clue p { margin: 4px 0 0; color: var(--ink-soft); font-size: 9px; line-height: 1.5; }
+.sheet-status-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.sheet-status-actions button { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 3px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink-soft); background: transparent; cursor: pointer; font-size: 6px; font-weight: 800; transition: transform .16s, border-color .16s, background .16s; }
+.sheet-status-actions button:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--gold) 35%, transparent); }
+.sheet-status-actions button:first-child.active { border-color: color-mix(in srgb, var(--coral) 45%, transparent); color: var(--coral); background: color-mix(in srgb, var(--coral) 9%, var(--paper)); }
+.sheet-status-actions button:nth-child(2).active { border-color: color-mix(in srgb, var(--gold) 45%, transparent); color: var(--gold); background: color-mix(in srgb, var(--gold) 9%, var(--paper)); }
+.sheet-status-actions button:last-child.active { border-color: color-mix(in srgb, var(--sage) 48%, transparent); color: var(--sage); background: color-mix(in srgb, var(--sage) 10%, var(--paper)); }
+.open-objective-button { width: 100%; display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 9px; padding: 10px; border: 0; border-radius: 6px; color: #fffaf0; background: linear-gradient(180deg, var(--forest), var(--forest-deep)); box-shadow: inset 0 -2px rgba(0,0,0,.16), 0 5px 13px rgba(32,60,51,.16); cursor: pointer; font-size: 8px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.sheet-placeholder { min-height: 470px; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 30px; color: var(--ink-soft); text-align: center; }
+.sheet-placeholder svg { color: var(--gold); }
+.sheet-placeholder h2 { margin: 11px 0 5px; color: var(--ink); font-family: "Fraunces Variable", serif; }
+.sheet-placeholder p { font-size: 9px; line-height: 1.5; }
+
 .calendar-day { transition: background .18s, box-shadow .18s, transform .18s; }
 .calendar-day:active { transform: scale(.975); }
 .calendar-day.selected::after { content: ""; position: absolute; inset: 3px; pointer-events: none; border: 1px dashed color-mix(in srgb, var(--gold) 52%, transparent); border-radius: 3px; animation: selected-day-pulse 2.4s ease-in-out infinite; }
@@ -602,6 +699,7 @@ fieldset { margin: 0; padding: 0; border: 0; }
 @keyframes reward-arrive { from { opacity: 0; transform: translateY(18px) scale(.94); } }
 @keyframes sigil-victory { 50% { transform: scale(1.05) rotate(-4deg); box-shadow: 0 0 0 7px rgba(230,184,74,.035), 0 0 27px rgba(230,184,74,.27); } }
 @keyframes reward-particle { from { opacity: 1; transform: translate(0, 0) rotate(0); } to { opacity: 0; transform: translate(var(--particle-x, 28px), var(--particle-y, -28px)) rotate(180deg); } }
+@keyframes fortress-pulse { 50% { transform: scale(1.08) rotate(-3deg); box-shadow: 0 0 0 6px color-mix(in srgb, var(--paper) 92%, transparent), 0 0 23px color-mix(in srgb, var(--coral) 34%, transparent); } }
 
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(12px) scale(.985); } }
@@ -646,6 +744,7 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .planner-grid .mission-log { position: static; padding: 14px; }
   .planner-grid .mission-list { max-height: none; overflow: visible; }
   .planner-grid .section-heading h2 { font-size: 17px; }
+  .adventure-map-grid { grid-template-columns: minmax(0, 1fr) 320px; }
 }
 
 @media (max-width: 660px) {
@@ -719,4 +818,28 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .world-game-stats { margin-top: 14px; }
   .task-drawer { border-radius: 9px; }
   .game-feedback { right: 12px; bottom: 12px; width: calc(100vw - 24px); }
+  .adventure-map-heading { align-items: flex-start; }
+  .adventure-map-heading p { display: none; }
+  .map-expedition-hud { display: flex; overflow-x: auto; padding-bottom: 3px; scrollbar-width: none; }
+  .map-expedition-hud::-webkit-scrollbar { display: none; }
+  .map-expedition-hud > span { min-width: 122px; }
+  .map-expedition-hud > div { min-width: 175px; }
+  .adventure-map-grid { grid-template-columns: 1fr; gap: 12px; }
+  .treasure-route { min-height: 540px; padding: 26px 10px 34px; }
+  .map-route-list { margin-top: 30px; }
+  .map-route-list::before { left: 22px; }
+  .map-route-item { min-height: 88px; display: grid; grid-template-columns: 46px minmax(0, 1fr); }
+  .map-route-item:nth-child(odd) .route-objective, .map-route-item:nth-child(even) .route-objective { grid-column: 2; grid-row: 1; }
+  .map-route-item:nth-child(odd) .route-objective::after { display: none; }
+  .map-route-item:nth-child(even) .route-objective::before { right: 100%; width: 24px; }
+  .route-marker { grid-column: 1; }
+  .route-objective { grid-template-columns: 35px minmax(0, 1fr) 14px; gap: 7px; padding: 8px; }
+  .route-date { width: 35px; height: 35px; }
+  .route-copy > strong { font-size: 12px; }
+  .route-treasure { align-items: center; justify-items: start; margin-left: 2px; }
+  .route-treasure strong { margin-left: 0; }
+  .map-sea-label { display: none; }
+  .map-compass { top: 20px; right: 18px; width: 44px; height: 44px; }
+  .map-objective-sheet { position: static; }
+  .sheet-content h2 { font-size: 22px; }
 }

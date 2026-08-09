@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Award, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, LoaderCircle, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Swords, Target, Trophy, X } from "lucide-react";
+import { AlertTriangle, Award, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, LoaderCircle, MapPinned, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Swords, Target, Trophy, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMissions } from "@/hooks/use-missions";
 import { useTheme } from "@/hooks/use-theme";
 import { calculatePlayerProgress, calculateStreak, formatLongDate, getMissionStatus, getMissionXp, Mission, Priority, priorityMeta, toISODate } from "@/lib/missions";
 import { getUserInitials } from "@/lib/users";
 import { AccountPanel } from "./account-panel";
+import { AdventureMap } from "./adventure-map";
 import { AuthScreen } from "./auth-screen";
 import { GameFeedback, RewardEvent } from "./game-feedback";
 import { MissionForm } from "./mission-form";
@@ -15,7 +16,7 @@ import { WorldMissions } from "./world-missions";
 
 const WEEK_DAYS = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
 type Filter = "all" | "pending" | "completed" | Priority;
-type View = "calendar" | "world";
+type View = "calendar" | "world" | "map";
 
 function calendarDays(month: Date) {
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
@@ -166,6 +167,9 @@ export function MissionPlanner() {
           <button className={view === "world" ? "active" : ""} onClick={() => { setView("world"); setMobileNav(false); }}>
             <Globe2 size={18} /><span>Misiones de Mundo</span>
           </button>
+          <button className={view === "map" ? "active" : ""} onClick={() => { setView("map"); setFilter("all"); setMobileNav(false); }}>
+            <MapPinned size={18} /><span>Mapa de campaña</span>
+          </button>
           {filters.map((item) => (
             <button key={item.id} className={view === "calendar" && filter === item.id ? "active" : ""} onClick={() => { setView("calendar"); setFilter(item.id); setMobileNav(false); }}>
               {item.icon}<span>{item.label}</span>
@@ -195,7 +199,7 @@ export function MissionPlanner() {
       <section className={`content ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
         <header className="topbar">
           <button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Abrir menú"><Menu /></button>
-          <div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "world" ? "Buscar tarea o materia..." : "Buscar una misión..."} /></div>
+          <div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "world" ? "Buscar tarea o materia..." : view === "map" ? "Buscar un destino..." : "Buscar una misión..."} /></div>
           <div className="top-actions">
             {(missionsLoading || missionsError) && <span className={`sync-state ${missionsError ? "error" : ""}`}>{missionsError ? "Sin guardar" : "Sincronizando"}</span>}
             <span className="level-hud" title={`${player.rank} · ${player.totalXp} XP total`}><Sparkles size={14} /><b>NIV. {player.level}</b><small>{player.xpInLevel}/{player.xpPerLevel} XP</small></span>
@@ -216,6 +220,10 @@ export function MissionPlanner() {
               onAdd={(subject) => openNew(selectedDate, subject)}
               onStatusChange={setStatusWithFeedback}
             />
+          </div>
+        ) : view === "map" ? (
+          <div className="workspace adventure-map-workspace">
+            <AdventureMap missions={filtered} onAdd={() => openNew(selectedDate)} onEdit={openEdit} onStatusChange={setStatusWithFeedback} />
           </div>
         ) : <div className="workspace">
           <div className="page-heading">
