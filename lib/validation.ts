@@ -27,6 +27,7 @@ export const missionSchema = z.object({
   subjectId: z.string().min(1).max(100).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}$/),
+  durationMinutes: z.union([z.literal(60), z.literal(120)]).optional(),
   priority: z.enum(["normal", "important", "boss"]),
   status: z.enum(["pending", "submitted", "completed"]).optional(),
   completed: z.boolean(),

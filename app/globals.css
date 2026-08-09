@@ -280,6 +280,23 @@ h1 i { color: var(--gold); font-weight: 400; }
 .week-row span { padding: 13px 8px 10px; text-align: center; color: #727b68; font-size: 9px; font-weight: 700; letter-spacing: .14em; }
 .calendar-grid { padding: 0 18px 15px; }
 .map-card.calendar-mode-week .calendar-day { min-height: 230px; height: auto; }.map-card.calendar-mode-day .week-row, .map-card.calendar-mode-day .calendar-grid { grid-template-columns: 1fr; }.map-card.calendar-mode-day .calendar-day { min-height: 310px; height: auto; border-right: 0; }.map-card.calendar-mode-week .mission-chip, .map-card.calendar-mode-day .mission-chip { padding: 5px 7px; font-size: 9px; white-space: normal; }.map-card.calendar-mode-week .day-missions, .map-card.calendar-mode-day .day-missions { gap: 5px; }
+.day-agenda { position: relative; height: min(720px, calc(100vh - 190px)); min-height: 470px; overflow-y: auto; background: linear-gradient(90deg, color-mix(in srgb, var(--paper) 92%, white) 0 82px, rgba(255,253,247,.67) 82px); scrollbar-color: color-mix(in srgb, var(--gold) 55%, transparent) transparent; }
+.day-agenda-hours { position: absolute; z-index: 0; top: 14px; right: 16px; left: 0; height: 1020px; pointer-events: none; }
+.day-agenda-hours > div { position: absolute; right: 0; left: 0; display: grid; grid-template-columns: 73px minmax(0, 1fr); align-items: center; gap: 9px; transform: translateY(-50%); }
+.day-agenda-hours time { color: var(--ink); font-size: 10px; font-weight: 850; text-align: right; letter-spacing: .015em; }
+.day-agenda-hours span { height: 1px; background: color-mix(in srgb, var(--forest) 17%, transparent); }
+.day-agenda-events { position: relative; z-index: 1; margin: 14px 16px 22px 88px; }
+.day-agenda-event { --event-accent: var(--sage); position: absolute; right: 0; left: 0; min-height: 48px; display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: start; gap: 8px; overflow: hidden; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--event-accent) 38%, transparent); border-left: 4px solid var(--event-accent); border-radius: 7px; color: var(--ink); background: color-mix(in srgb, var(--event-accent) 10%, var(--paper)); box-shadow: 0 6px 15px rgba(45,59,52,.09); cursor: pointer; transition: transform .16s, box-shadow .16s; }
+.day-agenda-event:hover { z-index: 3; transform: translateX(2px); box-shadow: 0 9px 20px rgba(45,59,52,.13); }
+.day-agenda-event > button { width: 27px; height: 27px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--event-accent) 55%, transparent); border-radius: 50%; color: var(--event-accent); background: color-mix(in srgb, var(--event-accent) 10%, white); cursor: pointer; }
+.day-agenda-event > div { min-width: 0; }
+.day-agenda-event time, .day-agenda-event strong, .day-agenda-event small { display: flex; align-items: center; gap: 5px; }
+.day-agenda-event time { margin-bottom: 2px; color: color-mix(in srgb, var(--event-accent) 78%, var(--ink)); font-size: 9px; font-weight: 900; }
+.day-agenda-event strong { overflow: hidden; font: 650 13px/1.15 "Fraunces Variable", serif; text-overflow: ellipsis; white-space: nowrap; }
+.day-agenda-event small { margin-top: 3px; color: var(--ink-soft); font-size: 8px; }
+.day-agenda-event.activity-tone-gold, .day-agenda-event.important { --event-accent: var(--gold); }.day-agenda-event.activity-tone-sage { --event-accent: var(--sage); }.day-agenda-event.activity-tone-coral, .day-agenda-event.boss { --event-accent: var(--coral); }.day-agenda-event.activity-tone-ocean { --event-accent: #4d91a6; }.day-agenda-event.activity-tone-violet { --event-accent: #886bb0; }
+.day-agenda-event.completed { opacity: .52; }.day-agenda-event.completed strong { text-decoration: line-through; }
+.day-agenda-empty { position: absolute; top: 28px; right: 10px; left: 10px; display: grid; place-items: center; gap: 5px; padding: 28px; border: 1px dashed color-mix(in srgb, var(--sage) 40%, transparent); border-radius: 9px; color: var(--ink-soft); background: color-mix(in srgb, var(--sage) 5%, transparent); text-align: center; }.day-agenda-empty strong { color: var(--ink); font: 600 17px "Fraunces Variable", serif; }.day-agenda-empty span { font-size: 9px; }
 .calendar-day { min-width: 0; height: 82px; position: relative; padding: 6px; overflow: hidden; border: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(255,253,247,.54); cursor: pointer; text-align: left; }
 .calendar-day:nth-child(7n) { border-right: 0; }
 .calendar-day:hover { z-index: 1; background: rgba(233,221,185,.32); box-shadow: inset 0 0 0 1px rgba(181,135,54,.25); }
@@ -358,6 +375,13 @@ h1 i { color: var(--gold); font-weight: 400; }
 .mission-modal textarea { resize: vertical; }
 .optional { color: #9a9b91; font-weight: 400; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.class-time-block { display: grid; grid-template-columns: minmax(0, .8fr) minmax(260px, 1.2fr); align-items: end; gap: 12px; }
+.duration-fieldset { min-width: 0; padding: 0; border: 0; }
+.duration-fieldset > legend { margin-bottom: 7px; color: var(--ink-soft); font-size: 8px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.duration-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.duration-options button { min-height: 48px; display: grid; gap: 2px; padding: 7px 10px; border: 1px solid color-mix(in srgb, var(--forest) 18%, transparent); border-radius: 7px; color: var(--ink); background: color-mix(in srgb, var(--paper) 94%, white); cursor: pointer; text-align: left; transition: border-color .16s, background .16s, transform .16s; }
+.duration-options button:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--gold) 55%, transparent); }.duration-options button.selected { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 11%, var(--paper)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 24%, transparent); }
+.duration-options strong { font-size: 10px; }.duration-options small { color: var(--ink-soft); font-size: 7px; }
 .form-row-metrics { grid-template-columns: 1.15fr 1fr 1fr; }
 .time-field { min-width: 0; }
 .time-field > label { display: block; }
@@ -983,6 +1007,9 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .mission-badge { display: none; }
   .edit-button { display: none; }
   .form-row { grid-template-columns: 1fr; }
+  .class-time-block { grid-template-columns: 1fr; }
+  .day-agenda { height: 620px; min-height: 430px; background: linear-gradient(90deg, color-mix(in srgb, var(--paper) 92%, white) 0 64px, rgba(255,253,247,.67) 64px); }
+  .day-agenda-hours > div { grid-template-columns: 56px minmax(0, 1fr); gap: 6px; }.day-agenda-hours time { font-size: 8px; }.day-agenda-events { margin-left: 68px; margin-right: 8px; }.day-agenda-event { grid-template-columns: 24px minmax(0, 1fr); gap: 6px; padding: 7px; }.day-agenda-event > button { width: 23px; height: 23px; }.day-agenda-event strong { font-size: 11px; }.day-agenda-event small { display: none; }
   .time-range-row { grid-template-columns: 1fr; }
   .time-field-control { grid-template-columns: 25px minmax(64px, 1fr) auto; }
   .time-field-hint { font-size: 7.5px; }

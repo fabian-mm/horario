@@ -8,8 +8,8 @@ import { resolveActivityType } from "@/lib/activity-types";
 import { DailyClassQuest, getMondayIso, sortDailyMissionsByTime, Weekday, WeeklyQuest, weekdayMeta } from "@/lib/schedule";
 import { findSubject, Subject } from "@/lib/subjects";
 import { TimeField } from "@/components/time-field";
+import { formatTimeRange12Hour, shiftTime, timeToMinutes } from "@/lib/time";
 import { QuestTypeCards } from "@/components/quest-type-cards";
-import { formatTimeRange12Hour } from "@/lib/time";
 
 type Props = {
   weeklyQuests: WeeklyQuest[];
@@ -40,7 +40,7 @@ const emptyDailyQuest = (dayOfWeek: Weekday = 1, subjects: Subject[] = [], activ
   activityPoints: type?.points,
   dayOfWeek,
   startTime: "08:00",
-  endTime: "09:30",
+  endTime: "10:00",
   location: "",
   notes: "",
   completedDates: [],
@@ -126,6 +126,9 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
   };
   const selectedDailySubject = findSubject(subjects, dailyDraft.subject, dailyDraft.subjectId);
   const selectedActivityType = resolveActivityType(activityTypes, dailyDraft.activityTypeId, dailyDraft.activityTypeName);
+  const currentDuration = Math.max(0, (timeToMinutes(dailyDraft.endTime) ?? 0) - (timeToMinutes(dailyDraft.startTime) ?? 0));
+  const setDuration = (durationMinutes: 60 | 120) => setDailyDraft((current) => ({ ...current, endTime: shiftTime(current.startTime, durationMinutes) ?? current.endTime }));
+  const setStartTime = (startTime: string) => setDailyDraft((current) => ({ ...current, startTime, endTime: shiftTime(startTime, currentDuration === 60 ? 60 : 120) ?? current.endTime }));
 
   return (
     <div className="weekly-schedule-view">
@@ -214,10 +217,15 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
                 <button type="button" onClick={() => { setDailyModalOpen(false); onManageSubjects(); }}>{subjects.length ? "Administrar materias" : "+ Crear materia"}</button>
               </div>}
               <div className="form-row"><label>Día<select value={dailyDraft.dayOfWeek} onChange={(event) => setDailyDraft({ ...dailyDraft, dayOfWeek: Number(event.target.value) as Weekday })}>{([1, 2, 3, 4, 5, 6, 7] as Weekday[]).map((day) => <option key={day} value={day}>{weekdayMeta[day].label}</option>)}</select></label><label>Lugar<input value={dailyDraft.location ?? ""} onChange={(event) => setDailyDraft({ ...dailyDraft, location: event.target.value })} placeholder="Aula 204" /></label></div>
-              <div className="form-row time-range-row">
+              {selectedActivityType?.category === "class" ? <div className="class-time-block">
+                <TimeField label="Hora de inicio" required value={dailyDraft.startTime} onChange={setStartTime} />
+                <fieldset className="duration-fieldset"><legend>Duración de la clase</legend><div className="duration-options" role="group" aria-label="Duración de la clase">
+                  {([60, 120] as const).map((duration) => <button key={duration} type="button" className={currentDuration === duration ? "selected" : ""} onClick={() => setDuration(duration)}><strong>{duration / 60} {duration === 60 ? "hora" : "horas"}</strong><small>Hasta {formatTimeRange12Hour(dailyDraft.startTime, shiftTime(dailyDraft.startTime, duration) ?? dailyDraft.endTime).split(" – ")[1]}</small></button>)}
+                </div></fieldset>
+              </div> : <div className="form-row time-range-row">
                 <TimeField label="Comienza" required value={dailyDraft.startTime} onChange={(startTime) => setDailyDraft((current) => ({ ...current, startTime }))} />
                 <TimeField label="Termina" required after={dailyDraft.startTime} value={dailyDraft.endTime} onChange={(endTime) => setDailyDraft((current) => ({ ...current, endTime }))} />
-              </div>
+              </div>}
               <label>Notas <span className="optional">(opcional)</span><textarea rows={3} value={dailyDraft.notes ?? ""} onChange={(event) => setDailyDraft({ ...dailyDraft, notes: event.target.value })} placeholder="Profesor, materiales o recordatorios..." /></label>
               <div className="modal-actions">
                 {dailyDraft.id ? <button type="button" className="delete-button" onClick={deleteDaily}><Trash2 size={14} /> Eliminar actividad</button> : <span />}

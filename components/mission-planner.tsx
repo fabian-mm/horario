@@ -13,11 +13,13 @@ import { calculatePlayerProgress, calculateStreak, formatLongDate, getCrossedXpM
 import { getScheduledActivityXp, getScheduledOccurrences, getWeekDates, getWeeklyFreeSlots, ScheduledOccurrence, sortDailyMissionsByTime, weekdayMeta } from "@/lib/schedule";
 import { formatTime12Hour, formatTimeRange12Hour } from "@/lib/time";
 import { resolveActivityType } from "@/lib/activity-types";
+import { findMissionType, isTimedMissionType } from "@/lib/mission-types";
 import { resolveSubjectName } from "@/lib/subjects";
 import { getUserInitials } from "@/lib/users";
 import { AccountPanel } from "./account-panel";
 import { AdventureMap } from "./adventure-map";
 import { AuthScreen } from "./auth-screen";
+import { DayAgenda } from "./day-agenda";
 import { GameFeedback, RewardEvent } from "./game-feedback";
 import { MissionForm } from "./mission-form";
 import { MissionTypesManager } from "./mission-types-manager";
@@ -71,7 +73,10 @@ export function MissionPlanner() {
 
   const days = useMemo(() => calendarMode === "month" ? calendarDays(month) : calendarMode === "week" ? getWeekDates(selectedDate) : [selectedDate], [calendarMode, month, selectedDate]);
   const normalizedQuery = query.trim().toLocaleLowerCase("es");
-  const catalogMissions = useMemo(() => sortMissionsByDateTime(missions.map((mission) => ({ ...mission, subject: resolveSubjectName(subjects, mission.subject, mission.subjectId) }))), [missions, subjects]);
+  const catalogMissions = useMemo(() => sortMissionsByDateTime(missions.map((mission) => {
+    const missionType = findMissionType(missionTypes, mission.title, mission.missionTypeId);
+    return { ...mission, subject: resolveSubjectName(subjects, mission.subject, mission.subjectId), durationMinutes: mission.durationMinutes ?? (isTimedMissionType(missionType) ? 120 : undefined) };
+  })), [missions, subjects, missionTypes]);
   const catalogWeeklyQuests = useMemo(() => weeklyQuests.map((weeklyQuest) => ({
     ...weeklyQuest,
     dailyMissions: sortDailyMissionsByTime(weeklyQuest.dailyMissions.map((dailyMission) => ({
@@ -343,7 +348,7 @@ export function MissionPlanner() {
             <div className="quest-board-ribbon"><span><Compass size={14} /> TABLERO DE CAMPAÑA</span><small>VISTA · {calendarMode === "month" ? "MES" : calendarMode === "week" ? "SEMANA" : "DÍA"}</small></div>
             <div className="map-ornament compass-rose">✣</div>
             <div className="map-ornament ship">♜</div>
-            <div className="week-row">{(calendarMode === "day" ? [WEEK_DAYS[(selectedDate.getDay() + 6) % 7]] : WEEK_DAYS).map((day) => <span key={day}>{day}</span>)}</div>
+            {calendarMode === "day" ? <DayAgenda missions={selectedMissions} activities={selectedClasses} activityTypes={activityTypes} onEditMission={openEdit} onToggleMission={toggleWithFeedback} onOpenActivity={(activity) => { setFocusedWeeklyQuestId(activity.weeklyQuestId); setView("weekly"); }} onToggleActivity={toggleScheduledActivity} /> : <><div className="week-row">{WEEK_DAYS.map((day) => <span key={day}>{day}</span>)}</div>
             <div className="calendar-grid">
               {days.map((date) => {
                 const iso = toISODate(date);
@@ -370,7 +375,7 @@ export function MissionPlanner() {
                   </button>
                 );
               })}
-            </div>
+            </div></>}
             <div className="map-legend">
               {(Object.keys(priorityMeta) as Priority[]).map((priority) => <span key={priority}><i className={priority} />{priorityMeta[priority].shortLabel}</span>)}
               <small>Doble clic en un día para crear una misión</small>

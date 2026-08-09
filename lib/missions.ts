@@ -12,6 +12,7 @@ export type Mission = {
   subjectId?: string;
   date: string;
   time: string;
+  durationMinutes?: 60 | 120;
   priority: Priority;
   completed: boolean;
   status?: MissionStatus;

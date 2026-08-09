@@ -30,6 +30,13 @@ export const sortMissionTypes = (missionTypes: MissionType[]) => [...missionType
 export const normalizeMissionTypeName = (value: string) =>
   value.trim().toLocaleLowerCase("es");
 
+export const isTimedMissionType = (missionType?: MissionType) => {
+  if (!missionType) return false;
+  if (["preset-parcial", "preset-final", "preset-recuperatorio"].includes(missionType.id)) return true;
+  const name = normalizeMissionTypeName(missionType.name);
+  return ["parcial", "examen", "recuperatorio"].some((keyword) => name.includes(keyword));
+};
+
 export const findMissionType = (
   missionTypes: MissionType[],
   name?: string,
@@ -49,7 +56,10 @@ export const findMissionType = (
       missionType.aliases?.some(
         (alias) => normalizeMissionTypeName(alias) === normalized,
       ),
-  );
+  ) ?? missionTypes.find((missionType) => {
+    const candidates = [missionType.name, ...(missionType.aliases ?? [])].map(normalizeMissionTypeName);
+    return candidates.some((candidate) => candidate.length >= 4 && normalized.includes(candidate));
+  });
 };
 
 export const resolveMissionTypeName = (

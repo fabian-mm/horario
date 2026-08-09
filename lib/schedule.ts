@@ -128,7 +128,7 @@ export const getCompletedScheduleCount = (weeklyQuests: WeeklyQuest[]) =>
   ), 0);
 
 export type FreeTimeSlot = { date: string; dayOfWeek: Weekday; startTime: string; endTime: string; durationMinutes: number };
-type TimedObjective = { date: string; time: string };
+type TimedObjective = { date: string; time: string; durationMinutes?: number };
 
 export function getWeeklyFreeSlots(anchor: Date, weeklyQuests: WeeklyQuest[], objectives: TimedObjective[], options: { dayStart?: string; dayEnd?: string; minimumMinutes?: number; objectiveMinutes?: number } = {}) {
   const dayStart = timeToMinutes(options.dayStart ?? "07:00") ?? 420;
@@ -143,7 +143,7 @@ export function getWeeklyFreeSlots(anchor: Date, weeklyQuests: WeeklyQuest[], ob
     const isoDate = `${year}-${month}-${day}`;
     const busy = [
       ...getScheduledOccurrences(date, weeklyQuests).map((activity) => ({ start: timeToMinutes(activity.startTime) ?? dayStart, end: timeToMinutes(activity.endTime) ?? dayStart })),
-      ...objectives.filter((objective) => objective.date === isoDate).map((objective) => { const start = timeToMinutes(objective.time) ?? dayStart; return { start, end: start + objectiveMinutes }; }),
+      ...objectives.filter((objective) => objective.date === isoDate).map((objective) => { const start = timeToMinutes(objective.time) ?? dayStart; return { start, end: start + (objective.durationMinutes ?? objectiveMinutes) }; }),
     ].map((block) => ({ start: Math.max(dayStart, block.start), end: Math.min(dayEnd, block.end) }))
       .filter((block) => block.end > block.start)
       .sort((a, b) => a.start - b.start);

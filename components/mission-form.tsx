@@ -5,6 +5,7 @@ import { Flag, ScrollText, Swords, X } from "lucide-react";
 import { Mission, MissionStatus, Priority, priorityMeta, statusMeta, toISODate } from "@/lib/missions";
 import { findSubject, Subject } from "@/lib/subjects";
 import type { MissionType } from "@/lib/mission-types";
+import { findMissionType, isTimedMissionType } from "@/lib/mission-types";
 import { TimeField } from "@/components/time-field";
 import { QuestTypeCards } from "@/components/quest-type-cards";
 
@@ -33,6 +34,7 @@ const emptyForm = (date: Date, subject = "", subjects: Subject[] = [], missionTy
     subjectId: selectedSubject?.id,
     date: toISODate(date),
     time: "08:00",
+    durationMinutes: undefined,
     priority: "normal",
     completed: false,
     status: "pending",
@@ -55,7 +57,8 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
 
   if (!open) return null;
   const selectedSubject = findSubject(subjects, form.subject, form.subjectId);
-  const selectedMissionType = missionTypes.find((mt) => mt.id === form.missionTypeId) ?? missionTypes.find((mt) => mt.name === form.title) ?? missionTypes[0];
+  const selectedMissionType = findMissionType(missionTypes, form.title, form.missionTypeId) ?? missionTypes[0];
+  const usesTimeBlock = isTimedMissionType(selectedMissionType);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -63,8 +66,10 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
       ...form,
       id: form.id || crypto.randomUUID(),
       title: form.title.trim(),
+      missionTypeId: selectedMissionType?.id,
       subject: form.subject.trim(),
       completed: form.status === "completed",
+      durationMinutes: usesTimeBlock ? form.durationMinutes ?? 120 : undefined,
     });
     onClose();
   };
@@ -82,7 +87,7 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
         </div>
 
         <form onSubmit={submit}>
-          <QuestTypeCards label="¿Qué clase de objetivo es?" options={missionTypes.map((type) => ({ id: type.id, label: type.name, detail: "Plantilla editable" }))} selectedId={selectedMissionType?.id} onSelect={(missionTypeId) => setForm({ ...form, missionTypeId })} onManage={() => { onClose(); onManageMissionTypes(); }} />
+          <QuestTypeCards label="¿Qué clase de objetivo es?" options={missionTypes.map((type) => ({ id: type.id, label: type.name, detail: "Plantilla editable" }))} selectedId={selectedMissionType?.id} onSelect={(missionTypeId) => { const nextType = missionTypes.find((type) => type.id === missionTypeId); setForm({ ...form, missionTypeId, durationMinutes: isTimedMissionType(nextType) ? form.durationMinutes ?? 120 : undefined }); }} onManage={() => { onClose(); onManageMissionTypes(); }} />
           <label>Nombre del objetivo<input required autoFocus value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder={selectedMissionType ? `Ej. ${selectedMissionType.name} de la unidad 2` : "Ej. Entrega del informe final"} /></label>
 
           {/* Subject selector */}
@@ -101,6 +106,12 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
             <label>Fecha<input required type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
             <TimeField label="Hora" required value={form.time} onChange={(time) => setForm((current) => ({ ...current, time }))} />
           </div>
+          {usesTimeBlock && <fieldset className="duration-fieldset">
+            <legend>Duración del parcial</legend>
+            <div className="duration-options" role="group" aria-label="Duración del parcial">
+              {([60, 120] as const).map((duration) => <button key={duration} type="button" className={(form.durationMinutes ?? 120) === duration ? "selected" : ""} onClick={() => setForm({ ...form, durationMinutes: duration })}><strong>{duration / 60} {duration === 60 ? "hora" : "horas"}</strong><small>{duration === 60 ? "Bloque corto" : "Bloque habitual"}</small></button>)}
+            </div>
+          </fieldset>}
           <fieldset>
             <legend>Nivel de importancia</legend>
             <div className="priority-options">
