@@ -9,6 +9,7 @@ import { DailyClassQuest, getMondayIso, sortDailyMissionsByTime, Weekday, Weekly
 import { findSubject, Subject } from "@/lib/subjects";
 import { TimeField } from "@/components/time-field";
 import { QuestTypeCards } from "@/components/quest-type-cards";
+import { formatTimeRange12Hour } from "@/lib/time";
 
 type Props = {
   weeklyQuests: WeeklyQuest[];
@@ -164,7 +165,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
                   <div className="schedule-day-list chronological">
                     {dayClasses.map((dailyMission) => (
                       <button key={dailyMission.id} type="button" className={`daily-class-card activity-tone-${resolveActivityType(activityTypes, dailyMission.activityTypeId, dailyMission.activityTypeName).tone}`} onClick={() => openEditDaily(dailyMission)}>
-                        <span className="class-time"><Clock3 size={11} />{dailyMission.startTime}–{dailyMission.endTime}</span>
+                        <span className="class-time"><Clock3 size={11} />{formatTimeRange12Hour(dailyMission.startTime, dailyMission.endTime)}</span>
                         <strong>{dailyMission.activityCategory === "class" ? dailyMission.subject || "Materia sin asignar" : dailyMission.activityTypeName ?? "Actividad"}</strong>
                         <small className="schedule-activity-title">{dailyMission.title}</small>
                         <b className="schedule-xp"><Sparkles size={10} />+{dailyMission.activityPoints ?? 10} XP</b>

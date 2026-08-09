@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { MissionType } from "@/lib/mission-types";
+import { sortMissionTypes, type MissionType } from "@/lib/mission-types";
 
 export function useMissionTypes(enabled: boolean) {
   const [missionTypes, setMissionTypes] = useState<MissionType[]>([]);
@@ -27,7 +27,7 @@ export function useMissionTypes(enabled: boolean) {
       })
       .then((data) => {
         if (!canceled) {
-          setMissionTypes(data);
+          setMissionTypes(sortMissionTypes(data));
           setError(null);
         }
       })
@@ -59,13 +59,13 @@ export function useMissionTypes(enabled: boolean) {
             ),
           }
         : missionType;
-    setMissionTypes((current) =>
+    setMissionTypes((current) => sortMissionTypes(
       current.some((item) => item.id === missionType.id)
         ? current.map((item) =>
             item.id === missionType.id ? optimistic : item,
           )
         : [...current, optimistic],
-    );
+    ));
     setError(null);
     fetch("/api/mission-types", {
       method: "POST",
@@ -79,9 +79,7 @@ export function useMissionTypes(enabled: boolean) {
             body.error ?? "No se pudo guardar el tipo de misión.",
           );
         const saved = body as MissionType;
-        setMissionTypes((current) =>
-          current.map((item) => (item.id === saved.id ? saved : item)),
-        );
+        setMissionTypes((current) => sortMissionTypes(current.map((item) => (item.id === saved.id ? saved : item))));
       })
       .catch((requestError) => {
         setMissionTypes(previous);

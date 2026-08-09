@@ -2,7 +2,7 @@
 
 import { Keyboard, Minus, Plus, Timer } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-import { isTimeAfter, minutesToTime, parseTimeInput, shiftTime, timeToMinutes } from "@/lib/time";
+import { formatTime12Hour, isTimeAfter, minutesToTime, parseTimeInput, shiftTime, timeToMinutes } from "@/lib/time";
 
 type Props = {
   label: string;
@@ -18,19 +18,19 @@ export function TimeField({ label, value, onChange, required = false, after }: P
   const hintId = `${inputId}-hint`;
   const inputRef = useRef<HTMLInputElement>(null);
   const focused = useRef(false);
-  const [draft, setDraft] = useState(value);
+  const [draft, setDraft] = useState(() => formatTime12Hour(value));
 
   useEffect(() => {
-    if (!focused.current) setDraft(value);
+    if (!focused.current) setDraft(formatTime12Hour(value));
   }, [value]);
 
   const normalizedDraft = parseTimeInput(draft);
   const invalidFormat = Boolean(draft) && !normalizedDraft;
   const invalidRange = Boolean(normalizedDraft && after && !isTimeAfter(normalizedDraft, after));
   const error = invalidFormat
-    ? "Usa una hora válida, por ejemplo 08:30."
+    ? "Usa una hora válida, por ejemplo 8:30 AM."
     : invalidRange
-      ? `Debe ser posterior a ${after}.`
+      ? `Debe ser posterior a ${formatTime12Hour(after ?? "")}.`
       : "";
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export function TimeField({ label, value, onChange, required = false, after }: P
   const commit = () => {
     const normalized = parseTimeInput(draft);
     if (!normalized || (after && !isTimeAfter(normalized, after))) return false;
-    setDraft(normalized);
+    setDraft(formatTime12Hour(normalized));
     onChange(normalized);
     return true;
   };
@@ -60,7 +60,7 @@ export function TimeField({ label, value, onChange, required = false, after }: P
     }
     const nextValue = shiftTime(base, deltaMinutes);
     if (!nextValue) return;
-    setDraft(nextValue);
+    setDraft(formatTime12Hour(nextValue));
     onChange(nextValue);
     inputRef.current?.focus();
   };
@@ -74,14 +74,14 @@ export function TimeField({ label, value, onChange, required = false, after }: P
           ref={inputRef}
           id={inputId}
           type="text"
-          inputMode="numeric"
+          inputMode="text"
           autoComplete="off"
           required={required}
           maxLength={8}
           value={draft}
           aria-describedby={hintId}
           aria-invalid={Boolean(error)}
-          placeholder="08:30"
+          placeholder="8:30 AM"
           onFocus={(event) => {
             focused.current = true;
             event.currentTarget.select();
@@ -110,7 +110,7 @@ export function TimeField({ label, value, onChange, required = false, after }: P
         </div>
       </div>
       <small id={hintId} className="time-field-hint">
-        {error ? <span>{error}</span> : <><Keyboard size={11} aria-hidden="true" /> Escribe 08:30, 0830 o 8 pm · flechas ±15 min</>}
+        {error ? <span>{error}</span> : <><Keyboard size={11} aria-hidden="true" /> Escribe 8:30 AM o 2:15 PM · flechas ±15 min</>}
       </small>
     </div>
   );

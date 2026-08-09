@@ -16,6 +16,18 @@ export function minutesToTime(total: number) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
+export function formatTime12Hour(value: string) {
+  const total = timeToMinutes(value);
+  if (total === null) return value;
+  const hours24 = Math.floor(total / 60);
+  const minutes = total % 60;
+  const period = hours24 >= 12 ? "PM" : "AM";
+  const hours12 = hours24 % 12 || 12;
+  return `${hours12}:${String(minutes).padStart(2, "0")} ${period}`;
+}
+
+export const formatTimeRange12Hour = (start: string, end: string) => `${formatTime12Hour(start)} – ${formatTime12Hour(end)}`;
+
 export function parseTimeInput(rawValue: string, allowHourOnly = true) {
   let value = rawValue.trim().toLowerCase().replace(/\./g, ":").replace(/\s+/g, "");
   if (!value) return null;

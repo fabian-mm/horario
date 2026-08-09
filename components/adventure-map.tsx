@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Check, ChevronRight, Clock3, Crown, FileCheck2, Flag, MapPinned, Plus, ScrollText, Sparkles, Swords } from "lucide-react";
 import { formatLongDate, getMissionStatus, getMissionXp, Mission, MissionStatus, priorityMeta, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
+import { formatTime12Hour } from "@/lib/time";
 
 type Props = {
   missions: Mission[];
@@ -48,7 +49,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange }: Props)
                   <li key={mission.id} className={`map-route-item ${status} ${isBoss ? "boss" : ""} ${selectedMission?.id === mission.id ? "selected" : ""}`}>
                     <button className="route-objective" type="button" onClick={() => setSelectedId(mission.id)} aria-pressed={selectedMission?.id === mission.id}>
                       <span className="route-date"><strong>{new Date(`${mission.date}T12:00:00`).getDate()}</strong><small>{new Intl.DateTimeFormat("es-CO", { month: "short" }).format(new Date(`${mission.date}T12:00:00`))}</small></span>
-                      <span className="route-copy"><small>{isBoss ? "FORTALEZA FINAL" : priorityMeta[mission.priority].label.toUpperCase()}</small><strong>{mission.title} · {mission.subject}</strong><span>{mission.time}</span></span>
+                      <span className="route-copy"><small>{isBoss ? "FORTALEZA FINAL" : priorityMeta[mission.priority].label.toUpperCase()}</small><strong>{mission.title} · {mission.subject}</strong><span>{formatTime12Hour(mission.time)}</span></span>
                       <ChevronRight size={16} />
                     </button>
                     <span className="route-marker" aria-hidden="true"><i>{isBoss ? <Swords size={17} /> : index + 1}</i></span>

@@ -18,6 +18,15 @@ export const defaultMissionTypes: MissionType[] = [
   { id: "preset-recuperatorio", name: "Recuperatorio" },
 ];
 
+const presetOrder = new Map(defaultMissionTypes.map((type, index) => [type.id, index]));
+
+export const sortMissionTypes = (missionTypes: MissionType[]) => [...missionTypes].sort((a, b) => {
+  const aOrder = presetOrder.get(a.id);
+  const bOrder = presetOrder.get(b.id);
+  if (aOrder !== undefined || bOrder !== undefined) return (aOrder ?? Number.MAX_SAFE_INTEGER) - (bOrder ?? Number.MAX_SAFE_INTEGER);
+  return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+});
+
 export const normalizeMissionTypeName = (value: string) =>
   value.trim().toLocaleLowerCase("es");
 
