@@ -32,6 +32,8 @@ El tema es una preferencia visual local: no modifica las misiones ni las notas g
 
 Pulsa **Nueva misión** y registra nombre, materia, fecha, hora, importancia, estado, nota, porcentaje y observaciones. En computador también puedes hacer doble clic sobre un día.
 
+La hora puede escribirse directamente con el teclado. Se aceptan formatos como `08:30`, `0830` y `8 pm`; al terminar, la aplicación los convierte al formato de 24 horas. También puedes usar los botones **−15** y **+15**, o las flechas arriba/abajo del teclado. Mantén `Shift` al usar las flechas para cambiar una hora completa.
+
 En el mapa principal, seleccionar un día actualiza su agenda. En **Misiones de Mundo**, seleccionar una materia abre su diario y permite cambiar estados rápidamente.
 
 ## Catálogo de materias
@@ -51,6 +53,8 @@ Selecciona cualquier destino para abrir su pergamino de información. Allí pued
 Abre **Misiones semanales** desde el menú lateral y crea una rutina, por ejemplo **Horario del semestre**. Elige desde qué fecha empieza a repetirse y, si lo deseas, una fecha final.
 
 Dentro de la misión semanal, pulsa el botón **+** de un día para añadir una clase. Cada misión diaria admite nombre, materia, día, hora inicial, hora final, lugar y notas. Pulsa una clase existente para editarla o eliminarla.
+
+Las horas de comienzo y final usan el mismo control accesible. Si la hora final no es posterior a la inicial, verás el aviso junto al campo y el formulario no se guardará hasta corregirla. En móvil aparecen en filas separadas para que los controles conserven un tamaño cómodo.
 
 Una rutina activa proyecta automáticamente sus clases sobre todas las fechas correspondientes del calendario principal. Las clases aparecen con un icono de libro y se incluyen en la agenda del día. Al pulsarlas, la aplicación abre directamente la misión semanal que las contiene. Puedes pausar una rutina para ocultar sus apariciones sin borrar el horario.
 
