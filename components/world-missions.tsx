@@ -120,7 +120,7 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
                 return (
                   <article key={mission.id} className={`world-task ${status}`}>
                     <div className="task-topline"><span className={`status-pill ${status}`}><i />{statusMeta[status].label}</span><span className="task-reward">+{getMissionXp(mission)} XP</span><time><Clock3 size={12} />{taskDateFormatter.format(new Date(`${mission.date}T12:00:00`))}</time></div>
-                    <button className="task-title" onClick={() => onEdit(mission)}><h3>{mission.title}</h3><ChevronRight size={16} /></button>
+                    <button className="task-title" onClick={() => onEdit(mission)}><h3>{mission.title} · {mission.subject}</h3><ChevronRight size={16} /></button>
                     {(mission.notes || mission.grade || mission.weight) && (
                       <div className="task-details">
                         {mission.notes && <p>{mission.notes}</p>}

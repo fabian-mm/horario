@@ -48,7 +48,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange }: Props)
                   <li key={mission.id} className={`map-route-item ${status} ${isBoss ? "boss" : ""} ${selectedMission?.id === mission.id ? "selected" : ""}`}>
                     <button className="route-objective" type="button" onClick={() => setSelectedId(mission.id)} aria-pressed={selectedMission?.id === mission.id}>
                       <span className="route-date"><strong>{new Date(`${mission.date}T12:00:00`).getDate()}</strong><small>{new Intl.DateTimeFormat("es-CO", { month: "short" }).format(new Date(`${mission.date}T12:00:00`))}</small></span>
-                      <span className="route-copy"><small>{isBoss ? "FORTALEZA FINAL" : priorityMeta[mission.priority].label.toUpperCase()}</small><strong>{mission.title}</strong><span>{mission.subject} · {mission.time}</span></span>
+                      <span className="route-copy"><small>{isBoss ? "FORTALEZA FINAL" : priorityMeta[mission.priority].label.toUpperCase()}</small><strong>{mission.title} · {mission.subject}</strong><span>{mission.time}</span></span>
                       <ChevronRight size={16} />
                     </button>
                     <span className="route-marker" aria-hidden="true"><i>{isBoss ? <Swords size={17} /> : index + 1}</i></span>
@@ -68,8 +68,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange }: Props)
               <div className="sheet-banner"><span>{selectedMission.priority === "boss" ? <Swords size={19} /> : <Flag size={19} />}</span><div><small>OBJETIVO SELECCIONADO</small><strong>{priorityMeta[selectedMission.priority].label}</strong></div></div>
               <div className="sheet-content">
                 <span className={`status-pill ${getMissionStatus(selectedMission)}`}><i />{statusMeta[getMissionStatus(selectedMission)].label}</span>
-                <h2>{selectedMission.title}</h2>
-                <p className="sheet-subject">{selectedMission.subject}</p>
+                <h2>{selectedMission.title} · {selectedMission.subject}</h2>
                 <div className="sheet-reward"><Sparkles size={17} /><span><small>RECOMPENSA</small><strong>+{getMissionXp(selectedMission)} XP</strong></span></div>
                 <dl className="objective-stats">
                   <div><dt>Fecha</dt><dd>{formatLongDate(selectedMission.date)}</dd></div>

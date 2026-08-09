@@ -1,9 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Flag, Swords, X } from "lucide-react";
+import { Flag, ScrollText, Swords, X } from "lucide-react";
 import { Mission, MissionStatus, Priority, priorityMeta, statusMeta, toISODate } from "@/lib/missions";
 import { findSubject, Subject } from "@/lib/subjects";
+import type { MissionType } from "@/lib/mission-types";
 import { TimeField } from "@/components/time-field";
 
 type Props = {
@@ -15,14 +16,18 @@ type Props = {
   onSave: (mission: Mission) => void;
   onDelete?: (id: string) => void;
   subjects: Subject[];
+  missionTypes: MissionType[];
   onManageSubjects: () => void;
+  onManageMissionTypes: () => void;
 };
 
-const emptyForm = (date: Date, subject = "", subjects: Subject[] = []): Mission => {
+const emptyForm = (date: Date, subject = "", subjects: Subject[] = [], missionTypes: MissionType[] = []): Mission => {
   const selectedSubject = findSubject(subjects, subject) ?? subjects[0];
+  const firstType = missionTypes[0];
   return {
     id: "",
-    title: "",
+    title: firstType?.name ?? "",
+    missionTypeId: firstType?.id,
     subject: selectedSubject?.name ?? subject,
     subjectId: selectedSubject?.id,
     date: toISODate(date),
@@ -36,7 +41,7 @@ const emptyForm = (date: Date, subject = "", subjects: Subject[] = []): Mission 
   };
 };
 
-export function MissionForm({ open, initialDate, initialSubject, mission, onClose, onSave, onDelete, subjects, onManageSubjects }: Props) {
+export function MissionForm({ open, initialDate, initialSubject, mission, onClose, onSave, onDelete, subjects, missionTypes, onManageSubjects, onManageMissionTypes }: Props) {
   const [form, setForm] = useState<Mission>(emptyForm(initialDate));
 
   useEffect(() => {
@@ -44,15 +49,22 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
     if (mission) {
       const selectedSubject = findSubject(subjects, mission.subject, mission.subjectId);
       setForm({ ...mission, subject: selectedSubject?.name ?? mission.subject, subjectId: selectedSubject?.id ?? mission.subjectId });
-    } else setForm(emptyForm(initialDate, initialSubject, subjects));
-  }, [open, mission, initialDate, initialSubject, subjects]);
+    } else setForm(emptyForm(initialDate, initialSubject, subjects, missionTypes));
+  }, [open, mission, initialDate, initialSubject, subjects, missionTypes]);
 
   if (!open) return null;
   const selectedSubject = findSubject(subjects, form.subject, form.subjectId);
+  const selectedMissionType = missionTypes.find((mt) => mt.id === form.missionTypeId) ?? missionTypes.find((mt) => mt.name === form.title);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    onSave({ ...form, id: form.id || crypto.randomUUID(), title: form.title.trim(), subject: form.subject.trim(), completed: form.status === "completed" });
+    onSave({
+      ...form,
+      id: form.id || crypto.randomUUID(),
+      title: form.title.trim(),
+      subject: form.subject.trim(),
+      completed: form.status === "completed",
+    });
     onClose();
   };
 
@@ -69,10 +81,32 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
         </div>
 
         <form onSubmit={submit}>
-          <label>
-            Nombre de la misión
-            <input required autoFocus value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Ej. Parcial de Termodinámica" />
-          </label>
+          {/* Mission type selector */}
+          <div className="subject-select-field">
+            <label>
+              Tipo de misión
+              <select
+                required
+                value={selectedMissionType?.id ?? ""}
+                onChange={(event) => {
+                  const mt = missionTypes.find((item) => item.id === event.target.value);
+                  if (mt) setForm({ ...form, title: mt.name, missionTypeId: mt.id });
+                }}
+              >
+                <option value="" disabled>
+                  {missionTypes.length ? "Selecciona un tipo" : "Primero crea un tipo"}
+                </option>
+                {missionTypes.map((mt) => (
+                  <option key={mt.id} value={mt.id}>{mt.name}</option>
+                ))}
+              </select>
+            </label>
+            <button type="button" onClick={() => { onClose(); onManageMissionTypes(); }}>
+              {missionTypes.length ? "Administrar tipos" : "+ Crear tipo"}
+            </button>
+          </div>
+
+          {/* Subject selector */}
           <div className="subject-select-field">
             <label>
               Materia o curso
@@ -83,6 +117,7 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
             </label>
             <button type="button" onClick={() => { onClose(); onManageSubjects(); }}>{subjects.length ? "Administrar materias" : "+ Crear materia"}</button>
           </div>
+
           <div className="form-row">
             <label>Fecha<input required type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
             <TimeField label="Hora" required value={form.time} onChange={(time) => setForm((current) => ({ ...current, time }))} />

@@ -22,6 +22,7 @@ export const loginSchema = z.object({
 export const missionSchema = z.object({
   id: z.string().min(1).max(100),
   title: z.string().trim().min(1).max(180),
+  missionTypeId: z.string().min(1).max(100).optional(),
   subject: z.string().trim().min(1).max(100),
   subjectId: z.string().min(1).max(100).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -71,4 +72,9 @@ export const activityTypeSchema = z.object({
   category: z.enum(["class", "activity"]),
   points: z.number().int().min(0).max(500),
   tone: z.enum(["gold", "sage", "coral", "ocean", "violet"]),
+});
+
+export const missionTypeSchema = z.object({
+  id: z.string().min(1).max(100),
+  name: z.string().trim().min(1, "Escribe el nombre del tipo de misión.").max(100),
 });

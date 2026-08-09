@@ -7,6 +7,7 @@ export type MissionStatus = "pending" | "submitted" | "completed";
 export type Mission = {
   id: string;
   title: string;
+  missionTypeId?: string;
   subject: string;
   subjectId?: string;
   date: string;
