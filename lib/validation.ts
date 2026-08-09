@@ -32,3 +32,23 @@ export const missionSchema = z.object({
   grade: z.string().max(20).optional(),
   weight: z.number().min(0).max(100).optional(),
 });
+
+const dailyClassQuestSchema = z.object({
+  id: z.string().min(1).max(100),
+  title: z.string().trim().min(1).max(140),
+  subject: z.string().trim().min(1).max(100),
+  dayOfWeek: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7)]),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/),
+  location: z.string().trim().max(140).optional(),
+  notes: z.string().trim().max(1000).optional(),
+}).refine((value) => value.endTime > value.startTime, { message: "La hora final debe ser posterior a la inicial." });
+
+export const weeklyQuestSchema = z.object({
+  id: z.string().min(1).max(100),
+  title: z.string().trim().min(1).max(120),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  active: z.boolean(),
+  dailyMissions: z.array(dailyClassQuestSchema).max(70),
+}).refine((value) => !value.endDate || value.endDate >= value.startDate, { message: "La fecha final debe ser posterior a la inicial." });

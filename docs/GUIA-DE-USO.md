@@ -40,6 +40,14 @@ Abre **Mapa de campaña** desde el menú lateral para ver las misiones como una 
 
 Selecciona cualquier destino para abrir su pergamino de información. Allí puedes consultar recompensa, fecha, hora, impacto, nota y observaciones, cambiar el estado de la misión o abrir su ficha completa. El buscador también filtra los destinos visibles del mapa.
 
+## Misiones semanales y horario
+
+Abre **Misiones semanales** desde el menú lateral y crea una rutina, por ejemplo **Horario del semestre**. Elige desde qué fecha empieza a repetirse y, si lo deseas, una fecha final.
+
+Dentro de la misión semanal, pulsa el botón **+** de un día para añadir una clase. Cada misión diaria admite nombre, materia, día, hora inicial, hora final, lugar y notas. Pulsa una clase existente para editarla o eliminarla.
+
+Una rutina activa proyecta automáticamente sus clases sobre todas las fechas correspondientes del calendario principal. Las clases aparecen con un icono de libro y se incluyen en la agenda del día. Al pulsarlas, la aplicación abre directamente la misión semanal que las contiene. Puedes pausar una rutina para ocultar sus apariciones sin borrar el horario.
+
 ## Progreso RPG
 
 Las misiones otorgan experiencia cuando quedan en estado **Cumplida**:

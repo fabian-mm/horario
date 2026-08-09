@@ -7,7 +7,8 @@ app/page.tsx
   -> MissionPlanner
       -> useAuth -> /api/auth/* -> users
       -> useMissions -> /api/missions* -> missions
-      -> AuthScreen | calendario | WorldMissions
+      -> useWeeklyQuests -> /api/weekly-quests* -> weeklyQuests
+      -> AuthScreen | calendario | WorldMissions | AdventureMap | WeeklySchedule
       -> MissionForm
       -> AccountPanel
 ```
@@ -29,7 +30,9 @@ Cada ruta de datos ejecuta `getSessionUserId()`. Las rutas de misiones no acepta
 
 ## Persistencia rápida
 
-`useMissions` aplica cambios de forma optimista y después los guarda. Si MongoDB rechaza la operación, restaura el estado anterior y presenta un aviso.
+`useMissions` y `useWeeklyQuests` aplican cambios de forma optimista y después los guardan. Si MongoDB rechaza la operación, restauran el estado anterior y presentan un aviso.
+
+Una misión semanal contiene sus `dailyMissions`. `getScheduledOccurrences()` en `lib/schedule.ts` proyecta esas clases recurrentes sobre una fecha concreta; no crea copias diarias en MongoDB. Así, editar una clase actualiza todas sus apariciones futuras.
 
 `lib/mongodb.ts` crea la conexión de forma diferida y reutiliza el `MongoClient`. El driver administra un pool de conexiones, evitando abrir una conexión nueva por tarea.
 
@@ -44,4 +47,6 @@ Cada ruta de datos ejecuta `getSessionUserId()`. Las rutas de misiones no acepta
 | `/api/account` | PUT | Actualizar cuenta |
 | `/api/missions` | GET/POST | Listar o guardar misión propia |
 | `/api/missions/[missionId]` | DELETE | Eliminar misión propia |
+| `/api/weekly-quests` | GET/POST | Listar o guardar una misión semanal propia |
+| `/api/weekly-quests/[weeklyQuestId]` | DELETE | Eliminar una misión semanal propia |
 | `/api/health` | GET | Comprobar conexión con MongoDB |

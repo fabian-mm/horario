@@ -23,6 +23,10 @@ La experiencia por prioridad, los 250 XP por nivel y los nombres de rango están
 5. Devuelve solamente campos seguros.
 6. Expón la operación desde el hook correspondiente.
 
+## Ampliar el horario semanal
+
+Los tipos `WeeklyQuest`, `DailyClassQuest` y la proyección por fechas viven en `lib/schedule.ts`. La validación del servidor está en `weeklyQuestSchema`, la persistencia en `/api/weekly-quests` y el estado optimista en `useWeeklyQuests`. Mantén la recurrencia como cálculo: no generes un documento de MongoDB por cada día del semestre.
+
 ## Regla de autorización
 
 Nunca aceptes `userId` desde parámetros, JSON o cabeceras del navegador para decidir el propietario. El ID válido proviene exclusivamente de la sesión verificada.
@@ -37,5 +41,6 @@ Si se necesita modo sin conexión, incorpora una cola local de operaciones con I
 - Inicio y cierre de sesión.
 - Aislamiento entre dos cuentas.
 - Creación, edición y eliminación de misiones.
+- Creación, edición, pausa y eliminación de horarios y clases recurrentes.
 - Escritorio y móvil de aproximadamente 390 px.
 - `npm run build` y `npm audit`.
