@@ -3,21 +3,25 @@
 import { FormEvent, useMemo, useState } from "react";
 import { BookOpen, CalendarRange, Check, Clock3, MapPin, Pencil, Plus, Power, ScrollText, Trash2, X } from "lucide-react";
 import { DailyClassQuest, getMondayIso, Weekday, WeeklyQuest, weekdayMeta } from "@/lib/schedule";
+import { findSubject, Subject } from "@/lib/subjects";
 
 type Props = {
   weeklyQuests: WeeklyQuest[];
   loading: boolean;
   focusedWeeklyQuestId?: string | null;
+  subjects: Subject[];
+  onManageSubjects: () => void;
   onSave: (weeklyQuest: WeeklyQuest) => void;
   onDelete: (id: string) => void;
 };
 
 type WeeklyDraft = { title: string; startDate: string; endDate: string };
 
-const emptyDailyQuest = (dayOfWeek: Weekday = 1): DailyClassQuest => ({
+const emptyDailyQuest = (dayOfWeek: Weekday = 1, subjects: Subject[] = []): DailyClassQuest => ({
   id: "",
   title: "",
-  subject: "",
+  subject: subjects[0]?.name ?? "",
+  subjectId: subjects[0]?.id,
   dayOfWeek,
   startTime: "08:00",
   endTime: "09:30",
@@ -25,13 +29,13 @@ const emptyDailyQuest = (dayOfWeek: Weekday = 1): DailyClassQuest => ({
   notes: "",
 });
 
-export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, onSave, onDelete }: Props) {
+export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, subjects, onManageSubjects, onSave, onDelete }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [weeklyModalOpen, setWeeklyModalOpen] = useState(false);
   const [weeklyEditing, setWeeklyEditing] = useState<WeeklyQuest | null>(null);
   const [weeklyDraft, setWeeklyDraft] = useState<WeeklyDraft>({ title: "Mi horario semanal", startDate: getMondayIso(), endDate: "" });
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
-  const [dailyDraft, setDailyDraft] = useState<DailyClassQuest>(emptyDailyQuest());
+  const [dailyDraft, setDailyDraft] = useState<DailyClassQuest>(emptyDailyQuest(1, subjects));
   const selectedWeeklyQuest = weeklyQuests.find((weeklyQuest) => weeklyQuest.id === selectedId) ?? weeklyQuests.find((weeklyQuest) => weeklyQuest.id === focusedWeeklyQuestId) ?? weeklyQuests[0] ?? null;
 
   const classesByDay = useMemo(() => {
@@ -73,7 +77,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, on
   };
 
   const openNewDaily = (dayOfWeek: Weekday) => {
-    setDailyDraft(emptyDailyQuest(dayOfWeek));
+    setDailyDraft(emptyDailyQuest(dayOfWeek, subjects));
     setDailyModalOpen(true);
   };
   const openEditDaily = (dailyMission: DailyClassQuest) => {
@@ -95,6 +99,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, on
     onSave({ ...selectedWeeklyQuest, dailyMissions: selectedWeeklyQuest.dailyMissions.filter((item) => item.id !== dailyDraft.id) });
     setDailyModalOpen(false);
   };
+  const selectedDailySubject = findSubject(subjects, dailyDraft.subject, dailyDraft.subjectId);
 
   return (
     <div className="weekly-schedule-view">
@@ -174,7 +179,10 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, on
             <div className="modal-heading"><div className="modal-icon"><BookOpen size={20} /></div><div><span className="eyebrow">MISIÓN DIARIA</span><h2 id="daily-modal-title">{dailyDraft.id ? "Editar clase" : "Nueva clase"}</h2></div><button className="icon-button" type="button" onClick={() => setDailyModalOpen(false)} aria-label="Cerrar"><X size={20} /></button></div>
             <form onSubmit={saveDaily}>
               <label>Nombre de la clase<input required autoFocus value={dailyDraft.title} onChange={(event) => setDailyDraft({ ...dailyDraft, title: event.target.value })} placeholder="Ej. Laboratorio de Física" /></label>
-              <label>Materia<input required value={dailyDraft.subject} onChange={(event) => setDailyDraft({ ...dailyDraft, subject: event.target.value })} placeholder="Ej. Física" /></label>
+              <div className="subject-select-field">
+                <label>Materia<select required value={selectedDailySubject?.id ?? ""} onChange={(event) => { const subject = subjects.find((item) => item.id === event.target.value); if (subject) setDailyDraft({ ...dailyDraft, subject: subject.name, subjectId: subject.id }); }}><option value="" disabled>{subjects.length ? "Selecciona una materia" : "Primero crea una materia"}</option>{subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select></label>
+                <button type="button" onClick={() => { setDailyModalOpen(false); onManageSubjects(); }}>{subjects.length ? "Administrar materias" : "+ Crear materia"}</button>
+              </div>
               <div className="form-row"><label>Día<select value={dailyDraft.dayOfWeek} onChange={(event) => setDailyDraft({ ...dailyDraft, dayOfWeek: Number(event.target.value) as Weekday })}>{([1, 2, 3, 4, 5, 6, 7] as Weekday[]).map((day) => <option key={day} value={day}>{weekdayMeta[day].label}</option>)}</select></label><label>Lugar<input value={dailyDraft.location ?? ""} onChange={(event) => setDailyDraft({ ...dailyDraft, location: event.target.value })} placeholder="Aula 204" /></label></div>
               <div className="form-row"><label>Comienza<input required type="time" value={dailyDraft.startTime} onChange={(event) => setDailyDraft({ ...dailyDraft, startTime: event.target.value })} /></label><label>Termina<input required type="time" min={dailyDraft.startTime} value={dailyDraft.endTime} onChange={(event) => setDailyDraft({ ...dailyDraft, endTime: event.target.value })} /></label></div>
               <label>Notas <span className="optional">(opcional)</span><textarea rows={3} value={dailyDraft.notes ?? ""} onChange={(event) => setDailyDraft({ ...dailyDraft, notes: event.target.value })} placeholder="Profesor, materiales o recordatorios..." /></label>

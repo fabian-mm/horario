@@ -5,6 +5,7 @@ export type Mission = {
   id: string;
   title: string;
   subject: string;
+  subjectId?: string;
   date: string;
   time: string;
   priority: Priority;

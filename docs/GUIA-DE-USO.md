@@ -34,6 +34,12 @@ Pulsa **Nueva misión** y registra nombre, materia, fecha, hora, importancia, es
 
 En el mapa principal, seleccionar un día actualiza su agenda. En **Misiones de Mundo**, seleccionar una materia abre su diario y permite cambiar estados rápidamente.
 
+## Catálogo de materias
+
+Abre **Mis materias** desde el menú lateral para crear y administrar el catálogo global de tu cuenta. Después de registrar una materia, aparecerá como opción al crear una misión normal o una clase semanal; ya no es necesario volver a escribir el nombre.
+
+Si ya tenías misiones o clases, la aplicación incorpora automáticamente sus materias al catálogo sin borrar información. Al renombrar una materia, el nuevo nombre se aplica en el calendario, Misiones de Mundo, el mapa, el horario y los promedios. Una materia que esté en uso no puede eliminarse hasta cambiar las misiones y clases asociadas.
+
 ## Mapa de campaña
 
 Abre **Mapa de campaña** desde el menú lateral para ver las misiones como una ruta cronológica de destinos. Cada nodo muestra la fecha, la materia y la importancia; los jefes finales aparecen como fortalezas especiales.

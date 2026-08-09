@@ -23,6 +23,7 @@ export const missionSchema = z.object({
   id: z.string().min(1).max(100),
   title: z.string().trim().min(1).max(180),
   subject: z.string().trim().min(1).max(100),
+  subjectId: z.string().min(1).max(100).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}$/),
   priority: z.enum(["normal", "important", "boss"]),
@@ -37,6 +38,7 @@ const dailyClassQuestSchema = z.object({
   id: z.string().min(1).max(100),
   title: z.string().trim().min(1).max(140),
   subject: z.string().trim().min(1).max(100),
+  subjectId: z.string().min(1).max(100).optional(),
   dayOfWeek: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7)]),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
@@ -52,3 +54,8 @@ export const weeklyQuestSchema = z.object({
   active: z.boolean(),
   dailyMissions: z.array(dailyClassQuestSchema).max(70),
 }).refine((value) => !value.endDate || value.endDate >= value.startDate, { message: "La fecha final debe ser posterior a la inicial." });
+
+export const subjectSchema = z.object({
+  id: z.string().min(1).max(100),
+  name: z.string().trim().min(1, "Escribe el nombre de la materia.").max(100),
+});

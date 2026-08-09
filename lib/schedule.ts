@@ -4,6 +4,7 @@ export type DailyClassQuest = {
   id: string;
   title: string;
   subject: string;
+  subjectId?: string;
   dayOfWeek: Weekday;
   startTime: string;
   endTime: string;

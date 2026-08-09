@@ -1,25 +1,28 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Award, BookOpen, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, LoaderCircle, MapPin, MapPinned, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Swords, Target, Trophy, X } from "lucide-react";
+import { AlertTriangle, Award, BookOpen, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, Library, LoaderCircle, MapPin, MapPinned, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Swords, Target, Trophy, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMissions } from "@/hooks/use-missions";
+import { useSubjects } from "@/hooks/use-subjects";
 import { useTheme } from "@/hooks/use-theme";
 import { useWeeklyQuests } from "@/hooks/use-weekly-quests";
 import { calculatePlayerProgress, calculateStreak, formatLongDate, getMissionStatus, getMissionXp, Mission, Priority, priorityMeta, toISODate } from "@/lib/missions";
 import { getScheduledOccurrences } from "@/lib/schedule";
+import { resolveSubjectName } from "@/lib/subjects";
 import { getUserInitials } from "@/lib/users";
 import { AccountPanel } from "./account-panel";
 import { AdventureMap } from "./adventure-map";
 import { AuthScreen } from "./auth-screen";
 import { GameFeedback, RewardEvent } from "./game-feedback";
 import { MissionForm } from "./mission-form";
+import { SubjectsView } from "./subjects-view";
 import { WeeklySchedule } from "./weekly-schedule";
 import { WorldMissions } from "./world-missions";
 
 const WEEK_DAYS = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
 type Filter = "all" | "pending" | "completed" | Priority;
-type View = "calendar" | "world" | "map" | "weekly";
+type View = "calendar" | "world" | "map" | "weekly" | "subjects";
 
 function calendarDays(month: Date) {
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
@@ -37,6 +40,7 @@ export function MissionPlanner() {
   const { theme, setTheme } = useTheme();
   const { missions, loading: missionsLoading, error: missionsError, upsert, toggle, setStatus, remove } = useMissions(Boolean(auth.user));
   const { weeklyQuests, loading: scheduleLoading, error: scheduleError, upsert: upsertWeeklyQuest, remove: removeWeeklyQuest } = useWeeklyQuests(Boolean(auth.user));
+  const { subjects, loading: subjectsLoading, error: subjectsError, upsert: upsertSubject, remove: removeSubject } = useSubjects(Boolean(auth.user));
   const [month, setMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -57,14 +61,16 @@ export function MissionPlanner() {
 
   const days = useMemo(() => calendarDays(month), [month]);
   const normalizedQuery = query.trim().toLocaleLowerCase("es");
-  const filtered = useMemo(() => missions.filter((mission) => {
+  const catalogMissions = useMemo(() => missions.map((mission) => ({ ...mission, subject: resolveSubjectName(subjects, mission.subject, mission.subjectId) })), [missions, subjects]);
+  const catalogWeeklyQuests = useMemo(() => weeklyQuests.map((weeklyQuest) => ({ ...weeklyQuest, dailyMissions: weeklyQuest.dailyMissions.map((dailyMission) => ({ ...dailyMission, subject: resolveSubjectName(subjects, dailyMission.subject, dailyMission.subjectId) })) })), [weeklyQuests, subjects]);
+  const filtered = useMemo(() => catalogMissions.filter((mission) => {
     const status = getMissionStatus(mission);
     const matchesFilter = filter === "all" || (filter === "pending" && status === "pending") || (filter === "completed" && status === "completed") || mission.priority === filter;
     return matchesFilter && (!normalizedQuery || `${mission.title} ${mission.subject}`.toLocaleLowerCase("es").includes(normalizedQuery));
-  }), [missions, filter, normalizedQuery]);
+  }), [catalogMissions, filter, normalizedQuery]);
   const worldMissions = useMemo(() => {
-    return missions.filter((mission) => !normalizedQuery || `${mission.title} ${mission.subject}`.toLocaleLowerCase("es").includes(normalizedQuery));
-  }, [missions, normalizedQuery]);
+    return catalogMissions.filter((mission) => !normalizedQuery || `${mission.title} ${mission.subject}`.toLocaleLowerCase("es").includes(normalizedQuery));
+  }, [catalogMissions, normalizedQuery]);
   const missionsByDate = useMemo(() => {
     const grouped = new Map<string, Mission[]>();
     filtered.forEach((mission) => {
@@ -78,11 +84,11 @@ export function MissionPlanner() {
     const grouped = new Map<string, ReturnType<typeof getScheduledOccurrences>>();
     if (filter !== "all" && filter !== "pending") return grouped;
     days.forEach((date) => {
-      const occurrences = getScheduledOccurrences(date, weeklyQuests).filter((dailyMission) => !normalizedQuery || `${dailyMission.title} ${dailyMission.subject} ${dailyMission.location ?? ""}`.toLocaleLowerCase("es").includes(normalizedQuery));
+      const occurrences = getScheduledOccurrences(date, catalogWeeklyQuests).filter((dailyMission) => !normalizedQuery || `${dailyMission.title} ${dailyMission.subject} ${dailyMission.location ?? ""}`.toLocaleLowerCase("es").includes(normalizedQuery));
       if (occurrences.length) grouped.set(toISODate(date), occurrences);
     });
     return grouped;
-  }, [days, filter, weeklyQuests, normalizedQuery]);
+  }, [days, filter, catalogWeeklyQuests, normalizedQuery]);
   const selectedIso = toISODate(selectedDate);
   const selectedMissions = missionsByDate.get(selectedIso) ?? [];
   const selectedClasses = scheduleByDate.get(selectedIso) ?? [];
@@ -111,9 +117,9 @@ export function MissionPlanner() {
   const streak = useMemo(() => calculateStreak(missions), [missions]);
   const monthName = new Intl.DateTimeFormat("es-CO", { month: "long" }).format(month);
   const campaignProgress = missions.length ? Math.round((gameStats.completed / missions.length) * 100) : 0;
-  const nextObjective = useMemo(() => missions
+  const nextObjective = useMemo(() => catalogMissions
     .filter((mission) => getMissionStatus(mission) !== "completed")
-    .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))[0] ?? null, [missions]);
+    .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))[0] ?? null, [catalogMissions]);
   const objectiveTiming = useMemo(() => {
     if (!nextObjective) return "Campaña completada";
     const today = new Date();
@@ -188,6 +194,9 @@ export function MissionPlanner() {
           <button className={view === "weekly" ? "active" : ""} onClick={() => { setFocusedWeeklyQuestId(null); setView("weekly"); setMobileNav(false); }}>
             <CalendarRange size={18} /><span>Misiones semanales</span>
           </button>
+          <button className={view === "subjects" ? "active" : ""} onClick={() => { setView("subjects"); setMobileNav(false); }}>
+            <Library size={18} /><span>Mis materias</span>
+          </button>
           {filters.map((item) => (
             <button key={item.id} className={view === "calendar" && filter === item.id ? "active" : ""} onClick={() => { setView("calendar"); setFilter(item.id); setMobileNav(false); }}>
               {item.icon}<span>{item.label}</span>
@@ -217,16 +226,16 @@ export function MissionPlanner() {
       <section className={`content ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
         <header className="topbar">
           <button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Abrir menú"><Menu /></button>
-          <div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "world" ? "Buscar tarea o materia..." : view === "map" ? "Buscar un destino..." : view === "weekly" ? "Buscar una clase..." : "Buscar una misión..."} /></div>
+          <div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "world" ? "Buscar tarea o materia..." : view === "map" ? "Buscar un destino..." : view === "weekly" ? "Buscar una clase..." : view === "subjects" ? "Buscar una materia..." : "Buscar una misión..."} /></div>
           <div className="top-actions">
-            {(missionsLoading || scheduleLoading || missionsError || scheduleError) && <span className={`sync-state ${missionsError || scheduleError ? "error" : ""}`}>{missionsError || scheduleError ? "Sin guardar" : "Sincronizando"}</span>}
+            {(missionsLoading || scheduleLoading || subjectsLoading || missionsError || scheduleError || subjectsError) && <span className={`sync-state ${missionsError || scheduleError || subjectsError ? "error" : ""}`}>{missionsError || scheduleError || subjectsError ? "Sin guardar" : "Sincronizando"}</span>}
             <span className="level-hud" title={`${player.rank} · ${player.totalXp} XP total`}><Sparkles size={14} /><b>NIV. {player.level}</b><small>{player.xpInLevel}/{player.xpPerLevel} XP</small></span>
             <span className="streak">🔥 <b>{streak}</b><small> DÍAS DE RACHA</small></span>
             <button className="primary-button compact" onClick={() => openNew(selectedDate, view === "world" ? selectedSubject ?? undefined : undefined)}><Plus size={18} /> Nueva misión</button>
           </div>
         </header>
 
-        {(missionsError || scheduleError) && <div className="sync-alert" role="alert"><AlertTriangle size={15} /><span><strong>No se pudo sincronizar.</strong> {missionsError ?? scheduleError}</span></div>}
+        {(missionsError || scheduleError || subjectsError) && <div className="sync-alert" role="alert"><AlertTriangle size={15} /><span><strong>No se pudo sincronizar.</strong> {missionsError ?? scheduleError ?? subjectsError}</span></div>}
 
         {view === "world" ? (
           <div className="workspace world-workspace">
@@ -245,7 +254,11 @@ export function MissionPlanner() {
           </div>
         ) : view === "weekly" ? (
           <div className="workspace weekly-workspace">
-            <WeeklySchedule weeklyQuests={weeklyQuests.filter((weeklyQuest) => !normalizedQuery || weeklyQuest.dailyMissions.some((dailyMission) => `${dailyMission.title} ${dailyMission.subject} ${dailyMission.location ?? ""}`.toLocaleLowerCase("es").includes(normalizedQuery)) || weeklyQuest.title.toLocaleLowerCase("es").includes(normalizedQuery))} loading={scheduleLoading} focusedWeeklyQuestId={focusedWeeklyQuestId} onSave={upsertWeeklyQuest} onDelete={removeWeeklyQuest} />
+            <WeeklySchedule weeklyQuests={catalogWeeklyQuests.filter((weeklyQuest) => !normalizedQuery || weeklyQuest.dailyMissions.some((dailyMission) => `${dailyMission.title} ${dailyMission.subject} ${dailyMission.location ?? ""}`.toLocaleLowerCase("es").includes(normalizedQuery)) || weeklyQuest.title.toLocaleLowerCase("es").includes(normalizedQuery))} loading={scheduleLoading} focusedWeeklyQuestId={focusedWeeklyQuestId} subjects={subjects} onManageSubjects={() => setView("subjects")} onSave={upsertWeeklyQuest} onDelete={removeWeeklyQuest} />
+          </div>
+        ) : view === "subjects" ? (
+          <div className="workspace subjects-workspace">
+            <SubjectsView subjects={subjects.filter((subject) => !normalizedQuery || subject.name.toLocaleLowerCase("es").includes(normalizedQuery))} missions={catalogMissions} weeklyQuests={catalogWeeklyQuests} loading={subjectsLoading} onSave={upsertSubject} onDelete={removeSubject} />
           </div>
         ) : <div className="workspace">
           <div className="page-heading">
@@ -354,7 +367,7 @@ export function MissionPlanner() {
         </div>}
       </section>
 
-      <MissionForm open={modalOpen} initialDate={selectedDate} initialSubject={draftSubject} mission={editing} onClose={() => setModalOpen(false)} onSave={upsert} onDelete={remove} />
+      <MissionForm open={modalOpen} initialDate={selectedDate} initialSubject={draftSubject} mission={editing} onClose={() => setModalOpen(false)} onSave={upsert} onDelete={remove} subjects={subjects} onManageSubjects={() => setView("subjects")} />
       <AccountPanel
         open={accountOpen}
         user={auth.user}

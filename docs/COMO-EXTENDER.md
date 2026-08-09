@@ -27,6 +27,10 @@ La experiencia por prioridad, los 250 XP por nivel y los nombres de rango están
 
 Los tipos `WeeklyQuest`, `DailyClassQuest` y la proyección por fechas viven en `lib/schedule.ts`. La validación del servidor está en `weeklyQuestSchema`, la persistencia en `/api/weekly-quests` y el estado optimista en `useWeeklyQuests`. Mantén la recurrencia como cálculo: no generes un documento de MongoDB por cada día del semestre.
 
+## Usar materias globales
+
+Los formularios deben obtener sus opciones desde `useSubjects`; no vuelvas a introducir campos libres para nombres de materias. Guarda siempre `subjectId` junto con el nombre compatible y usa `resolveSubjectName()` para presentar datos antiguos. Si añades otra entidad que dependa de materias, incluye su migración y propagación de renombres en `/api/subjects`.
+
 ## Regla de autorización
 
 Nunca aceptes `userId` desde parámetros, JSON o cabeceras del navegador para decidir el propietario. El ID válido proviene exclusivamente de la sesión verificada.

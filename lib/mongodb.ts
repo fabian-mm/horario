@@ -131,6 +131,8 @@ async function ensureIndexes(db: Db) {
     db.collection("missions").createIndex({ userId: 1, id: 1 }, { unique: true }),
     db.collection("missions").createIndex({ userId: 1, date: 1, time: 1 }),
     db.collection("weeklyQuests").createIndex({ userId: 1, id: 1 }, { unique: true }),
+    db.collection("subjects").createIndex({ userId: 1, id: 1 }, { unique: true }),
+    db.collection("subjects").createIndex({ userId: 1, normalizedName: 1 }, { unique: true }),
   ]);
   indexesCreated = true;
 }
