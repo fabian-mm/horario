@@ -1,6 +1,6 @@
-import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
+import { ensureSubjectCatalogMigration } from "@/lib/data-migrations";
 import { getDb } from "@/lib/mongodb";
 import { normalizeSubjectName, Subject } from "@/lib/subjects";
 import { subjectSchema } from "@/lib/validation";
@@ -13,36 +13,8 @@ export async function GET() {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
   const db = await getDb();
-  const missionNames = await db.collection("missions").distinct<string>("subject", { userId });
-  const weeklyDocuments = await db.collection("weeklyQuests").find({ userId }).project<{ dailyMissions?: Array<{ subject?: string }> }>({ dailyMissions: 1 }).toArray();
-  const usedNames = Array.from(new Set([...missionNames, ...weeklyDocuments.flatMap((weeklyQuest) => weeklyQuest.dailyMissions?.map((dailyMission) => dailyMission.subject ?? "") ?? [])].map((name) => name.trim()).filter(Boolean)));
-  const now = new Date().toISOString();
-  const knownSubjects = await db.collection<SubjectDocument>("subjects").find({ userId }).toArray();
-  const knownNames = new Set(knownSubjects.flatMap((subject) => [subject.name, ...(subject.aliases ?? [])]).map(normalizeSubjectName));
-
-  for (const name of usedNames) {
-    const normalizedName = normalizeSubjectName(name);
-    if (knownNames.has(normalizedName)) continue;
-    await db.collection<SubjectDocument>("subjects").updateOne(
-      { userId, normalizedName },
-      { $setOnInsert: { id: randomUUID(), userId, name, normalizedName, aliases: [], createdAt: now, updatedAt: now } },
-      { upsert: true },
-    );
-    knownNames.add(normalizedName);
-  }
-
+  await ensureSubjectCatalogMigration(db, userId);
   const subjects = await db.collection<SubjectDocument>("subjects").find({ userId }).sort({ name: 1 }).toArray();
-  for (const subject of subjects) {
-    const names = Array.from(new Set([subject.name, ...(subject.aliases ?? [])]));
-    await Promise.all([
-      db.collection("missions").updateMany({ userId, subject: { $in: names } }, { $set: { subjectId: subject.id, subject: subject.name } }),
-      db.collection("weeklyQuests").updateMany(
-        { userId, "dailyMissions.subject": { $in: names } },
-        { $set: { "dailyMissions.$[daily].subjectId": subject.id, "dailyMissions.$[daily].subject": subject.name } },
-        { arrayFilters: [{ "daily.subject": { $in: names } }] },
-      ),
-    ]);
-  }
   return NextResponse.json(subjects.map(safeSubject));
 }
 

@@ -10,7 +10,7 @@ type Props = {
   activityTypes: ActivityType[];
   weeklyQuests: WeeklyQuest[];
   onClose: () => void;
-  onSave: (activityType: ActivityType) => void;
+  onSave: (activityType: ActivityType) => Promise<ActivityType | null>;
   onDelete: (id: string) => void;
   selectOnSave?: boolean;
 };
@@ -24,17 +24,23 @@ const blankType = (): ActivityType => ({ id: "", name: "", category: "activity",
 
 export function ActivityTypesManager({ open, activityTypes, weeklyQuests, onClose, onSave, onDelete, selectOnSave = false }: Props) {
   const [draft, setDraft] = useState<ActivityType>(blankType());
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const usage = useMemo(() => new Map(activityTypes.map((type) => [type.id, weeklyQuests.reduce(
     (count, week) => count + week.dailyMissions.filter((activity) => activity.activityTypeId === type.id).length,
     0,
   )])), [activityTypes, weeklyQuests]);
   if (!open) return null;
 
-  const save = (event: FormEvent) => {
+  const save = async (event: FormEvent) => {
     event.preventDefault();
     const savedType = { ...draft, id: draft.id || crypto.randomUUID(), name: draft.name.trim(), points: Number(draft.points) };
-    onSave(savedType);
-    setDraft(savedType);
+    setSaving(true);
+    setSaveError(null);
+    const persisted = await onSave(savedType);
+    setSaving(false);
+    if (persisted) setDraft(persisted);
+    else setSaveError("No se pudo guardar. Revisa tu conexión e inténtalo otra vez.");
   };
 
   return <div className="modal-backdrop" onMouseDown={onClose}>
@@ -56,9 +62,10 @@ export function ActivityTypesManager({ open, activityTypes, weeklyQuests, onClos
           <label>Comportamiento<select value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value as ActivityType["category"] })}><option value="activity">Actividad general</option><option value="class">Clase (usa materia)</option></select></label>
           <label>Puntos por completar<input required type="number" inputMode="numeric" min={0} max={500} value={draft.points} onChange={(event) => setDraft({ ...draft, points: Number(event.target.value) })} /></label>
           <fieldset className="tone-picker"><legend>Color en el mapa</legend>{tones.map((tone) => <button key={tone.id} type="button" className={`tone-${tone.id} ${draft.tone === tone.id ? "selected" : ""}`} onClick={() => setDraft({ ...draft, tone: tone.id })}><i />{tone.label}</button>)}</fieldset>
+          {saveError && <p className="form-error" role="alert">{saveError}</p>}
           <div className="activity-type-actions">
             {draft.id && <button type="button" className="delete-button" disabled={(usage.get(draft.id) ?? 0) > 0 || activityTypes.length <= 1} title={(usage.get(draft.id) ?? 0) > 0 ? "Está en uso en el horario" : undefined} onClick={() => { onDelete(draft.id); setDraft(blankType()); }}><Trash2 size={14} /> Eliminar</button>}
-            <button type="submit" className="primary-button">{draft.id ? "Guardar cambios" : selectOnSave ? "Crear y seleccionar" : "Crear tipo"}</button>
+            <button type="submit" className="primary-button" disabled={saving}>{saving ? "Guardando..." : draft.id ? "Guardar cambios" : selectOnSave ? "Crear y seleccionar" : "Crear tipo"}</button>
           </div>
         </form>
       </div>

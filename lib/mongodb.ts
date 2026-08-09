@@ -144,6 +144,7 @@ async function ensureIndexes(db: Db) {
     db.collection("activityTypes").createIndex({ userId: 1, normalizedName: 1 }, { unique: true }),
     db.collection("missionTypes").createIndex({ userId: 1, id: 1 }, { unique: true }),
     db.collection("missionTypes").createIndex({ userId: 1, normalizedName: 1 }, { unique: true }),
+    db.collection("userMigrations").createIndex({ userId: 1, key: 1 }, { unique: true }),
   ]).then(() => undefined);
   indexesPromise.catch(() => { indexesPromise = undefined; });
   return indexesPromise;

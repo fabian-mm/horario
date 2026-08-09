@@ -33,4 +33,14 @@ export const findActivityType = (activityTypes: ActivityType[], activityTypeId?:
 };
 
 export const resolveActivityType = (activityTypes: ActivityType[], activityTypeId?: string, name?: string) =>
-  findActivityType(activityTypes, activityTypeId, name) ?? activityTypes[0] ?? defaultActivityTypes[0];
+  findActivityType(activityTypes, activityTypeId, name) ?? (
+    activityTypeId || name
+      ? {
+          id: activityTypeId ?? "missing-activity-type",
+          name: name?.trim() || "Tipo no disponible",
+          category: "activity" as const,
+          points: 0,
+          tone: "coral" as const,
+        }
+      : activityTypes[0] ?? defaultActivityTypes[0]
+  );

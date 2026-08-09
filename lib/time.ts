@@ -69,7 +69,14 @@ export function parseTimeInput(rawValue: string, allowHourOnly = true) {
 export function shiftTime(value: string, deltaMinutes: number) {
   const current = timeToMinutes(value);
   if (current === null) return null;
-  return minutesToTime(current + deltaMinutes);
+  const shifted = current + deltaMinutes;
+  if (shifted < 0 || shifted >= MINUTES_PER_DAY) return null;
+  return minutesToTime(shifted);
+}
+
+export function isTimeBlockWithinDay(value: string, durationMinutes: number) {
+  const start = timeToMinutes(value);
+  return start !== null && durationMinutes > 0 && start + durationMinutes < MINUTES_PER_DAY;
 }
 
 export function isTimeAfter(value: string, minimum: string) {

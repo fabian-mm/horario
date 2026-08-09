@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
+import { ensureActivityTypeLinksMigration } from "@/lib/data-migrations";
 import { getDb } from "@/lib/mongodb";
 import { ActivityType, defaultActivityTypes, normalizeActivityTypeName } from "@/lib/activity-types";
 import { activityTypeSchema } from "@/lib/validation";
@@ -12,29 +13,20 @@ export async function GET() {
   if (!userId) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
   const db = await getDb();
   const collection = db.collection<ActivityTypeDocument>("activityTypes");
-  const existingCount = await collection.countDocuments({ userId });
-  if (!existingCount) {
-    const now = new Date().toISOString();
-    await Promise.all(defaultActivityTypes.map((activityType) => collection.updateOne(
+  const existingCatalog = await collection.find({ userId }).toArray();
+  const existingIds = new Set(existingCatalog.map((type) => type.id));
+  const existingNames = new Set(existingCatalog.map((type) => normalizeActivityTypeName(type.name)));
+  const now = new Date().toISOString();
+  await Promise.all(defaultActivityTypes
+    .filter((type) => !existingIds.has(type.id) && !existingNames.has(normalizeActivityTypeName(type.name)))
+    .map((activityType) => collection.updateOne(
       { userId, id: activityType.id },
       { $setOnInsert: { ...activityType, aliases: [], userId, normalizedName: normalizeActivityTypeName(activityType.name), createdAt: now, updatedAt: now } },
       { upsert: true },
     )));
-  }
   const activityTypes = await collection.find({ userId }).sort({ createdAt: 1, name: 1 }).toArray();
   const classType = activityTypes.find((activityType) => activityType.category === "class") ?? activityTypes[0];
-  if (classType) {
-    await db.collection("weeklyQuests").updateMany(
-      { userId, dailyMissions: { $elemMatch: { activityTypeId: { $exists: false } } } },
-      { $set: {
-        "dailyMissions.$[activity].activityTypeId": classType.id,
-        "dailyMissions.$[activity].activityTypeName": classType.name,
-        "dailyMissions.$[activity].activityCategory": classType.category,
-        "dailyMissions.$[activity].activityPoints": classType.points,
-      } },
-      { arrayFilters: [{ "activity.activityTypeId": { $exists: false } }] },
-    );
-  }
+  await ensureActivityTypeLinksMigration(db, userId, classType);
   return NextResponse.json(activityTypes.map(safeActivityType));
 }
 

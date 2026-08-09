@@ -4,11 +4,11 @@ import { FormEvent, useMemo, useState } from "react";
 import { Activity, BookOpen, CalendarRange, Check, Clock3, MapPin, Pencil, Plus, Power, ScrollText, Settings2, Sparkles, Trash2, X } from "lucide-react";
 import { ActivityTypesManager } from "@/components/activity-types-manager";
 import type { ActivityType } from "@/lib/activity-types";
-import { resolveActivityType } from "@/lib/activity-types";
+import { findActivityType, resolveActivityType } from "@/lib/activity-types";
 import { DailyClassQuest, getMondayIso, getScheduledActivityDetail, sortDailyMissionsByTime, Weekday, WeeklyQuest, weekdayMeta } from "@/lib/schedule";
 import { findSubject, Subject } from "@/lib/subjects";
 import { TimeField } from "@/components/time-field";
-import { formatTimeRange12Hour, shiftTime, timeToMinutes } from "@/lib/time";
+import { formatTimeRange12Hour, isTimeBlockWithinDay, shiftTime, timeToMinutes } from "@/lib/time";
 import { QuestTypeCards } from "@/components/quest-type-cards";
 
 type Props = {
@@ -20,7 +20,7 @@ type Props = {
   onManageSubjects: () => void;
   onSave: (weeklyQuest: WeeklyQuest) => void;
   onDelete: (id: string) => void;
-  onSaveActivityType: (activityType: ActivityType) => void;
+  onSaveActivityType: (activityType: ActivityType) => Promise<ActivityType | null>;
   onDeleteActivityType: (id: string) => void;
 };
 
@@ -55,16 +55,16 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
   const [dailyDraft, setDailyDraft] = useState<DailyClassQuest>(emptyDailyQuest(1, subjects, activityTypes));
   const [typesModalOpen, setTypesModalOpen] = useState(false);
+  const [dailyFormError, setDailyFormError] = useState<string | null>(null);
   const selectedWeeklyQuest = weeklyQuests.find((weeklyQuest) => weeklyQuest.id === selectedId) ?? weeklyQuests.find((weeklyQuest) => weeklyQuest.id === focusedWeeklyQuestId) ?? weeklyQuests[0] ?? null;
-  const orderedDailyMissions = selectedWeeklyQuest ? sortDailyMissionsByTime(selectedWeeklyQuest.dailyMissions) : [];
-
   const classesByDay = useMemo(() => {
     const grouped = new Map<Weekday, DailyClassQuest[]>();
     ([1, 2, 3, 4, 5, 6, 7] as Weekday[]).forEach((day) => grouped.set(day, []));
+    const orderedDailyMissions = selectedWeeklyQuest ? sortDailyMissionsByTime(selectedWeeklyQuest.dailyMissions) : [];
     orderedDailyMissions.forEach((dailyMission) => grouped.get(dailyMission.dayOfWeek)?.push(dailyMission));
     grouped.forEach((classes, day) => grouped.set(day, sortDailyMissionsByTime(classes)));
     return grouped;
-  }, [orderedDailyMissions]);
+  }, [selectedWeeklyQuest]);
 
   const openNewWeekly = () => {
     setWeeklyEditing(null);
@@ -97,18 +97,23 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
   };
 
   const openNewDaily = (dayOfWeek: Weekday) => {
+    setDailyFormError(null);
     setDailyDraft(emptyDailyQuest(dayOfWeek, subjects, activityTypes));
     setDailyModalOpen(true);
   };
   const openEditDaily = (dailyMission: DailyClassQuest) => {
+    setDailyFormError(null);
     setDailyDraft({ ...dailyMission, title: getScheduledActivityDetail(dailyMission) });
     setDailyModalOpen(true);
   };
   const saveDaily = (event: FormEvent) => {
     event.preventDefault();
     if (!selectedWeeklyQuest) return;
-    const activityType = resolveActivityType(activityTypes, dailyDraft.activityTypeId, dailyDraft.activityTypeName);
-    if (!activityType) return;
+    const activityType = findActivityType(activityTypes, dailyDraft.activityTypeId, dailyDraft.activityTypeName);
+    if (!activityType) {
+      setDailyFormError("Ese tipo de actividad ya no existe. Selecciona otro antes de guardar.");
+      return;
+    }
     const isClass = activityType.category === "class";
     const subject = isClass ? dailyDraft.subject?.trim() : undefined;
     const dailyMission = { ...dailyDraft, id: dailyDraft.id || crypto.randomUUID(), title: dailyDraft.title.trim() || subject || activityType.name, subject, subjectId: isClass ? dailyDraft.subjectId : undefined, activityTypeId: activityType.id, activityTypeName: activityType.name, activityCategory: activityType.category, activityPoints: activityType.points, location: dailyDraft.location?.trim(), notes: dailyDraft.notes?.trim() };
@@ -127,11 +132,35 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
   };
   const selectedDailySubject = findSubject(subjects, dailyDraft.subject, dailyDraft.subjectId);
   const selectedActivityType = resolveActivityType(activityTypes, dailyDraft.activityTypeId, dailyDraft.activityTypeName);
-  const selectActivityType = (type: ActivityType) => setDailyDraft((current) => ({ ...current, activityTypeId: type.id, activityTypeName: type.name, activityCategory: type.category, activityPoints: type.points, subject: type.category === "class" ? current.subject ?? subjects[0]?.name : undefined, subjectId: type.category === "class" ? current.subjectId ?? subjects[0]?.id : undefined }));
-  const saveAndSelectActivityType = (type: ActivityType) => { onSaveActivityType(type); if (dailyModalOpen) selectActivityType(type); };
+  const selectActivityType = (type: ActivityType) => {
+    setDailyFormError(null);
+    setDailyDraft((current) => ({ ...current, activityTypeId: type.id, activityTypeName: type.name, activityCategory: type.category, activityPoints: type.points, subject: type.category === "class" ? current.subject ?? subjects[0]?.name : undefined, subjectId: type.category === "class" ? current.subjectId ?? subjects[0]?.id : undefined }));
+  };
+  const saveAndSelectActivityType = async (type: ActivityType) => {
+    const saved = await onSaveActivityType(type);
+    if (saved && dailyModalOpen) selectActivityType(saved);
+    return saved;
+  };
   const currentDuration = Math.max(0, (timeToMinutes(dailyDraft.endTime) ?? 0) - (timeToMinutes(dailyDraft.startTime) ?? 0));
-  const setDuration = (durationMinutes: 60 | 120) => setDailyDraft((current) => ({ ...current, endTime: shiftTime(current.startTime, durationMinutes) ?? current.endTime }));
-  const setStartTime = (startTime: string) => setDailyDraft((current) => ({ ...current, startTime, endTime: shiftTime(startTime, currentDuration === 60 ? 60 : 120) ?? current.endTime }));
+  const setDuration = (durationMinutes: 60 | 120) => {
+    const endTime = shiftTime(dailyDraft.startTime, durationMinutes);
+    if (!endTime) {
+      setDailyFormError("Ese bloque terminaría después de medianoche. Elige una hora más temprana.");
+      return;
+    }
+    setDailyFormError(null);
+    setDailyDraft((current) => ({ ...current, endTime }));
+  };
+  const setStartTime = (startTime: string) => {
+    const duration = currentDuration === 60 ? 60 : 120;
+    const endTime = shiftTime(startTime, duration);
+    if (!endTime) {
+      setDailyFormError("La hora elegida no permite completar el bloque antes de medianoche.");
+      return;
+    }
+    setDailyFormError(null);
+    setDailyDraft((current) => ({ ...current, startTime, endTime }));
+  };
 
   return (
     <div className="weekly-schedule-view">
@@ -223,13 +252,17 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
               {selectedActivityType?.category === "class" ? <div className="class-time-block">
                 <TimeField label="Hora de inicio" required value={dailyDraft.startTime} onChange={setStartTime} />
                 <fieldset className="duration-fieldset"><legend>Duración de la clase</legend><div className="duration-options" role="group" aria-label="Duración de la clase">
-                  {([60, 120] as const).map((duration) => <button key={duration} type="button" className={currentDuration === duration ? "selected" : ""} onClick={() => setDuration(duration)}><strong>{duration / 60} {duration === 60 ? "hora" : "horas"}</strong><small>Hasta {formatTimeRange12Hour(dailyDraft.startTime, shiftTime(dailyDraft.startTime, duration) ?? dailyDraft.endTime).split(" – ")[1]}</small></button>)}
+                  {([60, 120] as const).map((duration) => {
+                    const endTime = shiftTime(dailyDraft.startTime, duration);
+                    return <button key={duration} type="button" disabled={!isTimeBlockWithinDay(dailyDraft.startTime, duration)} className={currentDuration === duration ? "selected" : ""} onClick={() => setDuration(duration)}><strong>{duration / 60} {duration === 60 ? "hora" : "horas"}</strong><small>{endTime ? `Hasta ${formatTimeRange12Hour(dailyDraft.startTime, endTime).split(" – ")[1]}` : "No disponible"}</small></button>;
+                  })}
                 </div></fieldset>
               </div> : <div className="form-row time-range-row">
                 <TimeField label="Comienza" required value={dailyDraft.startTime} onChange={(startTime) => setDailyDraft((current) => ({ ...current, startTime }))} />
                 <TimeField label="Termina" required after={dailyDraft.startTime} value={dailyDraft.endTime} onChange={(endTime) => setDailyDraft((current) => ({ ...current, endTime }))} />
               </div>}
               <label>Notas <span className="optional">(opcional)</span><textarea rows={3} value={dailyDraft.notes ?? ""} onChange={(event) => setDailyDraft({ ...dailyDraft, notes: event.target.value })} placeholder="Profesor, materiales o recordatorios..." /></label>
+              {dailyFormError && <p className="form-error" role="alert">{dailyFormError}</p>}
               <div className="modal-actions">
                 {dailyDraft.id ? <button type="button" className="delete-button" onClick={deleteDaily}><Trash2 size={14} /> Eliminar actividad</button> : <span />}
                 <div><button type="button" className="secondary-button" onClick={() => setDailyModalOpen(false)}>Cancelar</button><button type="submit" className="primary-button"><ScrollText size={14} /> Guardar actividad</button></div>

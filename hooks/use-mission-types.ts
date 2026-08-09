@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMutationCoordinator } from "@/hooks/use-mutation-coordinator";
 import { sortMissionTypes, type MissionType } from "@/lib/mission-types";
+import { removeById, restoreById, upsertById } from "@/lib/optimistic";
 
 export function useMissionTypes(enabled: boolean) {
   const [missionTypes, setMissionTypes] = useState<MissionType[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mutations = useMutationCoordinator();
 
   useEffect(() => {
     if (!enabled) {
@@ -47,9 +50,9 @@ export function useMissionTypes(enabled: boolean) {
     };
   }, [enabled]);
 
-  const upsert = (missionType: MissionType) => {
-    const previous = missionTypes;
+  const upsert = async (missionType: MissionType) => {
     const existing = missionTypes.find((item) => item.id === missionType.id);
+    const version = mutations.begin(missionType.id);
     const optimistic =
       existing && existing.name !== missionType.name
         ? {
@@ -59,63 +62,68 @@ export function useMissionTypes(enabled: boolean) {
             ),
           }
         : missionType;
-    setMissionTypes((current) => sortMissionTypes(
-      current.some((item) => item.id === missionType.id)
-        ? current.map((item) =>
-            item.id === missionType.id ? optimistic : item,
-          )
-        : [...current, optimistic],
-    ));
+    setMissionTypes((current) => sortMissionTypes(upsertById(current, optimistic)));
     setError(null);
-    fetch("/api/mission-types", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(missionType),
-    })
-      .then(async (response) => {
+    try {
+      const saved = await mutations.enqueue(async () => {
+        const response = await fetch("/api/mission-types", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(missionType),
+        });
         const body = await response.json();
         if (!response.ok)
           throw new Error(
             body.error ?? "No se pudo guardar el tipo de misión.",
           );
-        const saved = body as MissionType;
-        setMissionTypes((current) => sortMissionTypes(current.map((item) => (item.id === saved.id ? saved : item))));
-      })
-      .catch((requestError) => {
-        setMissionTypes(previous);
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "No se pudo guardar el tipo de misión.",
-        );
+        return body as MissionType;
       });
+      if (mutations.isLatest(missionType.id, version)) {
+        setMissionTypes((current) => sortMissionTypes(upsertById(current, saved)));
+      }
+      return saved;
+    } catch (requestError) {
+      if (mutations.isLatest(missionType.id, version)) {
+        setMissionTypes((current) => sortMissionTypes(restoreById(current, missionType.id, existing)));
+      }
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No se pudo guardar el tipo de misión.",
+      );
+      return null;
+    }
   };
 
-  const remove = (id: string) => {
-    const previous = missionTypes;
-    setMissionTypes((current) =>
-      current.filter((missionType) => missionType.id !== id),
-    );
+  const remove = async (id: string) => {
+    const previous = missionTypes.find((missionType) => missionType.id === id);
+    const version = mutations.begin(id);
+    setMissionTypes((current) => removeById(current, id));
     setError(null);
-    fetch(`/api/mission-types/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-    })
-      .then(async (response) => {
+    try {
+      await mutations.enqueue(async () => {
+        const response = await fetch(`/api/mission-types/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+        });
         if (!response.ok) {
           const body = await response.json();
           throw new Error(
             body.error ?? "No se pudo eliminar el tipo de misión.",
           );
         }
-      })
-      .catch((requestError) => {
-        setMissionTypes(previous);
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "No se pudo eliminar el tipo de misión.",
-        );
       });
+      return true;
+    } catch (requestError) {
+      if (mutations.isLatest(id, version)) {
+        setMissionTypes((current) => sortMissionTypes(restoreById(current, id, previous)));
+      }
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No se pudo eliminar el tipo de misión.",
+      );
+      return false;
+    }
   };
 
   return { missionTypes, loading, error, upsert, remove };

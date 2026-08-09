@@ -454,6 +454,7 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .auth-input button { width: 28px; height: 28px; display: grid; place-items: center; border: 0; color: #82908a; background: transparent; cursor: pointer; }
 .auth-card label > input:focus, .auth-input:focus-within, .account-form input:focus { border-color: #9a7a3f; box-shadow: 0 0 0 3px rgba(178,139,66,.11); }
 .auth-error { padding: 9px 10px; border-radius: 6px; color: #9f4637; background: #f3ddd8; font-size: 9px; }
+.form-error { margin: 0; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--coral) 32%, transparent); border-radius: 6px; color: color-mix(in srgb, var(--coral) 78%, #5f2820); background: color-mix(in srgb, var(--coral) 11%, var(--paper)); font-size: 10px; font-weight: 700; }
 .auth-submit { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 2px; }
 .auth-submit:disabled { opacity: .65; cursor: wait; }
 .auth-privacy { display: block; margin-top: 14px; color: #88938e; font-size: 8px; line-height: 1.5; text-align: center; }

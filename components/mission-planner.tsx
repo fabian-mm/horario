@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, Award, BookOpen, CalendarClock, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, LayoutGrid, Library, List, LoaderCircle, MapPin, MapPinned, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Sunrise, Swords, Target, Trophy, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Activity, AlertTriangle, Award, BookOpen, CalendarClock, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, LayoutGrid, List, LoaderCircle, MapPin, MapPinned, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Sunrise, Swords, Target, Trophy, X } from "lucide-react";
 import { useActivityTypes } from "@/hooks/use-activity-types";
 import { useAuth } from "@/hooks/use-auth";
 import { useMissionTypes } from "@/hooks/use-mission-types";
@@ -67,6 +67,7 @@ export function MissionPlanner() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [focusedWeeklyQuestId, setFocusedWeeklyQuestId] = useState<string | null>(null);
   const [reward, setReward] = useState<RewardEvent | null>(null);
+  const rewardSequence = useRef(0);
   const [missionTypesOpen, setMissionTypesOpen] = useState(false);
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("month");
   const [freeTimeOpen, setFreeTimeOpen] = useState(false);
@@ -166,7 +167,11 @@ export function MissionPlanner() {
     return `Faltan ${daysAway} días`;
   }, [nextObjective]);
 
-  const showReward = (mission: Mission) => { const xp = getMissionXp(mission); setReward({ id: Date.now(), title: mission.title, xp, boss: mission.priority === "boss", milestone: getCrossedXpMilestone(player.totalXp, player.totalXp + xp) }); };
+  const nextRewardId = () => {
+    rewardSequence.current += 1;
+    return rewardSequence.current;
+  };
+  const showReward = (mission: Mission) => { const xp = getMissionXp(mission); setReward({ id: nextRewardId(), title: mission.title, xp, boss: mission.priority === "boss", milestone: getCrossedXpMilestone(player.totalXp, player.totalXp + xp) }); };
   const toggleWithFeedback = (id: string) => {
     const mission = missions.find((item) => item.id === id);
     if (mission && getMissionStatus(mission) !== "completed") showReward(mission);
@@ -183,7 +188,7 @@ export function MissionPlanner() {
     const completing = !occurrence.completed;
     const xp = getScheduledActivityXp(occurrence);
     upsertWeeklyQuest({ ...weeklyQuest, dailyMissions: weeklyQuest.dailyMissions.map((activity) => { if (activity.id !== occurrence.id) return activity; const completedDates = new Set(activity.completedDates ?? []); if (completing) completedDates.add(occurrence.date); else completedDates.delete(occurrence.date); return { ...activity, completedDates: [...completedDates].sort() }; }) });
-    if (completing) setReward({ id: Date.now(), title: occurrence.title, xp, boss: false, activity: true, milestone: getCrossedXpMilestone(player.totalXp, player.totalXp + xp) });
+    if (completing) setReward({ id: nextRewardId(), title: occurrence.title, xp, boss: false, activity: true, milestone: getCrossedXpMilestone(player.totalXp, player.totalXp + xp) });
   };
   const openObjective = (mission: Mission) => {
     const objectiveDate = new Date(`${mission.date}T12:00:00`);

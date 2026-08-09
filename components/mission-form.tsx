@@ -1,13 +1,14 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Flag, ScrollText, Swords, X } from "lucide-react";
+import { Flag, Swords, X } from "lucide-react";
 import { Mission, MissionStatus, Priority, priorityMeta, statusMeta, toISODate } from "@/lib/missions";
 import { findSubject, Subject } from "@/lib/subjects";
 import type { MissionType } from "@/lib/mission-types";
 import { findMissionType, isTimedMissionType } from "@/lib/mission-types";
 import { TimeField } from "@/components/time-field";
 import { QuestTypeCards } from "@/components/quest-type-cards";
+import { isTimeBlockWithinDay } from "@/lib/time";
 
 type Props = {
   open: boolean;
@@ -46,9 +47,11 @@ const emptyForm = (date: Date, subject = "", subjects: Subject[] = [], missionTy
 
 export function MissionForm({ open, initialDate, initialSubject, mission, onClose, onSave, onDelete, subjects, missionTypes, onManageSubjects, onManageMissionTypes }: Props) {
   const [form, setForm] = useState<Mission>(emptyForm(initialDate));
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    setFormError(null);
     if (mission) {
       const selectedSubject = findSubject(subjects, mission.subject, mission.subjectId);
       setForm({ ...mission, subject: selectedSubject?.name ?? mission.subject, subjectId: selectedSubject?.id ?? mission.subjectId });
@@ -62,6 +65,11 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    const durationMinutes = usesTimeBlock ? form.durationMinutes ?? 120 : undefined;
+    if (durationMinutes && !isTimeBlockWithinDay(form.time, durationMinutes)) {
+      setFormError("El bloque debe terminar antes de medianoche. Elige una hora más temprana o una duración menor.");
+      return;
+    }
     onSave({
       ...form,
       id: form.id || crypto.randomUUID(),
@@ -69,7 +77,7 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
       missionTypeId: selectedMissionType?.id,
       subject: form.subject.trim(),
       completed: form.status === "completed",
-      durationMinutes: usesTimeBlock ? form.durationMinutes ?? 120 : undefined,
+      durationMinutes,
     });
     onClose();
   };
@@ -138,6 +146,7 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
             Notas <span className="optional">(opcional)</span>
             <textarea rows={3} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Pistas, temas o recordatorios..." />
           </label>
+          {formError && <p className="form-error" role="alert">{formError}</p>}
           <div className="modal-actions">
             {mission && onDelete ? <button type="button" className="delete-button" onClick={() => { onDelete(mission.id); onClose(); }}>Eliminar</button> : <span />}
             <div>

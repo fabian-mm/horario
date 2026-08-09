@@ -19,6 +19,16 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Escribe tu contraseña.").max(128),
 });
 
+const validTime = (value: string) => {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  return !!match && Number(match[1]) <= 23 && Number(match[2]) <= 59;
+};
+
+const timeMinutes = (value: string) => {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
 export const missionSchema = z.object({
   id: z.string().min(1).max(100),
   title: z.string().trim().min(1).max(180),
@@ -26,7 +36,7 @@ export const missionSchema = z.object({
   subject: z.string().trim().min(1).max(100),
   subjectId: z.string().min(1).max(100).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  time: z.string().regex(/^\d{2}:\d{2}$/),
+  time: z.string().refine(validTime, "La hora no es válida."),
   durationMinutes: z.union([z.literal(60), z.literal(120)]).optional(),
   priority: z.enum(["normal", "important", "boss"]),
   status: z.enum(["pending", "submitted", "completed"]).optional(),
@@ -34,6 +44,14 @@ export const missionSchema = z.object({
   notes: z.string().max(2000).optional(),
   grade: z.string().max(20).optional(),
   weight: z.number().min(0).max(100).optional(),
+}).superRefine((value, context) => {
+  if (value.durationMinutes && timeMinutes(value.time) + value.durationMinutes >= 24 * 60) {
+    context.addIssue({
+      code: "custom",
+      path: ["durationMinutes"],
+      message: "El bloque debe terminar antes de medianoche.",
+    });
+  }
 });
 
 const dailyClassQuestSchema = z.object({
@@ -46,8 +64,8 @@ const dailyClassQuestSchema = z.object({
   activityCategory: z.enum(["class", "activity"]).optional(),
   activityPoints: z.number().int().min(0).max(500).optional(),
   dayOfWeek: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7)]),
-  startTime: z.string().regex(/^\d{2}:\d{2}$/),
-  endTime: z.string().regex(/^\d{2}:\d{2}$/),
+  startTime: z.string().refine(validTime, "La hora inicial no es válida."),
+  endTime: z.string().refine(validTime, "La hora final no es válida."),
   location: z.string().trim().max(140).optional(),
   notes: z.string().trim().max(1000).optional(),
   completedDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(1000).optional(),

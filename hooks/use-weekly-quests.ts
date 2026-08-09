@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMutationCoordinator } from "@/hooks/use-mutation-coordinator";
+import { removeById, restoreById, upsertById } from "@/lib/optimistic";
 import { normalizeWeeklyQuest, type WeeklyQuest } from "@/lib/schedule";
 
 export function useWeeklyQuests(enabled: boolean) {
   const [weeklyQuests, setWeeklyQuests] = useState<WeeklyQuest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mutations = useMutationCoordinator();
 
   useEffect(() => {
     if (!enabled) {
@@ -46,34 +49,48 @@ export function useWeeklyQuests(enabled: boolean) {
     return body as WeeklyQuest;
   };
 
-  const upsert = (weeklyQuest: WeeklyQuest) => {
+  const upsert = async (weeklyQuest: WeeklyQuest) => {
     const normalizedWeeklyQuest = normalizeWeeklyQuest(weeklyQuest);
-    const previous = weeklyQuests;
-    setWeeklyQuests((current) => current.some((item) => item.id === normalizedWeeklyQuest.id)
-      ? current.map((item) => item.id === normalizedWeeklyQuest.id ? normalizedWeeklyQuest : item)
-      : [...current, normalizedWeeklyQuest]);
+    const previous = weeklyQuests.find((item) => item.id === normalizedWeeklyQuest.id);
+    const version = mutations.begin(normalizedWeeklyQuest.id);
+    setWeeklyQuests((current) => upsertById(current, normalizedWeeklyQuest));
     setError(null);
-    saveRemote(normalizedWeeklyQuest).catch((requestError) => {
-      setWeeklyQuests(previous);
+    try {
+      const saved = normalizeWeeklyQuest(await mutations.enqueue(() => saveRemote(normalizedWeeklyQuest)));
+      if (mutations.isLatest(normalizedWeeklyQuest.id, version)) {
+        setWeeklyQuests((current) => upsertById(current, saved));
+      }
+      return saved;
+    } catch (requestError) {
+      if (mutations.isLatest(normalizedWeeklyQuest.id, version)) {
+        setWeeklyQuests((current) => restoreById(current, normalizedWeeklyQuest.id, previous));
+      }
       setError(requestError instanceof Error ? requestError.message : "No se pudo guardar la misión semanal.");
-    });
+      return null;
+    }
   };
 
-  const remove = (id: string) => {
-    const previous = weeklyQuests;
-    setWeeklyQuests((current) => current.filter((item) => item.id !== id));
+  const remove = async (id: string) => {
+    const previous = weeklyQuests.find((item) => item.id === id);
+    const version = mutations.begin(id);
+    setWeeklyQuests((current) => removeById(current, id));
     setError(null);
-    fetch(`/api/weekly-quests/${encodeURIComponent(id)}`, { method: "DELETE" })
-      .then(async (response) => {
+    try {
+      await mutations.enqueue(async () => {
+        const response = await fetch(`/api/weekly-quests/${encodeURIComponent(id)}`, { method: "DELETE" });
         if (!response.ok) {
           const body = await response.json();
           throw new Error(body.error ?? "No se pudo eliminar la misión semanal.");
         }
-      })
-      .catch((requestError) => {
-        setWeeklyQuests(previous);
-        setError(requestError instanceof Error ? requestError.message : "No se pudo eliminar la misión semanal.");
       });
+      return true;
+    } catch (requestError) {
+      if (mutations.isLatest(id, version)) {
+        setWeeklyQuests((current) => restoreById(current, id, previous));
+      }
+      setError(requestError instanceof Error ? requestError.message : "No se pudo eliminar la misión semanal.");
+      return false;
+    }
   };
 
   return { weeklyQuests, loading, error, upsert, remove };
