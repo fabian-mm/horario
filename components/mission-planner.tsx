@@ -8,7 +8,7 @@ import { useSubjects } from "@/hooks/use-subjects";
 import { useTheme } from "@/hooks/use-theme";
 import { useWeeklyQuests } from "@/hooks/use-weekly-quests";
 import { calculatePlayerProgress, calculateStreak, formatLongDate, getMissionStatus, getMissionXp, Mission, Priority, priorityMeta, toISODate } from "@/lib/missions";
-import { getScheduledOccurrences } from "@/lib/schedule";
+import { getScheduledOccurrences, sortDailyMissionsByTime } from "@/lib/schedule";
 import { resolveSubjectName } from "@/lib/subjects";
 import { getUserInitials } from "@/lib/users";
 import { AccountPanel } from "./account-panel";
@@ -62,7 +62,13 @@ export function MissionPlanner() {
   const days = useMemo(() => calendarDays(month), [month]);
   const normalizedQuery = query.trim().toLocaleLowerCase("es");
   const catalogMissions = useMemo(() => missions.map((mission) => ({ ...mission, subject: resolveSubjectName(subjects, mission.subject, mission.subjectId) })), [missions, subjects]);
-  const catalogWeeklyQuests = useMemo(() => weeklyQuests.map((weeklyQuest) => ({ ...weeklyQuest, dailyMissions: weeklyQuest.dailyMissions.map((dailyMission) => ({ ...dailyMission, subject: resolveSubjectName(subjects, dailyMission.subject, dailyMission.subjectId) })) })), [weeklyQuests, subjects]);
+  const catalogWeeklyQuests = useMemo(() => weeklyQuests.map((weeklyQuest) => ({
+    ...weeklyQuest,
+    dailyMissions: sortDailyMissionsByTime(weeklyQuest.dailyMissions.map((dailyMission) => ({
+      ...dailyMission,
+      subject: resolveSubjectName(subjects, dailyMission.subject, dailyMission.subjectId),
+    }))),
+  })), [weeklyQuests, subjects]);
   const filtered = useMemo(() => catalogMissions.filter((mission) => {
     const status = getMissionStatus(mission);
     const matchesFilter = filter === "all" || (filter === "pending" && status === "pending") || (filter === "completed" && status === "completed") || mission.priority === filter;

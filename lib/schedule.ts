@@ -40,6 +40,26 @@ export const weekdayMeta: Record<Weekday, { short: string; label: string }> = {
   7: { short: "DOM", label: "Domingo" },
 };
 
+const parseTimeToMinutes = (time: string) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  return (Number.isFinite(hours) ? hours : 0) * 60 + (Number.isFinite(minutes) ? minutes : 0);
+};
+
+export const compareDailyMissionsByTime = (a: Pick<DailyClassQuest, "startTime" | "endTime" | "title">, b: Pick<DailyClassQuest, "startTime" | "endTime" | "title">) => {
+  const startTimeDiff = parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime);
+  if (startTimeDiff !== 0) return startTimeDiff;
+  const endTimeDiff = parseTimeToMinutes(a.endTime) - parseTimeToMinutes(b.endTime);
+  if (endTimeDiff !== 0) return endTimeDiff;
+  return a.title.localeCompare(b.title, "es", { sensitivity: "base" });
+};
+
+export const sortDailyMissionsByTime = (dailyMissions: DailyClassQuest[]) => [...dailyMissions].sort(compareDailyMissionsByTime);
+
+export const normalizeWeeklyQuest = <T extends WeeklyQuest>(weeklyQuest: T): T => ({
+  ...weeklyQuest,
+  dailyMissions: sortDailyMissionsByTime(weeklyQuest.dailyMissions),
+});
+
 export const getMondayIso = (date = new Date()) => {
   const monday = new Date(date);
   const offset = (monday.getDay() + 6) % 7;
@@ -59,7 +79,7 @@ export const getScheduledOccurrences = (date: Date, weeklyQuests: WeeklyQuest[])
 
   return weeklyQuests.flatMap((weeklyQuest) => {
     if (!weeklyQuest.active || isoDate < weeklyQuest.startDate || (weeklyQuest.endDate && isoDate > weeklyQuest.endDate)) return [];
-    return weeklyQuest.dailyMissions
+    return sortDailyMissionsByTime(weeklyQuest.dailyMissions)
       .filter((dailyMission) => dailyMission.dayOfWeek === dayOfWeek)
       .map((dailyMission) => ({
         ...dailyMission,
@@ -68,5 +88,5 @@ export const getScheduledOccurrences = (date: Date, weeklyQuests: WeeklyQuest[])
         weeklyQuestId: weeklyQuest.id,
         weeklyQuestTitle: weeklyQuest.title,
       }));
-  }).sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }).sort(compareDailyMissionsByTime);
 };

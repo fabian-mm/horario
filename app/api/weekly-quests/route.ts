@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
 import { getDb } from "@/lib/mongodb";
-import type { WeeklyQuest } from "@/lib/schedule";
+import { normalizeWeeklyQuest, type WeeklyQuest } from "@/lib/schedule";
 import { weeklyQuestSchema } from "@/lib/validation";
 
 type WeeklyQuestDocument = WeeklyQuest & { userId: string; createdAt: string; updatedAt: string };
@@ -11,11 +11,10 @@ export async function GET() {
   if (!userId) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
   const db = await getDb();
   const weeklyQuests = await db.collection<WeeklyQuestDocument>("weeklyQuests")
-    .find({ userId })
-    .project({ _id: 0, userId: 0 })
+    .find<WeeklyQuestDocument>({ userId })
     .sort({ createdAt: 1 })
     .toArray();
-  return NextResponse.json(weeklyQuests);
+  return NextResponse.json(weeklyQuests.map(({ userId: _userId, ...weeklyQuest }) => normalizeWeeklyQuest(weeklyQuest as WeeklyQuest)));
 }
 
 export async function POST(request: Request) {
@@ -25,7 +24,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "La misión semanal contiene datos inválidos." }, { status: 400 });
 
   const now = new Date().toISOString();
-  const weeklyQuest = { ...parsed.data, userId, updatedAt: now };
+  const weeklyQuest = normalizeWeeklyQuest({ ...parsed.data, userId, updatedAt: now });
   const db = await getDb();
   await db.collection<WeeklyQuestDocument>("weeklyQuests").updateOne(
     { userId, id: weeklyQuest.id },

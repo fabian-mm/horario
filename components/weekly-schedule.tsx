@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { BookOpen, CalendarRange, Check, Clock3, MapPin, Pencil, Plus, Power, ScrollText, Trash2, X } from "lucide-react";
-import { DailyClassQuest, getMondayIso, Weekday, WeeklyQuest, weekdayMeta } from "@/lib/schedule";
+import { DailyClassQuest, getMondayIso, sortDailyMissionsByTime, Weekday, WeeklyQuest, weekdayMeta } from "@/lib/schedule";
 import { findSubject, Subject } from "@/lib/subjects";
 
 type Props = {
@@ -37,14 +37,15 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
   const [dailyDraft, setDailyDraft] = useState<DailyClassQuest>(emptyDailyQuest(1, subjects));
   const selectedWeeklyQuest = weeklyQuests.find((weeklyQuest) => weeklyQuest.id === selectedId) ?? weeklyQuests.find((weeklyQuest) => weeklyQuest.id === focusedWeeklyQuestId) ?? weeklyQuests[0] ?? null;
+  const orderedDailyMissions = selectedWeeklyQuest ? sortDailyMissionsByTime(selectedWeeklyQuest.dailyMissions) : [];
 
   const classesByDay = useMemo(() => {
     const grouped = new Map<Weekday, DailyClassQuest[]>();
     ([1, 2, 3, 4, 5, 6, 7] as Weekday[]).forEach((day) => grouped.set(day, []));
-    selectedWeeklyQuest?.dailyMissions.forEach((dailyMission) => grouped.get(dailyMission.dayOfWeek)?.push(dailyMission));
-    grouped.forEach((classes, day) => grouped.set(day, [...classes].sort((a, b) => a.startTime.localeCompare(b.startTime))));
+    orderedDailyMissions.forEach((dailyMission) => grouped.get(dailyMission.dayOfWeek)?.push(dailyMission));
+    grouped.forEach((classes, day) => grouped.set(day, sortDailyMissionsByTime(classes)));
     return grouped;
-  }, [selectedWeeklyQuest]);
+  }, [orderedDailyMissions]);
 
   const openNewWeekly = () => {
     setWeeklyEditing(null);
@@ -88,15 +89,17 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
     event.preventDefault();
     if (!selectedWeeklyQuest) return;
     const dailyMission = { ...dailyDraft, id: dailyDraft.id || crypto.randomUUID(), title: dailyDraft.title.trim(), subject: dailyDraft.subject.trim(), location: dailyDraft.location?.trim(), notes: dailyDraft.notes?.trim() };
-    const dailyMissions = selectedWeeklyQuest.dailyMissions.some((item) => item.id === dailyMission.id)
-      ? selectedWeeklyQuest.dailyMissions.map((item) => item.id === dailyMission.id ? dailyMission : item)
-      : [...selectedWeeklyQuest.dailyMissions, dailyMission];
+    const dailyMissions = sortDailyMissionsByTime(
+      selectedWeeklyQuest.dailyMissions.some((item) => item.id === dailyMission.id)
+        ? selectedWeeklyQuest.dailyMissions.map((item) => item.id === dailyMission.id ? dailyMission : item)
+        : [...selectedWeeklyQuest.dailyMissions, dailyMission],
+    );
     onSave({ ...selectedWeeklyQuest, dailyMissions });
     setDailyModalOpen(false);
   };
   const deleteDaily = () => {
     if (!selectedWeeklyQuest || !dailyDraft.id) return;
-    onSave({ ...selectedWeeklyQuest, dailyMissions: selectedWeeklyQuest.dailyMissions.filter((item) => item.id !== dailyDraft.id) });
+    onSave({ ...selectedWeeklyQuest, dailyMissions: sortDailyMissionsByTime(selectedWeeklyQuest.dailyMissions.filter((item) => item.id !== dailyDraft.id)) });
     setDailyModalOpen(false);
   };
   const selectedDailySubject = findSubject(subjects, dailyDraft.subject, dailyDraft.subjectId);

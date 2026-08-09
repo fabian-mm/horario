@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { WeeklyQuest } from "@/lib/schedule";
+import { normalizeWeeklyQuest, type WeeklyQuest } from "@/lib/schedule";
 
 export function useWeeklyQuests(enabled: boolean) {
   const [weeklyQuests, setWeeklyQuests] = useState<WeeklyQuest[]>([]);
@@ -24,7 +24,7 @@ export function useWeeklyQuests(enabled: boolean) {
       })
       .then((data) => {
         if (!canceled) {
-          setWeeklyQuests(data);
+          setWeeklyQuests((data as WeeklyQuest[]).map(normalizeWeeklyQuest));
           setError(null);
         }
       })
@@ -39,7 +39,7 @@ export function useWeeklyQuests(enabled: boolean) {
     const response = await fetch("/api/weekly-quests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(weeklyQuest),
+      body: JSON.stringify(normalizeWeeklyQuest(weeklyQuest)),
     });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error ?? "No se pudo guardar la misión semanal.");
@@ -47,12 +47,13 @@ export function useWeeklyQuests(enabled: boolean) {
   };
 
   const upsert = (weeklyQuest: WeeklyQuest) => {
+    const normalizedWeeklyQuest = normalizeWeeklyQuest(weeklyQuest);
     const previous = weeklyQuests;
-    setWeeklyQuests((current) => current.some((item) => item.id === weeklyQuest.id)
-      ? current.map((item) => item.id === weeklyQuest.id ? weeklyQuest : item)
-      : [...current, weeklyQuest]);
+    setWeeklyQuests((current) => current.some((item) => item.id === normalizedWeeklyQuest.id)
+      ? current.map((item) => item.id === normalizedWeeklyQuest.id ? normalizedWeeklyQuest : item)
+      : [...current, normalizedWeeklyQuest]);
     setError(null);
-    saveRemote(weeklyQuest).catch((requestError) => {
+    saveRemote(normalizedWeeklyQuest).catch((requestError) => {
       setWeeklyQuests(previous);
       setError(requestError instanceof Error ? requestError.message : "No se pudo guardar la misión semanal.");
     });
