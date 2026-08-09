@@ -156,14 +156,15 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
 
           <section className="weekly-board" aria-label={`Horario de ${selectedWeeklyQuest.title}`}>
             {([1, 2, 3, 4, 5, 6, 7] as Weekday[]).map((day) => {
-              const dayClasses = classesByDay.get(day) ?? [];
+              const dayClasses = sortDailyMissionsByTime(classesByDay.get(day) ?? []);
               return (
                 <div className={`schedule-day ${day > 5 ? "weekend" : ""}`} key={day}>
                   <header><div><span>{weekdayMeta[day].short}</span><strong>{weekdayMeta[day].label}</strong></div><button type="button" onClick={() => openNewDaily(day)} aria-label={`Agregar actividad el ${weekdayMeta[day].label}`}><Plus size={15} /></button></header>
-                  <div className="schedule-day-list">
+                  {!!dayClasses.length && <div className="day-time-direction"><span>Temprano</span><i /><span>Tarde</span></div>}
+                  <div className="schedule-day-list chronological">
                     {dayClasses.map((dailyMission) => (
                       <button key={dailyMission.id} type="button" className={`daily-class-card activity-tone-${resolveActivityType(activityTypes, dailyMission.activityTypeId, dailyMission.activityTypeName).tone}`} onClick={() => openEditDaily(dailyMission)}>
-                        <span className="class-time"><Clock3 size={11} />{dailyMission.startTime}</span>
+                        <span className="class-time"><Clock3 size={11} />{dailyMission.startTime}–{dailyMission.endTime}</span>
                         <strong>{dailyMission.activityCategory === "class" ? dailyMission.subject || "Materia sin asignar" : dailyMission.activityTypeName ?? "Actividad"}</strong>
                         <small className="schedule-activity-title">{dailyMission.title}</small>
                         <b className="schedule-xp"><Sparkles size={10} />+{dailyMission.activityPoints ?? 10} XP</b>
