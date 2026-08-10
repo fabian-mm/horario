@@ -14,6 +14,16 @@ type Props = {
   onAddProgress: (id: string, minutes: 30 | 60) => void;
 };
 
+// Organic horizontal marker position percentages for an irregular serpentine route
+const NODE_POSITIONS = [
+  { xPercent: 24, side: "left", label: "Isla de Inicio" },
+  { xPercent: 74, side: "right", label: "Pico de la Entregas" },
+  { xPercent: 36, side: "left", label: "Bahía del Saber" },
+  { xPercent: 82, side: "right", label: "Paso Peligroso" },
+  { xPercent: 18, side: "left", label: "Puerto de Apuntes" },
+  { xPercent: 62, side: "right", label: "Cima del Estudio" },
+];
+
 export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddProgress }: Props) {
   const orderedMissions = useMemo(() => sortMissionsByDateTime(missions), [missions]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -22,6 +32,31 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
   const bosses = orderedMissions.filter((mission) => mission.priority === "boss");
   const defeatedBosses = bosses.filter((mission) => getMissionStatus(mission) === "completed").length;
   const journeyProgress = orderedMissions.length ? Math.round((completed / orderedMissions.length) * 100) : 0;
+
+  // Generate SVG bezier curve path connecting nodes organically
+  const svgPathData = useMemo(() => {
+    if (!orderedMissions.length) return "";
+    const nodeHeight = 115;
+    const startY = 45;
+
+    const points = orderedMissions.map((_, i) => ({
+      x: NODE_POSITIONS[i % NODE_POSITIONS.length].xPercent,
+      y: startY + i * nodeHeight,
+    }));
+
+    // Add final treasure chest point at 50% center
+    const finalY = startY + orderedMissions.length * nodeHeight;
+    points.push({ x: 50, y: finalY });
+
+    let path = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const midY = (p1.y + p2.y) / 2;
+      path += ` C ${p1.x} ${midY}, ${p2.x} ${midY}, ${p2.x} ${p2.y}`;
+    }
+    return path;
+  }, [orderedMissions]);
 
   return (
     <div className="adventure-map-view">
@@ -44,7 +79,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
       </div>
 
       <div className="adventure-map-grid">
-        <section className="treasure-route parchment-map" aria-label="Ruta del Tesoro">
+        <section className="treasure-route parchment-map irregular-map" aria-label="Ruta del Tesoro">
           {/* Map Grid Coordinates */}
           <div className="map-coordinates coord-top" aria-hidden="true"><span>74° W</span><span>72° W</span><span>70° W</span><span>68° W</span></div>
           <div className="map-coordinates coord-side" aria-hidden="true"><span>14° N</span><span>12° N</span><span>10° N</span><span>08° N</span></div>
@@ -54,7 +89,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
           <div className="map-sea-label sea-center" aria-hidden="true">ARCHIPIÉLAGO DEL CONOCIMIENTO</div>
           <div className="map-sea-label sea-south" aria-hidden="true">GOLFO DEL EXAMEN FINAL</div>
 
-          {/* Nautical decorative icons */}
+          {/* Nautical decorative elements */}
           <div className="map-deco-element deco-ship" aria-hidden="true" title="Barco de exploración"><Ship size={28} /></div>
           <div className="map-deco-element deco-anchor" aria-hidden="true" title="Puerto seguro"><Anchor size={22} /></div>
           <div className="map-deco-element deco-kraken" aria-hidden="true">🦑</div>
@@ -70,72 +105,98 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
           </div>
 
           {orderedMissions.length ? (
-            <ol className="map-route-list winding-path">
-              {orderedMissions.map((mission, index) => {
-                const status = getMissionStatus(mission);
-                const isBoss = mission.priority === "boss";
-                const isSelected = selectedMission?.id === mission.id;
-                const isCompleted = status === "completed";
+            <div className="map-route-container">
+              {/* Dynamic SVG Serpentine Winding Trail */}
+              <svg
+                className="treasure-svg-canvas"
+                viewBox={`0 0 100 ${orderedMissions.length * 115 + 90}`}
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <path
+                  d={svgPathData}
+                  className="treasure-path-background"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <path
+                  d={svgPathData}
+                  className="treasure-path-active"
+                  vectorEffect="non-scaling-stroke"
+                  style={{ strokeDasharray: "6,6" }}
+                />
+              </svg>
 
-                return (
-                  <li
-                    key={mission.id}
-                    className={`map-route-item ${status} ${isBoss ? "boss" : ""} ${isSelected ? "selected" : ""} ${index % 2 === 0 ? "path-left" : "path-right"}`}
-                  >
-                    <button
-                      className="route-objective treasure-card"
-                      type="button"
-                      onClick={() => setSelectedId(mission.id)}
-                      aria-pressed={isSelected}
+              <ol className="map-route-list irregular-path">
+                {orderedMissions.map((mission, index) => {
+                  const status = getMissionStatus(mission);
+                  const isBoss = mission.priority === "boss";
+                  const isSelected = selectedMission?.id === mission.id;
+                  const isCompleted = status === "completed";
+                  const posConfig = NODE_POSITIONS[index % NODE_POSITIONS.length];
+
+                  return (
+                    <li
+                      key={mission.id}
+                      className={`map-route-item node-item ${status} ${isBoss ? "boss" : ""} ${isSelected ? "selected" : ""} pos-${posConfig.side}`}
+                      style={{
+                        "--marker-x": `${posConfig.xPercent}%`,
+                      } as React.CSSProperties}
                     >
-                      <span className="route-date">
-                        <strong>{new Date(`${mission.date}T12:00:00`).getDate()}</strong>
-                        <small>{new Intl.DateTimeFormat("es-CO", { month: "short" }).format(new Date(`${mission.date}T12:00:00`))}</small>
-                      </span>
-                      <span className="route-copy">
-                        <small>{isBoss ? "🏰 FORTALEZA DE JEFES" : priorityMeta[mission.priority].label.toUpperCase()}</small>
-                        <strong>{mission.title} · {mission.subject}</strong>
-                        <span>
-                          {isProgressMission(mission)
-                            ? `${formatProgressDuration(getMissionProgress(mission).completedMinutes)} de ${formatProgressDuration(getMissionProgress(mission).goalMinutes)}`
-                            : formatTime12Hour(mission.time)}
+                      <button
+                        className="route-objective treasure-card organic-card"
+                        type="button"
+                        onClick={() => setSelectedId(mission.id)}
+                        aria-pressed={isSelected}
+                      >
+                        <span className="route-date">
+                          <strong>{new Date(`${mission.date}T12:00:00`).getDate()}</strong>
+                          <small>{new Intl.DateTimeFormat("es-CO", { month: "short" }).format(new Date(`${mission.date}T12:00:00`))}</small>
                         </span>
+                        <span className="route-copy">
+                          <small>{isBoss ? "🏰 FORTALEZA FINAL" : priorityMeta[mission.priority].label.toUpperCase()}</small>
+                          <strong>{mission.title} · {mission.subject}</strong>
+                          <span>
+                            {isProgressMission(mission)
+                              ? `${formatProgressDuration(getMissionProgress(mission).completedMinutes)} de ${formatProgressDuration(getMissionProgress(mission).goalMinutes)}`
+                              : formatTime12Hour(mission.time)}
+                          </span>
+                        </span>
+                        <ChevronRight size={16} className="card-arrow" />
+                      </button>
+
+                      <span className="route-marker organic-marker" style={{ left: `${posConfig.xPercent}%` }} aria-hidden="true">
+                        <i>
+                          {isCompleted ? (
+                            <Check size={16} className="check-icon" />
+                          ) : isBoss ? (
+                            <Swords size={18} />
+                          ) : (
+                            index + 1
+                          )}
+                        </i>
+                        {isCompleted && <span className="marker-footprints" title="Camino recorrido"><Footprints size={12} /></span>}
                       </span>
-                      <ChevronRight size={16} className="card-arrow" />
-                    </button>
+                    </li>
+                  );
+                })}
 
-                    <span className="route-marker" aria-hidden="true">
-                      <i>
-                        {isCompleted ? (
-                          <Check size={16} className="check-icon" />
-                        ) : isBoss ? (
-                          <Swords size={18} />
-                        ) : (
-                          index + 1
-                        )}
-                      </i>
-                      {isCompleted && <span className="marker-footprints" title="Camino recorrido"><Footprints size={12} /></span>}
+                <li className="route-treasure treasure-spot" aria-hidden="true">
+                  <div className="x-marks-the-spot">
+                    <span className="x-mark">✖</span>
+                    <span className="treasure-chest-glow">
+                      <Trophy size={26} />
                     </span>
-                  </li>
-                );
-              })}
-
-              <li className="route-treasure treasure-spot" aria-hidden="true">
-                <div className="x-marks-the-spot">
-                  <span className="x-mark">✖</span>
-                  <span className="treasure-chest-glow">
-                    <Trophy size={26} />
-                  </span>
-                </div>
-                <strong>EL TESORO DE LA CAMPAÑA</strong>
-                <small>¡LLEGA AL FINAL Y RECLAMA TU RECOMPENSA!</small>
-              </li>
-            </ol>
+                  </div>
+                  <strong>EL TESORO DE LA CAMPAÑA</strong>
+                  <small>¡LLEGA AL FINAL Y RECLAMA TU RECOMPENSA!</small>
+                </li>
+              </ol>
+            </div>
           ) : (
             <div className="map-empty-state">
               <MapPinned size={48} />
               <h2>Carta Náutica sin Trazar</h2>
-              <p>Crea tu primera misión para desplegar la ruta del tesoro en este pergamino.</p>
+              <p>Crea tu primera misión para desplegar la ruta serpenteante en este pergamino.</p>
               <button type="button" onClick={onAdd}>Trazar primer objetivo</button>
             </div>
           )}

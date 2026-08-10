@@ -753,23 +753,27 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .antique-compass .compass-w { position: absolute; left: -14px; font-size: 8px; font-weight: 800; }
 .antique-compass .compass-needle { color: var(--coral); transform: rotate(25deg); opacity: 0.78; }
 .antique-compass .compass-center { position: absolute; font-family: serif; font-size: 32px; font-style: normal; opacity: 0.3; }
+.map-route-container { position: relative; width: 100%; min-height: 500px; padding: 20px 0 40px; }
 
-.winding-path { position: relative; z-index: 1; max-width: 800px; margin: 40px auto 0; padding: 0 0 30px; list-style: none; }
-.winding-path::before { content: ""; position: absolute; z-index: 0; top: 15px; bottom: 50px; left: 50%; width: 4px; border-left: 3px dashed color-mix(in srgb, var(--gold) 55%, #8B5A2B); transform: translateX(-1.5px); filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15)); }
+.treasure-svg-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
+.treasure-path-background { stroke: color-mix(in srgb, #8B5A2B 30%, transparent); stroke-width: 5; fill: none; stroke-linecap: round; }
+.treasure-path-active { stroke: color-mix(in srgb, var(--gold) 85%, #8B5A2B); stroke-width: 3.5; fill: none; stroke-linecap: round; filter: drop-shadow(0 2px 4px rgba(100, 60, 20, 0.25)); }
 
-.map-route-item { min-height: 108px; position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 66px minmax(0, 1fr); align-items: center; }
-.map-route-item.path-left .route-objective { grid-column: 1; grid-row: 1; transform: rotate(-1deg); }
-.map-route-item.path-right .route-objective { grid-column: 3; grid-row: 1; transform: rotate(1deg); }
-.map-route-item.path-left .route-objective::after, .map-route-item.path-right .route-objective::before { content: ""; position: absolute; top: 50%; width: 33px; border-top: 2px dashed color-mix(in srgb, var(--gold) 50%, #8B5A2B); }
-.map-route-item.path-left .route-objective::after { left: 100%; }
-.map-route-item.path-right .route-objective::before { right: 100%; }
+.irregular-path { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 20px; margin: 0; padding: 0; list-style: none; }
+
+.node-item { min-height: 95px; position: relative; display: flex; align-items: center; width: 100%; }
+.node-item.pos-left { justify-content: flex-start; padding-left: 2%; }
+.node-item.pos-right { justify-content: flex-end; padding-right: 2%; }
+
+.organic-card { max-width: 340px; width: 100%; z-index: 2; }
+.organic-marker { position: absolute; z-index: 4; top: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; pointer-events: none; }
 
 .treasure-card { min-width: 0; position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr) 17px; align-items: center; gap: 9px; padding: 11px; border: 1px solid color-mix(in srgb, var(--gold) 48%, #A07030) !important; border-radius: 9px; color: var(--ink); background: linear-gradient(135deg, color-mix(in srgb, var(--paper) 96%, #F5E6CE), color-mix(in srgb, var(--parchment) 90%, #E6D2B5)) !important; box-shadow: 0 8px 22px rgba(60, 40, 20, 0.12) !important; cursor: pointer; text-align: left; transition: transform .2s, border-color .2s, box-shadow .2s; }
-.treasure-card:hover { z-index: 2; transform: translateY(-3px) scale(1.01) !important; border-color: var(--gold) !important; box-shadow: 0 12px 28px rgba(60, 40, 20, 0.18) !important; }
-.map-route-item.selected .treasure-card { border-color: var(--gold) !important; box-shadow: inset 4px 0 var(--gold), 0 12px 28px rgba(180, 130, 50, 0.22) !important; }
-.map-route-item.boss .treasure-card { border-color: color-mix(in srgb, var(--coral) 55%, #8B5A2B) !important; background: linear-gradient(125deg, color-mix(in srgb, var(--paper) 93%, white), color-mix(in srgb, var(--coral) 12%, #F5E6CE)) !important; }
-.map-route-item.boss.selected .treasure-card { border-color: var(--coral) !important; box-shadow: inset 4px 0 var(--coral), 0 12px 28px rgba(220, 70, 50, 0.2) !important; }
-.map-route-item.completed .treasure-card { opacity: .72; background: color-mix(in srgb, var(--sage) 12%, #F5E6CE) !important; }
+.treasure-card:hover { z-index: 5; transform: translateY(-3px) scale(1.01) !important; border-color: var(--gold) !important; box-shadow: 0 12px 28px rgba(60, 40, 20, 0.18) !important; }
+.node-item.selected .treasure-card { border-color: var(--gold) !important; box-shadow: inset 4px 0 var(--gold), 0 12px 28px rgba(180, 130, 50, 0.22) !important; }
+.node-item.boss .treasure-card { border-color: color-mix(in srgb, var(--coral) 55%, #8B5A2B) !important; background: linear-gradient(125deg, color-mix(in srgb, var(--paper) 93%, white), color-mix(in srgb, var(--coral) 12%, #F5E6CE)) !important; }
+.node-item.boss.selected .treasure-card { border-color: var(--coral) !important; box-shadow: inset 4px 0 var(--coral), 0 12px 28px rgba(220, 70, 50, 0.2) !important; }
+.node-item.completed .treasure-card { opacity: .78; background: color-mix(in srgb, var(--sage) 12%, #F5E6CE) !important; }
 
 .route-date { width: 40px; height: 40px; display: grid; align-content: center; border: 1px solid color-mix(in srgb, var(--gold) 32%, transparent); border-radius: 7px; color: var(--gold); background: color-mix(in srgb, var(--gold) 12%, var(--paper)); text-align: center; }
 .route-date strong, .route-date small { display: block; line-height: 1; }
@@ -778,16 +782,15 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .route-copy { min-width: 0; }
 .route-copy > small, .route-copy > strong, .route-copy > span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .route-copy > small { color: var(--gold); font-size: 6.5px; font-weight: 900; letter-spacing: .12em; }
-.map-route-item.boss .route-copy > small { color: var(--coral); }
+.node-item.boss .route-copy > small { color: var(--coral); }
 .route-copy > strong { margin: 3px 0; font-family: "Fraunces Variable", serif; font-size: 13px; }
 .route-copy > span { color: var(--ink-soft); font-size: 7.5px; }
 .treasure-card > .card-arrow { color: color-mix(in srgb, var(--gold) 65%, var(--ink-soft)); }
 
-.route-marker { z-index: 1; grid-column: 2; grid-row: 1; display: grid; place-items: center; position: relative; }
-.route-marker > i { width: 37px; height: 37px; display: grid; place-items: center; border: 2px solid var(--gold); border-radius: 50%; color: var(--paper); background: var(--forest); box-shadow: 0 0 0 5px color-mix(in srgb, #F5E6CE 95%, transparent), 0 0 0 8px color-mix(in srgb, var(--gold) 30%, transparent); font-size: 10px; font-style: normal; font-weight: 900; transition: transform .2s; }
-.map-route-item:hover .route-marker > i, .map-route-item.selected .route-marker > i { transform: scale(1.15); }
-.map-route-item.boss .route-marker > i { width: 45px; height: 45px; border-color: color-mix(in srgb, var(--coral) 85%, white); background: var(--coral); box-shadow: 0 0 0 5px color-mix(in srgb, #F5E6CE 95%, transparent), 0 0 20px color-mix(in srgb, var(--coral) 35%, transparent); animation: fortress-pulse 2.5s ease-in-out infinite; }
-.map-route-item.completed .route-marker > i { border-color: color-mix(in srgb, var(--sage) 80%, white); background: var(--sage); }
+.organic-marker > i { width: 37px; height: 37px; display: grid; place-items: center; border: 2px solid var(--gold); border-radius: 50%; color: var(--paper); background: var(--forest); box-shadow: 0 0 0 5px color-mix(in srgb, #F5E6CE 95%, transparent), 0 0 0 8px color-mix(in srgb, var(--gold) 30%, transparent); font-size: 10px; font-style: normal; font-weight: 900; transition: transform .2s; }
+.node-item:hover .organic-marker > i, .node-item.selected .organic-marker > i { transform: scale(1.15); }
+.node-item.boss .organic-marker > i { width: 45px; height: 45px; border-color: color-mix(in srgb, var(--coral) 85%, white); background: var(--coral); box-shadow: 0 0 0 5px color-mix(in srgb, #F5E6CE 95%, transparent), 0 0 20px color-mix(in srgb, var(--coral) 35%, transparent); animation: fortress-pulse 2.5s ease-in-out infinite; }
+.node-item.completed .organic-marker > i { border-color: color-mix(in srgb, var(--sage) 80%, white); background: var(--sage); }
 .marker-footprints { position: absolute; bottom: -16px; color: var(--sage); opacity: 0.85; transform: rotate(20deg); }
 
 .treasure-spot { position: relative; z-index: 2; display: grid; justify-items: center; gap: 6px; margin-top: 28px; color: var(--gold); }
