@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Icono de aventura">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f9d86f" />
+      <stop offset="100%" stop-color="#8b4b1b" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff6d8" />
+      <stop offset="100%" stop-color="#b06d25" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="#111827" />
+  <path d="M32 8 44 18l-6 8 6 8-12 10-12-10 6-8-6-8Z" fill="url(#bg)" stroke="#fde68a" stroke-width="2" />
+  <path d="M32 14 39 20l-5 5 5 5-7 6-7-6 5-5-5-5Z" fill="#2f1d0b" opacity="0.92" />
+  <path d="M26 28h12" stroke="#ffe9b6" stroke-width="2" stroke-linecap="round" />
+  <path d="M29 29 22 42" stroke="#ffe9b6" stroke-width="2" stroke-linecap="round" />
+  <path d="M35 29 42 42" stroke="#ffe9b6" stroke-width="2" stroke-linecap="round" />
+  <path d="M29 42h6" stroke="#ffe9b6" stroke-width="2" stroke-linecap="round" />
+  <path d="M30 22h4" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+  <circle cx="32" cy="22" r="3" fill="url(#accent)" />
+</svg>
