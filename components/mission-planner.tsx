@@ -134,6 +134,12 @@ export function MissionPlanner() {
     return () => window.clearTimeout(timeout);
   }, [reward]);
 
+  const selectDate = (date: Date, options: { switchToDayView?: boolean } = {}) => {
+    setSelectedDate(date);
+    setMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+    if (options.switchToDayView !== false) setCalendarMode("day");
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     setNotificationsPermission(getNotificationPermission());
@@ -178,19 +184,18 @@ export function MissionPlanner() {
     }
   };
 
-  const openNew = (date = selectedDate, subject?: string) => { setSelectedDate(date); setDraftSubject(subject); setEditing(null); setModalOpen(true); };
+  const openNew = (date = selectedDate, subject?: string) => { selectDate(date, { switchToDayView: false }); setDraftSubject(subject); setEditing(null); setModalOpen(true); };
   const openEdit = (mission: Mission) => { setDraftSubject(undefined); setEditing(mission); setModalOpen(true); };
   const movePeriod = (amount: number) => {
     if (calendarMode === "month") {
       const next = new Date(month.getFullYear(), month.getMonth() + amount, 1);
       setMonth(next);
-      setSelectedDate(next);
+      selectDate(next, { switchToDayView: false });
       return;
     }
     const next = new Date(selectedDate);
     next.setDate(next.getDate() + amount * (calendarMode === "week" ? 7 : 1));
-    setSelectedDate(next);
-    setMonth(new Date(next.getFullYear(), next.getMonth(), 1));
+    selectDate(next, { switchToDayView: false });
   };
   const player = useMemo(() => {
     const base = calculatePlayerProgress(missions, catalogWeeklyQuests);
@@ -266,8 +271,7 @@ export function MissionPlanner() {
   };
   const openObjective = (mission: Mission) => {
     const objectiveDate = new Date(`${mission.date}T12:00:00`);
-    setSelectedDate(objectiveDate);
-    setMonth(new Date(objectiveDate.getFullYear(), objectiveDate.getMonth(), 1));
+    selectDate(objectiveDate, { switchToDayView: true });
     openEdit(mission);
   };
   const relics = [
@@ -390,7 +394,7 @@ export function MissionPlanner() {
               <button className={`free-time-toggle ${freeTimeOpen ? "active" : ""}`} type="button" onClick={() => setFreeTimeOpen((current) => !current)}><Sunrise size={15} /> Huecos libres</button>
               <div className="month-controls">
                 <button aria-label="Periodo anterior" onClick={() => movePeriod(-1)}><ChevronLeft /></button>
-                <button className="today" onClick={() => { const today = new Date(); setMonth(new Date(today.getFullYear(), today.getMonth(), 1)); setSelectedDate(today); }}>Hoy</button>
+                <button className="today" onClick={() => { const today = new Date(); selectDate(today, { switchToDayView: false }); }}>Hoy</button>
                 <button aria-label="Periodo siguiente" onClick={() => movePeriod(1)}><ChevronRight /></button>
               </div>
             </div>
@@ -423,7 +427,7 @@ export function MissionPlanner() {
             </div>
           </div>
 
-          {freeTimeOpen && <section className="free-time-panel" aria-labelledby="free-time-title"><div className="free-time-heading"><span><CalendarClock size={20} /></span><div><small>RUTA SIN OBSTÁCULOS</small><h2 id="free-time-title">Momentos libres de esta semana</h2><p>Entre 7:00 AM y 10:00 PM. Los trabajos acumulables no bloquean horas; las demás actividades usan su duración real.</p></div><button type="button" onClick={() => setFreeTimeOpen(false)} aria-label="Cerrar huecos libres"><X size={16} /></button></div><div className="free-time-days">{getWeekDates(selectedDate).map((date) => { const iso = toISODate(date); const slots = freeTimeSlots.filter((slot) => slot.date === iso); return <article key={iso}><header><strong>{weekdayMeta[(((date.getDay() + 6) % 7) + 1) as keyof typeof weekdayMeta].label}</strong><small>{date.getDate()}</small></header><div>{slots.length ? slots.map((slot) => <button type="button" key={`${slot.startTime}-${slot.endTime}`} onClick={() => { setSelectedDate(date); setCalendarMode("day"); }}><span>{formatTimeRange12Hour(slot.startTime, slot.endTime)}</span><small>{Math.floor(slot.durationMinutes / 60) ? `${Math.floor(slot.durationMinutes / 60)} h ` : ""}{slot.durationMinutes % 60 ? `${slot.durationMinutes % 60} min` : ""}</small></button>) : <p>Sin huecos de 30 min</p>}</div></article>; })}</div></section>}
+          {freeTimeOpen && <section className="free-time-panel" aria-labelledby="free-time-title"><div className="free-time-heading"><span><CalendarClock size={20} /></span><div><small>RUTA SIN OBSTÁCULOS</small><h2 id="free-time-title">Momentos libres de esta semana</h2><p>Entre 7:00 AM y 10:00 PM. Los trabajos acumulables no bloquean horas; las demás actividades usan su duración real.</p></div><button type="button" onClick={() => setFreeTimeOpen(false)} aria-label="Cerrar huecos libres"><X size={16} /></button></div><div className="free-time-days">{getWeekDates(selectedDate).map((date) => { const iso = toISODate(date); const slots = freeTimeSlots.filter((slot) => slot.date === iso); return <article key={iso}><header><strong>{weekdayMeta[(((date.getDay() + 6) % 7) + 1) as keyof typeof weekdayMeta].label}</strong><small>{date.getDate()}</small></header><div>{slots.length ? slots.map((slot) => <button type="button" key={`${slot.startTime}-${slot.endTime}`} onClick={() => selectDate(date, { switchToDayView: true })}><span>{formatTimeRange12Hour(slot.startTime, slot.endTime)}</span><small>{Math.floor(slot.durationMinutes / 60) ? `${Math.floor(slot.durationMinutes / 60)} h ` : ""}{slot.durationMinutes % 60 ? `${slot.durationMinutes % 60} min` : ""}</small></button>) : <p>Sin huecos de 30 min</p>}</div></article>; })}</div></section>}
 
           <div className="planner-grid">
           <section className={`map-card calendar-mode-${calendarMode}`}>
@@ -443,7 +447,7 @@ export function MissionPlanner() {
                 const visibleMissionCount = Math.min(dayMissions.length, dayClasses.length ? 1 : 2);
                 const hiddenItems = dayClasses.length + dayMissions.length - visibleClassCount - visibleMissionCount;
                 return (
-                  <button key={iso} className={`calendar-day ${outside ? "outside" : ""} ${selected ? "selected" : ""} ${hasBoss ? "has-boss" : ""} ${dayClasses.length ? "has-class" : ""}`} onClick={() => setSelectedDate(date)} onDoubleClick={() => openNew(date)}>
+                  <button key={iso} className={`calendar-day ${outside ? "outside" : ""} ${selected ? "selected" : ""} ${hasBoss ? "has-boss" : ""} ${dayClasses.length ? "has-class" : ""}`} onClick={() => selectDate(date)} onDoubleClick={() => openNew(date)}>
                     <span className="day-number">{date.getDate()}</span>
                     <div className="day-missions">
                       {dayClasses.slice(0, calendarMode === "month" ? 1 : dayClasses.length).map((dailyClass) => <span key={dailyClass.occurrenceId} className={`mission-chip class-chip activity-tone-${resolveActivityType(activityTypes, dailyClass.activityTypeId, dailyClass.activityTypeName).tone} ${dailyClass.completed ? "done" : ""}`} onClick={(event) => { event.stopPropagation(); toggleScheduledActivity(dailyClass); }}><i>{dailyClass.activityCategory === "class" ? <BookOpen size={9} /> : <Activity size={9} />}</i>{formatTime12Hour(dailyClass.startTime)} {getScheduledActivityLabel(dailyClass)}</span>)}
