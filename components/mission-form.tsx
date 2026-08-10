@@ -1,11 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Flag, Swords, X } from "lucide-react";
-import { Mission, MissionStatus, Priority, priorityMeta, statusMeta, toISODate } from "@/lib/missions";
+import { Flag, Hourglass, Swords, X } from "lucide-react";
+import { formatProgressDuration, getMissionProgress, Mission, MissionStatus, Priority, priorityMeta, statusMeta, toISODate } from "@/lib/missions";
 import { findSubject, Subject } from "@/lib/subjects";
 import type { MissionType } from "@/lib/mission-types";
-import { findMissionType, isTimedMissionType } from "@/lib/mission-types";
+import { findMissionType, isProgressMissionType, isTimedMissionType } from "@/lib/mission-types";
 import { TimeField } from "@/components/time-field";
 import { QuestTypeCards } from "@/components/quest-type-cards";
 import { isTimeBlockWithinDay } from "@/lib/time";
@@ -62,22 +62,33 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
   const selectedSubject = findSubject(subjects, form.subject, form.subjectId);
   const selectedMissionType = findMissionType(missionTypes, form.title, form.missionTypeId) ?? missionTypes[0];
   const usesTimeBlock = isTimedMissionType(selectedMissionType);
+  const usesProgressGoal = isProgressMissionType(selectedMissionType);
+  const progress = getMissionProgress(form);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const durationMinutes = usesTimeBlock ? form.durationMinutes ?? 120 : undefined;
+    const progressGoalMinutes = usesProgressGoal ? form.progressGoalMinutes ?? 420 : undefined;
+    const progressCompletedMinutes = usesProgressGoal
+      ? Math.min(progressGoalMinutes ?? 0, form.progressCompletedMinutes ?? 0)
+      : undefined;
     if (durationMinutes && !isTimeBlockWithinDay(form.time, durationMinutes)) {
       setFormError("El bloque debe terminar antes de medianoche. Elige una hora más temprana o una duración menor.");
       return;
     }
+    const progressComplete = Boolean(progressGoalMinutes && progressCompletedMinutes === progressGoalMinutes);
     onSave({
       ...form,
       id: form.id || crypto.randomUUID(),
       title: form.title.trim(),
       missionTypeId: selectedMissionType?.id,
       subject: form.subject.trim(),
-      completed: form.status === "completed",
       durationMinutes,
+      time: usesProgressGoal ? "23:59" : form.time,
+      progressGoalMinutes,
+      progressCompletedMinutes,
+      status: usesProgressGoal ? (progressComplete ? "completed" : "pending") : form.status,
+      completed: usesProgressGoal ? progressComplete : form.status === "completed",
     });
     onClose();
   };
@@ -95,7 +106,7 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
         </div>
 
         <form onSubmit={submit}>
-          <QuestTypeCards label="¿Qué clase de objetivo es?" options={missionTypes.map((type) => ({ id: type.id, label: type.name, detail: "Plantilla editable" }))} selectedId={selectedMissionType?.id} onSelect={(missionTypeId) => { const nextType = missionTypes.find((type) => type.id === missionTypeId); setForm({ ...form, missionTypeId, durationMinutes: isTimedMissionType(nextType) ? form.durationMinutes ?? 120 : undefined }); }} onManage={() => { onClose(); onManageMissionTypes(); }} />
+          <QuestTypeCards label="¿Qué clase de objetivo es?" options={missionTypes.map((type) => ({ id: type.id, label: type.name, detail: isProgressMissionType(type) ? "Meta acumulable por horas" : isTimedMissionType(type) ? "Bloque con duración" : "Objetivo con fecha límite" }))} selectedId={selectedMissionType?.id} onSelect={(missionTypeId) => { const nextType = missionTypes.find((type) => type.id === missionTypeId); const progressType = isProgressMissionType(nextType); setForm({ ...form, missionTypeId, durationMinutes: isTimedMissionType(nextType) ? form.durationMinutes ?? 120 : undefined, progressGoalMinutes: progressType ? form.progressGoalMinutes ?? 420 : undefined, progressCompletedMinutes: progressType ? form.progressCompletedMinutes ?? 0 : undefined }); }} onManage={() => { onClose(); onManageMissionTypes(); }} />
           <label>Nombre del objetivo<input required autoFocus value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder={selectedMissionType ? `Ej. ${selectedMissionType.name} de la unidad 2` : "Ej. Entrega del informe final"} /></label>
 
           {/* Subject selector */}
@@ -110,10 +121,19 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
             <button type="button" onClick={() => { onClose(); onManageSubjects(); }}>{subjects.length ? "Administrar materias" : "+ Crear materia"}</button>
           </div>
 
-          <div className="form-row">
-            <label>Fecha<input required type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
-            <TimeField label="Hora" required value={form.time} onChange={(time) => setForm((current) => ({ ...current, time }))} />
+          <div className={`form-row ${usesProgressGoal ? "work-deadline-row" : ""}`}>
+            <label>{usesProgressGoal ? "Fecha límite" : "Fecha"}<input required type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
+            {!usesProgressGoal && <TimeField label="Hora" required value={form.time} onChange={(time) => setForm((current) => ({ ...current, time }))} />}
           </div>
+          {usesProgressGoal && <fieldset className="work-goal-fieldset">
+            <legend>Objetivo acumulable del trabajo</legend>
+            <div className="work-goal-editor">
+              <span><Hourglass size={20} /></span>
+              <label>Meta total en horas<input required type="number" inputMode="decimal" min="0.5" max="1000" step="0.5" value={(form.progressGoalMinutes ?? 420) / 60} onChange={(event) => setForm({ ...form, progressGoalMinutes: Math.round(Number(event.target.value) * 60) })} /></label>
+              <div><small>PROGRESO ACTUAL</small><strong>{formatProgressDuration(progress.completedMinutes)} de {formatProgressDuration(form.progressGoalMinutes ?? 420)}</strong></div>
+            </div>
+            <p>No reserva una hora del calendario. Después podrás sumar 30 minutos o 1 hora cada vez que avances.</p>
+          </fieldset>}
           {usesTimeBlock && <fieldset className="duration-fieldset">
             <legend>Duración del parcial</legend>
             <div className="duration-options" role="group" aria-label="Duración del parcial">
@@ -133,12 +153,12 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
             </div>
           </fieldset>
           <div className="form-row form-row-metrics">
-            <label>
+            {!usesProgressGoal && <label>
               Estado
               <select value={form.status ?? "pending"} onChange={(event) => setForm({ ...form, status: event.target.value as MissionStatus })}>
                 {(Object.keys(statusMeta) as MissionStatus[]).map((status) => <option key={status} value={status}>{statusMeta[status].label}</option>)}
               </select>
-            </label>
+            </label>}
             <label>Impacto en la materia (%)<input type="number" min="0" max="100" value={form.weight ?? ""} onChange={(event) => setForm({ ...form, weight: event.target.value ? Number(event.target.value) : undefined })} placeholder="Ej. 20" /></label>
             <label>Nota obtenida<input inputMode="decimal" value={form.grade ?? ""} onChange={(event) => setForm({ ...form, grade: event.target.value })} placeholder="Ej. 4.5" /></label>
           </div>

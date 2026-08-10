@@ -2,17 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { Check, ChevronRight, Clock3, Crown, FileCheck2, Flag, MapPinned, Plus, ScrollText, Sparkles, Swords } from "lucide-react";
-import { formatLongDate, getMissionStatus, getMissionXp, Mission, MissionStatus, priorityMeta, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
+import { formatLongDate, formatProgressDuration, getMissionProgress, getMissionStatus, getMissionXp, isProgressMission, Mission, MissionStatus, priorityMeta, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
 import { formatTime12Hour } from "@/lib/time";
+import { MissionProgress } from "@/components/mission-progress";
 
 type Props = {
   missions: Mission[];
   onAdd: () => void;
   onEdit: (mission: Mission) => void;
   onStatusChange: (id: string, status: MissionStatus) => void;
+  onAddProgress: (id: string, minutes: 30 | 60) => void;
 };
 
-export function AdventureMap({ missions, onAdd, onEdit, onStatusChange }: Props) {
+export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddProgress }: Props) {
   const orderedMissions = useMemo(() => sortMissionsByDateTime(missions), [missions]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedMission = orderedMissions.find((mission) => mission.id === selectedId) ?? orderedMissions.find((mission) => getMissionStatus(mission) !== "completed") ?? orderedMissions[0] ?? null;
@@ -49,7 +51,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange }: Props)
                   <li key={mission.id} className={`map-route-item ${status} ${isBoss ? "boss" : ""} ${selectedMission?.id === mission.id ? "selected" : ""}`}>
                     <button className="route-objective" type="button" onClick={() => setSelectedId(mission.id)} aria-pressed={selectedMission?.id === mission.id}>
                       <span className="route-date"><strong>{new Date(`${mission.date}T12:00:00`).getDate()}</strong><small>{new Intl.DateTimeFormat("es-CO", { month: "short" }).format(new Date(`${mission.date}T12:00:00`))}</small></span>
-                      <span className="route-copy"><small>{isBoss ? "FORTALEZA FINAL" : priorityMeta[mission.priority].label.toUpperCase()}</small><strong>{mission.title} · {mission.subject}</strong><span>{formatTime12Hour(mission.time)}</span></span>
+                      <span className="route-copy"><small>{isBoss ? "FORTALEZA FINAL" : priorityMeta[mission.priority].label.toUpperCase()}</small><strong>{mission.title} · {mission.subject}</strong><span>{isProgressMission(mission) ? `${formatProgressDuration(getMissionProgress(mission).completedMinutes)} de ${formatProgressDuration(getMissionProgress(mission).goalMinutes)}` : formatTime12Hour(mission.time)}</span></span>
                       <ChevronRight size={16} />
                     </button>
                     <span className="route-marker" aria-hidden="true"><i>{isBoss ? <Swords size={17} /> : index + 1}</i></span>
@@ -73,16 +75,17 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange }: Props)
                 <div className="sheet-reward"><Sparkles size={17} /><span><small>RECOMPENSA</small><strong>+{getMissionXp(selectedMission)} XP</strong></span></div>
                 <dl className="objective-stats">
                   <div><dt>Fecha</dt><dd>{formatLongDate(selectedMission.date)}</dd></div>
-                  <div><dt>Hora</dt><dd><Clock3 size={12} /> {selectedMission.time}</dd></div>
+                  <div><dt>{isProgressMission(selectedMission) ? "Meta" : "Hora"}</dt><dd><Clock3 size={12} /> {isProgressMission(selectedMission) ? formatProgressDuration(selectedMission.progressGoalMinutes ?? 0) : selectedMission.time}</dd></div>
                   <div><dt>Impacto</dt><dd>{selectedMission.weight !== undefined ? `${selectedMission.weight}%` : "Sin definir"}</dd></div>
                   <div><dt>Nota</dt><dd>{selectedMission.grade?.trim() || "Pendiente"}</dd></div>
                 </dl>
+                {isProgressMission(selectedMission) && <MissionProgress mission={selectedMission} onAdd={(minutes) => onAddProgress(selectedMission.id, minutes)} />}
                 {selectedMission.notes && <div className="objective-clue"><small>PISTA / NOTAS</small><p>{selectedMission.notes}</p></div>}
-                <div className="sheet-status-actions" aria-label={`Cambiar estado de ${selectedMission.title}`}>
+                {!isProgressMission(selectedMission) && <div className="sheet-status-actions" aria-label={`Cambiar estado de ${selectedMission.title}`}>
                   <button type="button" className={getMissionStatus(selectedMission) === "pending" ? "active" : ""} onClick={() => onStatusChange(selectedMission.id, "pending")}><Flag size={14} /> Pendiente</button>
                   <button type="button" className={getMissionStatus(selectedMission) === "submitted" ? "active" : ""} onClick={() => onStatusChange(selectedMission.id, "submitted")}><FileCheck2 size={14} /> Entregada</button>
                   <button type="button" className={getMissionStatus(selectedMission) === "completed" ? "active" : ""} onClick={() => onStatusChange(selectedMission.id, "completed")}><Check size={14} /> Cumplida</button>
-                </div>
+                </div>}
                 <button className="open-objective-button" type="button" onClick={() => onEdit(selectedMission)}>Abrir ficha completa <ChevronRight size={15} /></button>
               </div>
             </>

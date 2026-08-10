@@ -1,11 +1,12 @@
 "use client";
 
-import { Activity, BookOpen, Check, Clock3, Flag, MapPin } from "lucide-react";
+import { Activity, BookOpen, Check, Clock3, Flag, Hourglass, MapPin } from "lucide-react";
 import type { ActivityType } from "@/lib/activity-types";
 import { resolveActivityType } from "@/lib/activity-types";
 import { getAgendaBounds, layoutAgendaEvents } from "@/lib/agenda";
 import type { Mission } from "@/lib/missions";
-import { priorityMeta } from "@/lib/missions";
+import { isProgressMission, priorityMeta } from "@/lib/missions";
+import { MissionProgress } from "@/components/mission-progress";
 import { getScheduledActivityLabel, type ScheduledOccurrence } from "@/lib/schedule";
 import { formatTime12Hour, formatTimeRange12Hour, minutesToTime, timeToMinutes } from "@/lib/time";
 
@@ -15,6 +16,7 @@ type Props = {
   activityTypes: ActivityType[];
   onEditMission: (mission: Mission) => void;
   onToggleMission: (id: string) => void;
+  onAddProgress: (id: string, minutes: 30 | 60) => void;
   onOpenActivity: (activity: ScheduledOccurrence) => void;
   onToggleActivity: (activity: ScheduledOccurrence) => void;
 };
@@ -23,7 +25,8 @@ const DEFAULT_DAY_START = 7 * 60;
 const DEFAULT_DAY_END = 22 * 60;
 const HOUR_HEIGHT = 68;
 
-export function DayAgenda({ missions, activities, activityTypes, onEditMission, onToggleMission, onOpenActivity, onToggleActivity }: Props) {
+export function DayAgenda({ missions, activities, activityTypes, onEditMission, onToggleMission, onAddProgress, onOpenActivity, onToggleActivity }: Props) {
+  const progressMissions = missions.filter(isProgressMission);
   const rawEvents = [
     ...activities.map((activity) => ({
       id: activity.occurrenceId,
@@ -32,7 +35,7 @@ export function DayAgenda({ missions, activities, activityTypes, onEditMission, 
       end: timeToMinutes(activity.endTime) ?? DEFAULT_DAY_START + 60,
       activity,
     })),
-    ...missions.map((mission) => {
+    ...missions.filter((mission) => !isProgressMission(mission)).map((mission) => {
       const start = timeToMinutes(mission.time) ?? DEFAULT_DAY_START;
       return { id: mission.id, kind: "mission" as const, start, end: start + (mission.durationMinutes ?? 60), mission };
     }),
@@ -42,6 +45,10 @@ export function DayAgenda({ missions, activities, activityTypes, onEditMission, 
   const events = layoutAgendaEvents(rawEvents, 45);
 
   return <div className="day-agenda" aria-label="Agenda del día por horas">
+    {!!progressMissions.length && <section className="day-progress-objectives" aria-label="Objetivos acumulables con fecha límite este día">
+      <header><Hourglass size={15} /><div><strong>Trabajos con fecha límite</strong><small>No ocupan una franja horaria</small></div></header>
+      <div>{progressMissions.map((mission) => <article key={mission.id} onClick={() => onEditMission(mission)}><strong>{mission.title} · {mission.subject}</strong><MissionProgress mission={mission} onAdd={(minutes) => onAddProgress(mission.id, minutes)} compact /></article>)}</div>
+    </section>}
     <div className="day-agenda-hours" aria-hidden="true">
       {hours.map((minute) => <div key={minute} style={{ top: `${((minute - dayStart) / 60) * HOUR_HEIGHT}px` }}><time>{minute === 24 * 60 ? "12:00 AM" : formatTime12Hour(minutesToTime(minute))}</time><span /></div>)}
     </div>
@@ -73,7 +80,7 @@ export function DayAgenda({ missions, activities, activityTypes, onEditMission, 
           <div><time><Clock3 size={11} />{formatTimeRange12Hour(mission.time, endTime)}</time><strong>{mission.subject} · {mission.title}</strong><small>{priorityMeta[mission.priority].label}{mission.durationMinutes ? ` · ${mission.durationMinutes / 60} h` : ""}</small></div>
         </article>;
       })}
-      {!events.length && <div className="day-agenda-empty"><Clock3 size={22} /><strong>Día completamente libre</strong><span>No hay actividades programadas para este día.</span></div>}
+      {!events.length && !progressMissions.length && <div className="day-agenda-empty"><Clock3 size={22} /><strong>Día completamente libre</strong><span>No hay actividades programadas para este día.</span></div>}
     </div>
   </div>;
 }

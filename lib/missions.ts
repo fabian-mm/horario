@@ -13,6 +13,8 @@ export type Mission = {
   date: string;
   time: string;
   durationMinutes?: 60 | 120;
+  progressGoalMinutes?: number;
+  progressCompletedMinutes?: number;
   priority: Priority;
   completed: boolean;
   status?: MissionStatus;
@@ -29,8 +31,49 @@ export const statusMeta: Record<MissionStatus, { label: string; description: str
   completed: { label: "Cumplida", description: "Misión terminada" },
 };
 
-export const getMissionStatus = (mission: Mission): MissionStatus =>
-  mission.status ?? (mission.completed ? "completed" : "pending");
+export const getMissionStatus = (mission: Mission): MissionStatus => {
+  if (mission.progressGoalMinutes) return (mission.progressCompletedMinutes ?? 0) >= mission.progressGoalMinutes ? "completed" : "pending";
+  return mission.status ?? (mission.completed ? "completed" : "pending");
+};
+
+export const isProgressMission = (mission: Mission) =>
+  typeof mission.progressGoalMinutes === "number" && mission.progressGoalMinutes > 0;
+
+export const getMissionProgress = (mission: Mission) => {
+  const goalMinutes = Math.max(0, mission.progressGoalMinutes ?? 0);
+  const completedMinutes = Math.min(goalMinutes, Math.max(0, mission.progressCompletedMinutes ?? 0));
+  return {
+    goalMinutes,
+    completedMinutes,
+    percentage: goalMinutes ? Math.round((completedMinutes / goalMinutes) * 100) : 0,
+    complete: goalMinutes > 0 && completedMinutes >= goalMinutes,
+  };
+};
+
+export const formatProgressDuration = (minutes: number) => {
+  const safeMinutes = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(safeMinutes / 60);
+  const remainder = safeMinutes % 60;
+  if (!hours) return `${remainder} min`;
+  if (!remainder) return `${hours} h`;
+  return `${hours} h ${remainder} min`;
+};
+
+export const addMissionProgress = (mission: Mission, minutes: number): Mission => {
+  const progress = getMissionProgress(mission);
+  if (!progress.goalMinutes) return mission;
+  const progressCompletedMinutes = Math.min(
+    progress.goalMinutes,
+    Math.max(0, progress.completedMinutes + minutes),
+  );
+  const complete = progressCompletedMinutes >= progress.goalMinutes;
+  return {
+    ...mission,
+    progressCompletedMinutes,
+    completed: complete,
+    status: complete ? "completed" : "pending",
+  };
+};
 
 export type SubjectAverage = {
   average: number | null;

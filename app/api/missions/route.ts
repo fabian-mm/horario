@@ -28,9 +28,18 @@ export async function POST(request: Request) {
   }
 
   const now = new Date().toISOString();
+  const progressComplete = Boolean(
+    parsed.data.progressGoalMinutes &&
+    (parsed.data.progressCompletedMinutes ?? 0) >= parsed.data.progressGoalMinutes,
+  );
   const mission = {
     ...parsed.data,
-    completed: parsed.data.status === "completed" || parsed.data.completed,
+    completed: parsed.data.progressGoalMinutes
+      ? progressComplete
+      : parsed.data.status === "completed" || parsed.data.completed,
+    status: parsed.data.progressGoalMinutes
+      ? progressComplete ? "completed" as const : "pending" as const
+      : parsed.data.status,
     userId,
     updatedAt: now,
   };

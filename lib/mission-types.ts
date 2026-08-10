@@ -37,6 +37,13 @@ export const isTimedMissionType = (missionType?: MissionType) => {
   return ["parcial", "examen", "recuperatorio"].some((keyword) => name.includes(keyword));
 };
 
+export const isProgressMissionType = (missionType?: MissionType) => {
+  if (!missionType) return false;
+  if (missionType.id === "preset-trabajo") return true;
+  const names = [missionType.name, ...(missionType.aliases ?? [])].map(normalizeMissionTypeName);
+  return names.some((name) => name === "trabajo" || name.includes("trabajo escrito"));
+};
+
 export const findMissionType = (
   missionTypes: MissionType[],
   name?: string,

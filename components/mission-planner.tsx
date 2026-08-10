@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Activity, AlertTriangle, Award, BookOpen, CalendarClock, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, LayoutGrid, List, LoaderCircle, MapPin, MapPinned, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Sunrise, Swords, Target, Trophy, X } from "lucide-react";
+import { Activity, AlertTriangle, Award, BookOpen, CalendarClock, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, Hourglass, LayoutGrid, List, LoaderCircle, MapPin, MapPinned, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Sunrise, Swords, Target, Trophy, X } from "lucide-react";
 import { useActivityTypes } from "@/hooks/use-activity-types";
 import { useAuth } from "@/hooks/use-auth";
 import { useMissionTypes } from "@/hooks/use-mission-types";
@@ -9,7 +9,7 @@ import { useMissions } from "@/hooks/use-missions";
 import { useSubjects } from "@/hooks/use-subjects";
 import { useTheme } from "@/hooks/use-theme";
 import { useWeeklyQuests } from "@/hooks/use-weekly-quests";
-import { calculatePlayerProgress, calculateStreak, formatLongDate, getCrossedXpMilestone, getMissionStatus, getMissionXp, getNextXpMilestone, Mission, Priority, priorityMeta, sortMissionsByDateTime, toISODate } from "@/lib/missions";
+import { addMissionProgress, calculatePlayerProgress, calculateStreak, formatLongDate, formatProgressDuration, getCrossedXpMilestone, getMissionProgress, getMissionStatus, getMissionXp, getNextXpMilestone, isProgressMission, Mission, Priority, priorityMeta, sortMissionsByDateTime, toISODate } from "@/lib/missions";
 import { getScheduledActivityLabel, getScheduledActivityXp, getScheduledOccurrences, getWeekDates, getWeeklyFreeSlots, ScheduledOccurrence, sortDailyMissionsByTime, weekdayMeta } from "@/lib/schedule";
 import { formatTime12Hour, formatTimeRange12Hour } from "@/lib/time";
 import { resolveActivityType } from "@/lib/activity-types";
@@ -22,6 +22,7 @@ import { AuthScreen } from "./auth-screen";
 import { DayAgenda } from "./day-agenda";
 import { GameFeedback, RewardEvent } from "./game-feedback";
 import { MissionForm } from "./mission-form";
+import { MissionProgress } from "./mission-progress";
 import { MissionTypesManager } from "./mission-types-manager";
 import { WeeklySchedule } from "./weekly-schedule";
 import { WorldMissions } from "./world-missions";
@@ -115,7 +116,7 @@ export function MissionPlanner() {
   const selectedIso = toISODate(selectedDate);
   const selectedMissions = missionsByDate.get(selectedIso) ?? [];
   const selectedClasses = scheduleByDate.get(selectedIso) ?? [];
-  const freeTimeSlots = useMemo(() => getWeeklyFreeSlots(selectedDate, catalogWeeklyQuests, catalogMissions), [selectedDate, catalogWeeklyQuests, catalogMissions]);
+  const freeTimeSlots = useMemo(() => getWeeklyFreeSlots(selectedDate, catalogWeeklyQuests, catalogMissions.filter((mission) => !isProgressMission(mission))), [selectedDate, catalogWeeklyQuests, catalogMissions]);
 
   useEffect(() => {
     if (!reward) return;
@@ -181,6 +182,14 @@ export function MissionPlanner() {
     const mission = missions.find((item) => item.id === id);
     if (mission && status === "completed" && getMissionStatus(mission) !== "completed") showReward(mission);
     setStatus(id, status);
+  };
+  const addProgressWithFeedback = (id: string, minutes: 30 | 60) => {
+    const mission = missions.find((item) => item.id === id);
+    if (!mission || !isProgressMission(mission)) return;
+    const wasComplete = getMissionProgress(mission).complete;
+    const updated = addMissionProgress(mission, minutes);
+    if (!wasComplete && getMissionProgress(updated).complete) showReward(updated);
+    void upsert(updated);
   };
   const toggleScheduledActivity = (occurrence: ScheduledOccurrence) => {
     const weeklyQuest = weeklyQuests.find((item) => item.id === occurrence.weeklyQuestId);
@@ -293,13 +302,14 @@ export function MissionPlanner() {
               onEdit={openEdit}
               onAdd={(subject) => openNew(selectedDate, subject)}
               onStatusChange={setStatusWithFeedback}
+              onAddProgress={addProgressWithFeedback}
               onSaveSubject={upsertSubject}
               onDeleteSubject={removeSubject}
             />
           </div>
         ) : view === "map" ? (
           <div className="workspace adventure-map-workspace">
-            <AdventureMap missions={filtered} onAdd={() => openNew(selectedDate)} onEdit={openEdit} onStatusChange={setStatusWithFeedback} />
+            <AdventureMap missions={filtered} onAdd={() => openNew(selectedDate)} onEdit={openEdit} onStatusChange={setStatusWithFeedback} onAddProgress={addProgressWithFeedback} />
           </div>
         ) : view === "weekly" ? (
           <div className="workspace weekly-workspace">
@@ -346,14 +356,14 @@ export function MissionPlanner() {
             </div>
           </div>
 
-          {freeTimeOpen && <section className="free-time-panel" aria-labelledby="free-time-title"><div className="free-time-heading"><span><CalendarClock size={20} /></span><div><small>RUTA SIN OBSTÁCULOS</small><h2 id="free-time-title">Momentos libres de esta semana</h2><p>Entre 7:00 AM y 10:00 PM. Cada misión reserva 1 hora; las actividades usan su duración real.</p></div><button type="button" onClick={() => setFreeTimeOpen(false)} aria-label="Cerrar huecos libres"><X size={16} /></button></div><div className="free-time-days">{getWeekDates(selectedDate).map((date) => { const iso = toISODate(date); const slots = freeTimeSlots.filter((slot) => slot.date === iso); return <article key={iso}><header><strong>{weekdayMeta[(((date.getDay() + 6) % 7) + 1) as keyof typeof weekdayMeta].label}</strong><small>{date.getDate()}</small></header><div>{slots.length ? slots.map((slot) => <button type="button" key={`${slot.startTime}-${slot.endTime}`} onClick={() => { setSelectedDate(date); setCalendarMode("day"); }}><span>{formatTimeRange12Hour(slot.startTime, slot.endTime)}</span><small>{Math.floor(slot.durationMinutes / 60) ? `${Math.floor(slot.durationMinutes / 60)} h ` : ""}{slot.durationMinutes % 60 ? `${slot.durationMinutes % 60} min` : ""}</small></button>) : <p>Sin huecos de 30 min</p>}</div></article>; })}</div></section>}
+          {freeTimeOpen && <section className="free-time-panel" aria-labelledby="free-time-title"><div className="free-time-heading"><span><CalendarClock size={20} /></span><div><small>RUTA SIN OBSTÁCULOS</small><h2 id="free-time-title">Momentos libres de esta semana</h2><p>Entre 7:00 AM y 10:00 PM. Los trabajos acumulables no bloquean horas; las demás actividades usan su duración real.</p></div><button type="button" onClick={() => setFreeTimeOpen(false)} aria-label="Cerrar huecos libres"><X size={16} /></button></div><div className="free-time-days">{getWeekDates(selectedDate).map((date) => { const iso = toISODate(date); const slots = freeTimeSlots.filter((slot) => slot.date === iso); return <article key={iso}><header><strong>{weekdayMeta[(((date.getDay() + 6) % 7) + 1) as keyof typeof weekdayMeta].label}</strong><small>{date.getDate()}</small></header><div>{slots.length ? slots.map((slot) => <button type="button" key={`${slot.startTime}-${slot.endTime}`} onClick={() => { setSelectedDate(date); setCalendarMode("day"); }}><span>{formatTimeRange12Hour(slot.startTime, slot.endTime)}</span><small>{Math.floor(slot.durationMinutes / 60) ? `${Math.floor(slot.durationMinutes / 60)} h ` : ""}{slot.durationMinutes % 60 ? `${slot.durationMinutes % 60} min` : ""}</small></button>) : <p>Sin huecos de 30 min</p>}</div></article>; })}</div></section>}
 
           <div className="planner-grid">
           <section className={`map-card calendar-mode-${calendarMode}`}>
             <div className="quest-board-ribbon"><span><Compass size={14} /> TABLERO DE CAMPAÑA</span><small>VISTA · {calendarMode === "month" ? "MES" : calendarMode === "week" ? "SEMANA" : "DÍA"}</small></div>
             <div className="map-ornament compass-rose">✣</div>
             <div className="map-ornament ship">♜</div>
-            {calendarMode === "day" ? <DayAgenda missions={selectedMissions} activities={selectedClasses} activityTypes={activityTypes} onEditMission={openEdit} onToggleMission={toggleWithFeedback} onOpenActivity={(activity) => { setFocusedWeeklyQuestId(activity.weeklyQuestId); setView("weekly"); }} onToggleActivity={toggleScheduledActivity} /> : <><div className="week-row">{WEEK_DAYS.map((day) => <span key={day}>{day}</span>)}</div>
+            {calendarMode === "day" ? <DayAgenda missions={selectedMissions} activities={selectedClasses} activityTypes={activityTypes} onEditMission={openEdit} onToggleMission={toggleWithFeedback} onAddProgress={addProgressWithFeedback} onOpenActivity={(activity) => { setFocusedWeeklyQuestId(activity.weeklyQuestId); setView("weekly"); }} onToggleActivity={toggleScheduledActivity} /> : <><div className="week-row">{WEEK_DAYS.map((day) => <span key={day}>{day}</span>)}</div>
             <div className="calendar-grid">
               {days.map((date) => {
                 const iso = toISODate(date);
@@ -372,7 +382,7 @@ export function MissionPlanner() {
                       {dayClasses.slice(0, calendarMode === "month" ? 1 : dayClasses.length).map((dailyClass) => <span key={dailyClass.occurrenceId} className={`mission-chip class-chip activity-tone-${resolveActivityType(activityTypes, dailyClass.activityTypeId, dailyClass.activityTypeName).tone} ${dailyClass.completed ? "done" : ""}`} onClick={(event) => { event.stopPropagation(); toggleScheduledActivity(dailyClass); }}><i>{dailyClass.activityCategory === "class" ? <BookOpen size={9} /> : <Activity size={9} />}</i>{formatTime12Hour(dailyClass.startTime)} {getScheduledActivityLabel(dailyClass)}</span>)}
                       {dayMissions.slice(0, calendarMode === "month" ? (dayClasses.length ? 1 : 2) : dayMissions.length).map((mission) => (
                         <span key={mission.id} className={`mission-chip ${mission.priority} ${mission.completed ? "done" : ""}`} onClick={(event) => { event.stopPropagation(); openEdit(mission); }}>
-                          <i>{priorityMeta[mission.priority].icon}</i>{mission.title} · {mission.subject}
+                          <i>{priorityMeta[mission.priority].icon}</i>{mission.title} · {mission.subject}{isProgressMission(mission) ? ` · ${getMissionProgress(mission).percentage}%` : ""}
                         </span>
                       ))}
                       {calendarMode === "month" && hiddenItems > 0 && <small>+{hiddenItems} más</small>}
@@ -402,10 +412,11 @@ export function MissionPlanner() {
                 </article>
               ))}
               {selectedMissions.map((mission) => (
-                <article key={mission.id} className={`mission-row ${mission.priority} ${mission.completed ? "completed" : ""}`}>
-                  <button className="check-button" onClick={() => toggleWithFeedback(mission.id)} aria-label={mission.completed ? "Marcar pendiente" : "Completar misión"}>{mission.completed && <Check size={16} />}</button>
+                <article key={mission.id} className={`mission-row ${mission.priority} ${isProgressMission(mission) ? "progress-mission" : ""} ${mission.completed ? "completed" : ""}`}>
+                  {isProgressMission(mission) ? <span className="progress-mission-icon"><Hourglass size={16} /></span> : <button className="check-button" onClick={() => toggleWithFeedback(mission.id)} aria-label={mission.completed ? "Marcar pendiente" : "Completar misión"}>{mission.completed && <Check size={16} />}</button>}
                   <div className="mission-badge">{priorityMeta[mission.priority].icon}</div>
-                  <div className="mission-copy" onClick={() => openEdit(mission)}><span>{priorityMeta[mission.priority].label}</span><h3>{mission.title} · {mission.subject}</h3><small>{formatTime12Hour(mission.time)} <b className="xp-reward">+{getMissionXp(mission)} XP</b></small></div>
+                  <div className="mission-copy" onClick={() => openEdit(mission)}><span>{isProgressMission(mission) ? "TRABAJO · META ACUMULABLE" : priorityMeta[mission.priority].label}</span><h3>{mission.title} · {mission.subject}</h3><small>{isProgressMission(mission) ? `Meta ${formatProgressDuration(mission.progressGoalMinutes ?? 0)}` : formatTime12Hour(mission.time)} <b className="xp-reward">+{getMissionXp(mission)} XP</b></small></div>
+                  {isProgressMission(mission) && <MissionProgress mission={mission} onAdd={(minutes) => addProgressWithFeedback(mission.id, minutes)} compact />}
                   <div className="reward-box" aria-label={`Recompensa ${getMissionXp(mission)} puntos de experiencia`}><small>RECOMPENSA</small><strong>+{getMissionXp(mission)} XP</strong></div>
                   <button className="edit-button" onClick={() => openEdit(mission)}>Ver misión</button>
                 </article>

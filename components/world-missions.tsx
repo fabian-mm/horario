@@ -3,6 +3,8 @@
 import { FormEvent, useMemo, useState } from "react";
 import { BookOpen, Check, ChevronRight, CircleDot, Clock3, Crown, FileCheck2, Flag, GraduationCap, NotebookPen, Pencil, Plus, ScrollText, Trash2, Trophy, X } from "lucide-react";
 import { calculateSubjectAverage, getMissionStatus, getMissionXp, Mission, MissionStatus, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
+import { isProgressMission } from "@/lib/missions";
+import { MissionProgress } from "@/components/mission-progress";
 import type { Subject } from "@/lib/subjects";
 import type { WeeklyQuest } from "@/lib/schedule";
 
@@ -15,6 +17,7 @@ type Props = {
   onEdit: (mission: Mission) => void;
   onAdd: (subject?: string) => void;
   onStatusChange: (id: string, status: MissionStatus) => void;
+  onAddProgress: (id: string, minutes: 30 | 60) => void;
   onSaveSubject: (subject: Subject) => void;
   onDeleteSubject: (id: string) => void;
 };
@@ -22,7 +25,7 @@ type Props = {
 const subjectIcon = (index: number) => [BookOpen, GraduationCap, ScrollText, NotebookPen][index % 4];
 const taskDateFormatter = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", year: "numeric" });
 
-export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubject, onSelectSubject, onEdit, onAdd, onStatusChange, onSaveSubject, onDeleteSubject }: Props) {
+export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubject, onSelectSubject, onEdit, onAdd, onStatusChange, onAddProgress, onSaveSubject, onDeleteSubject }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [subjectName, setSubjectName] = useState("");
@@ -121,17 +124,18 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
                   <article key={mission.id} className={`world-task ${status}`}>
                     <div className="task-topline"><span className={`status-pill ${status}`}><i />{statusMeta[status].label}</span><span className="task-reward">+{getMissionXp(mission)} XP</span><time><Clock3 size={12} />{taskDateFormatter.format(new Date(`${mission.date}T12:00:00`))}</time></div>
                     <button className="task-title" onClick={() => onEdit(mission)}><h3>{mission.title} · {mission.subject}</h3><ChevronRight size={16} /></button>
+                    {isProgressMission(mission) && <MissionProgress mission={mission} onAdd={(minutes) => onAddProgress(mission.id, minutes)} />}
                     {(mission.notes || mission.grade || mission.weight) && (
                       <div className="task-details">
                         {mission.notes && <p>{mission.notes}</p>}
                         <div>{mission.grade && <span><strong>{mission.grade}</strong> Nota</span>}{mission.weight !== undefined && <span><strong>{mission.weight}%</strong> Impacto</span>}</div>
                       </div>
                     )}
-                    <div className="task-status-actions" aria-label={`Cambiar estado de ${mission.title}`}>
+                    {!isProgressMission(mission) && <div className="task-status-actions" aria-label={`Cambiar estado de ${mission.title}`}>
                       <button className={status === "pending" ? "active" : ""} onClick={() => onStatusChange(mission.id, "pending")} title="Marcar pendiente"><Flag size={14} /></button>
                       <button className={status === "submitted" ? "active" : ""} onClick={() => onStatusChange(mission.id, "submitted")} title="Marcar entregada"><FileCheck2 size={14} /></button>
                       <button className={status === "completed" ? "active" : ""} onClick={() => onStatusChange(mission.id, "completed")} title="Marcar cumplida"><Check size={14} /></button>
-                    </div>
+                    </div>}
                   </article>
                 );
               })}

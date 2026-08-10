@@ -38,6 +38,8 @@ export const missionSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().refine(validTime, "La hora no es válida."),
   durationMinutes: z.union([z.literal(60), z.literal(120)]).optional(),
+  progressGoalMinutes: z.number().int().min(30).max(60_000).optional(),
+  progressCompletedMinutes: z.number().int().min(0).max(60_000).optional(),
   priority: z.enum(["normal", "important", "boss"]),
   status: z.enum(["pending", "submitted", "completed"]).optional(),
   completed: z.boolean(),
@@ -50,6 +52,13 @@ export const missionSchema = z.object({
       code: "custom",
       path: ["durationMinutes"],
       message: "El bloque debe terminar antes de medianoche.",
+    });
+  }
+  if (value.progressGoalMinutes && (value.progressCompletedMinutes ?? 0) > value.progressGoalMinutes) {
+    context.addIssue({
+      code: "custom",
+      path: ["progressCompletedMinutes"],
+      message: "El progreso no puede superar la meta.",
     });
   }
 });
