@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Anchor, Check, ChevronRight, Clock3, Compass, Crown, FileCheck2, Flag, Footprints, Gem, MapPinned, Navigation, Plus, ScrollText, Ship, Sparkles, Swords, Trophy } from "lucide-react";
+import { Anchor, Check, ChevronRight, Clock3, Crown, FileCheck2, Flag, Gem, MapPinned, Navigation, Plus, ScrollText, Ship, Sparkles, Swords, Trophy } from "lucide-react";
 import { formatLongDate, formatProgressDuration, getMissionProgress, getMissionStatus, getMissionXp, isProgressMission, Mission, MissionStatus, priorityMeta, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
 import { formatTime12Hour } from "@/lib/time";
 import { MissionProgress } from "@/components/mission-progress";
@@ -14,14 +14,14 @@ type Props = {
   onAddProgress: (id: string, minutes: 30 | 60) => void;
 };
 
-// Organic horizontal marker position percentages for an irregular serpentine route
+// Organic horizontal marker position percentages for clean circular nodes
 const NODE_POSITIONS = [
-  { xPercent: 24, side: "left", label: "Isla de Inicio" },
-  { xPercent: 74, side: "right", label: "Pico de la Entregas" },
-  { xPercent: 36, side: "left", label: "Bahía del Saber" },
-  { xPercent: 82, side: "right", label: "Paso Peligroso" },
-  { xPercent: 18, side: "left", label: "Puerto de Apuntes" },
-  { xPercent: 62, side: "right", label: "Cima del Estudio" },
+  { xPercent: 22 },
+  { xPercent: 78 },
+  { xPercent: 35 },
+  { xPercent: 82 },
+  { xPercent: 18 },
+  { xPercent: 65 },
 ];
 
 export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddProgress }: Props) {
@@ -36,8 +36,8 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
   // Generate SVG bezier curve path connecting nodes organically
   const svgPathData = useMemo(() => {
     if (!orderedMissions.length) return "";
-    const nodeHeight = 115;
-    const startY = 45;
+    const nodeHeight = 90;
+    const startY = 40;
 
     const points = orderedMissions.map((_, i) => ({
       x: NODE_POSITIONS[i % NODE_POSITIONS.length].xPercent,
@@ -64,7 +64,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
         <div>
           <span className="eyebrow">CARTA DE NAVEGACIÓN</span>
           <h1>Mapa del <i>Tesoro de Campaña</i></h1>
-          <p>Sigue el rastro marcado por el mapa, conquista cada territorio y alcanza el tesoro final.</p>
+          <p>Toca los círculos del mapa para inspeccionar cada objetivo de tu travesía.</p>
         </div>
         <button className="primary-button compact" type="button" onClick={onAdd}>
           <Plus size={18} /> Nueva misión
@@ -79,19 +79,19 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
       </div>
 
       <div className="adventure-map-grid">
-        <section className="treasure-route parchment-map irregular-map" aria-label="Ruta del Tesoro">
+        <section className="treasure-route parchment-map" aria-label="Ruta del Tesoro">
           {/* Map Grid Coordinates */}
           <div className="map-coordinates coord-top" aria-hidden="true"><span>74° W</span><span>72° W</span><span>70° W</span><span>68° W</span></div>
           <div className="map-coordinates coord-side" aria-hidden="true"><span>14° N</span><span>12° N</span><span>10° N</span><span>08° N</span></div>
 
-          {/* Decorative Sea and Island Labels */}
+          {/* Decorative Sea Labels */}
           <div className="map-sea-label sea-north" aria-hidden="true">MAR DE LOS SABERES</div>
           <div className="map-sea-label sea-center" aria-hidden="true">ARCHIPIÉLAGO DEL CONOCIMIENTO</div>
           <div className="map-sea-label sea-south" aria-hidden="true">GOLFO DEL EXAMEN FINAL</div>
 
           {/* Nautical decorative elements */}
-          <div className="map-deco-element deco-ship" aria-hidden="true" title="Barco de exploración"><Ship size={28} /></div>
-          <div className="map-deco-element deco-anchor" aria-hidden="true" title="Puerto seguro"><Anchor size={22} /></div>
+          <div className="map-deco-element deco-ship" aria-hidden="true" title="Barco de exploración"><Ship size={26} /></div>
+          <div className="map-deco-element deco-anchor" aria-hidden="true" title="Puerto seguro"><Anchor size={20} /></div>
           <div className="map-deco-element deco-kraken" aria-hidden="true">🦑</div>
 
           {/* Antique Compass Rose */}
@@ -100,7 +100,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
             <span className="compass-e">E</span>
             <span className="compass-s">S</span>
             <span className="compass-w">W</span>
-            <Navigation size={22} className="compass-needle" />
+            <Navigation size={20} className="compass-needle" />
             <i className="compass-center">✣</i>
           </div>
 
@@ -109,7 +109,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
               {/* Dynamic SVG Serpentine Winding Trail */}
               <svg
                 className="treasure-svg-canvas"
-                viewBox={`0 0 100 ${orderedMissions.length * 115 + 90}`}
+                viewBox={`0 0 100 ${orderedMissions.length * 90 + 70}`}
                 preserveAspectRatio="none"
                 aria-hidden="true"
               >
@@ -122,81 +122,95 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
                   d={svgPathData}
                   className="treasure-path-active"
                   vectorEffect="non-scaling-stroke"
-                  style={{ strokeDasharray: "6,6" }}
                 />
               </svg>
 
-              <ol className="map-route-list irregular-path">
+              <div className="clean-nodes-list" style={{ height: `${orderedMissions.length * 90 + 50}px` }}>
                 {orderedMissions.map((mission, index) => {
                   const status = getMissionStatus(mission);
                   const isBoss = mission.priority === "boss";
                   const isSelected = selectedMission?.id === mission.id;
                   const isCompleted = status === "completed";
                   const posConfig = NODE_POSITIONS[index % NODE_POSITIONS.length];
+                  const topY = 40 + index * 90;
 
                   return (
-                    <li
+                    <div
                       key={mission.id}
-                      className={`map-route-item node-item ${status} ${isBoss ? "boss" : ""} ${isSelected ? "selected" : ""} pos-${posConfig.side}`}
+                      className={`map-node-wrapper ${status} ${isBoss ? "boss" : ""} ${isSelected ? "selected" : ""}`}
                       style={{
-                        "--marker-x": `${posConfig.xPercent}%`,
-                      } as React.CSSProperties}
+                        left: `${posConfig.xPercent}%`,
+                        top: `${topY}px`,
+                      }}
                     >
                       <button
-                        className="route-objective treasure-card organic-card"
                         type="button"
+                        className="map-circle-node"
                         onClick={() => setSelectedId(mission.id)}
+                        aria-label={`Misión: ${mission.title} · ${mission.subject}`}
                         aria-pressed={isSelected}
                       >
-                        <span className="route-date">
-                          <strong>{new Date(`${mission.date}T12:00:00`).getDate()}</strong>
-                          <small>{new Intl.DateTimeFormat("es-CO", { month: "short" }).format(new Date(`${mission.date}T12:00:00`))}</small>
+                        <span className="node-date-num">
+                          {new Date(`${mission.date}T12:00:00`).getDate()}
                         </span>
-                        <span className="route-copy">
-                          <small>{isBoss ? "🏰 FORTALEZA FINAL" : priorityMeta[mission.priority].label.toUpperCase()}</small>
-                          <strong>{mission.title} · {mission.subject}</strong>
-                          <span>
+                        <span className="node-date-month">
+                          {new Intl.DateTimeFormat("es-CO", { month: "short" }).format(new Date(`${mission.date}T12:00:00`))}
+                        </span>
+
+                        {isCompleted && (
+                          <span className="node-badge completed-badge" title="Cumplida">
+                            <Check size={13} />
+                          </span>
+                        )}
+                        {isBoss && !isCompleted && (
+                          <span className="node-badge boss-badge" title="Fortaleza Final">
+                            <Swords size={13} />
+                          </span>
+                        )}
+
+                        {/* Hover / Focus Tooltip Overlay */}
+                        <div className={`node-tooltip ${posConfig.xPercent > 50 ? "tooltip-left" : "tooltip-right"}`}>
+                          <span className="tooltip-kicker">
+                            {isBoss ? "🏰 FORTALEZA DE JEFES" : priorityMeta[mission.priority].label.toUpperCase()}
+                          </span>
+                          <strong className="tooltip-title">{mission.title} · {mission.subject}</strong>
+                          <span className="tooltip-meta">
+                            <Clock3 size={11} />
                             {isProgressMission(mission)
                               ? `${formatProgressDuration(getMissionProgress(mission).completedMinutes)} de ${formatProgressDuration(getMissionProgress(mission).goalMinutes)}`
                               : formatTime12Hour(mission.time)}
                           </span>
-                        </span>
-                        <ChevronRight size={16} className="card-arrow" />
+                          <span className="tooltip-xp">+{getMissionXp(mission)} XP</span>
+                        </div>
                       </button>
-
-                      <span className="route-marker organic-marker" style={{ left: `${posConfig.xPercent}%` }} aria-hidden="true">
-                        <i>
-                          {isCompleted ? (
-                            <Check size={16} className="check-icon" />
-                          ) : isBoss ? (
-                            <Swords size={18} />
-                          ) : (
-                            index + 1
-                          )}
-                        </i>
-                        {isCompleted && <span className="marker-footprints" title="Camino recorrido"><Footprints size={12} /></span>}
-                      </span>
-                    </li>
+                    </div>
                   );
                 })}
 
-                <li className="route-treasure treasure-spot" aria-hidden="true">
+                {/* Final Treasure Spot */}
+                <div
+                  className="treasure-spot clean-treasure-spot"
+                  style={{
+                    left: "50%",
+                    top: `${40 + orderedMissions.length * 90}px`,
+                  }}
+                  aria-hidden="true"
+                >
                   <div className="x-marks-the-spot">
                     <span className="x-mark">✖</span>
                     <span className="treasure-chest-glow">
-                      <Trophy size={26} />
+                      <Trophy size={24} />
                     </span>
                   </div>
                   <strong>EL TESORO DE LA CAMPAÑA</strong>
-                  <small>¡LLEGA AL FINAL Y RECLAMA TU RECOMPENSA!</small>
-                </li>
-              </ol>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="map-empty-state">
               <MapPinned size={48} />
               <h2>Carta Náutica sin Trazar</h2>
-              <p>Crea tu primera misión para desplegar la ruta serpenteante en este pergamino.</p>
+              <p>Crea tu primera misión para desplegar los círculos de la ruta en este pergamino.</p>
               <button type="button" onClick={onAdd}>Trazar primer objetivo</button>
             </div>
           )}
@@ -243,7 +257,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
             <div className="sheet-placeholder">
               <ScrollText size={36} />
               <h2>Selecciona un Destino</h2>
-              <p>Las coordenadas y notas del mapa se revelarán en este pergamino.</p>
+              <p>Toca o pasa el cursor sobre cualquiera de los círculos del mapa para inspeccionarlo.</p>
             </div>
           )}
         </aside>
