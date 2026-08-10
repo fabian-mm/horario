@@ -728,55 +728,83 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .map-expedition-hud > div > span i { height: 100%; display: block; border-radius: inherit; background: linear-gradient(90deg, var(--forest), var(--gold)); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 28%, transparent); transition: width .35s; }
 .map-expedition-hud > div small { display: block; margin-top: 5px; color: var(--ink-soft); font-size: 7px; }
 .adventure-map-grid { display: grid; grid-template-columns: minmax(0, 1fr) 350px; align-items: start; gap: 16px; }
-.treasure-route { min-height: 680px; position: relative; overflow: hidden; padding: 30px 24px 42px; border: 1px solid color-mix(in srgb, var(--gold) 42%, transparent); border-radius: 11px; background: radial-gradient(circle at 9% 13%, color-mix(in srgb, var(--sage) 10%, transparent), transparent 23%), radial-gradient(circle at 91% 76%, color-mix(in srgb, var(--gold) 15%, transparent), transparent 24%), color-mix(in srgb, var(--paper) 87%, var(--parchment)); box-shadow: var(--shadow), inset 0 0 0 4px color-mix(in srgb, var(--gold) 5%, transparent); }
-.treasure-route::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .17; background-image: radial-gradient(color-mix(in srgb, var(--ink) 42%, transparent) .5px, transparent .7px), repeating-linear-gradient(118deg, transparent 0 21px, color-mix(in srgb, var(--gold) 18%, transparent) 22px, transparent 23px 45px); background-size: 5px 5px, auto; }
-.treasure-route::after { content: ""; position: absolute; right: -42px; bottom: -55px; width: 190px; height: 190px; pointer-events: none; border: 2px solid color-mix(in srgb, var(--gold) 11%, transparent); border-radius: 50%; box-shadow: inset 0 0 0 14px color-mix(in srgb, var(--gold) 4%, transparent), inset 0 0 0 37px color-mix(in srgb, var(--gold) 3%, transparent); }
-.map-sea-label { position: absolute; z-index: 0; color: color-mix(in srgb, var(--forest) 18%, transparent); font-family: "Fraunces Variable", serif; font-size: 9px; font-style: italic; letter-spacing: .18em; transform: rotate(-8deg); }
-.sea-north { top: 23px; left: 25px; }
-.sea-south { right: 30px; bottom: 28px; transform: rotate(6deg); }
-.map-compass { position: absolute; z-index: 0; top: 28px; right: 31px; width: 58px; height: 58px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--gold) 18%, transparent); border-radius: 50%; color: color-mix(in srgb, var(--gold) 25%, transparent); }
-.map-compass span { position: absolute; top: -12px; font-size: 7px; font-weight: 900; }
-.map-compass i { font-family: serif; font-size: 29px; font-style: normal; }
-.map-route-list { position: relative; z-index: 1; max-width: 780px; margin: 36px auto 0; padding: 0 0 22px; list-style: none; }
-.map-route-list::before { content: ""; position: absolute; z-index: 0; top: 7px; bottom: 38px; left: 50%; border-left: 3px dashed color-mix(in srgb, var(--gold) 36%, transparent); transform: translateX(-1.5px); }
-.map-route-item { min-height: 102px; position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 62px minmax(0, 1fr); align-items: center; }
-.route-objective { min-width: 0; position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr) 17px; align-items: center; gap: 9px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: color-mix(in srgb, var(--paper) 91%, transparent); box-shadow: 0 7px 18px rgba(49,58,52,.07); cursor: pointer; text-align: left; transition: transform .2s, border-color .2s, box-shadow .2s; }
-.map-route-item:nth-child(odd) .route-objective { grid-column: 1; grid-row: 1; }
-.map-route-item:nth-child(even) .route-objective { grid-column: 3; grid-row: 1; }
-.map-route-item:nth-child(odd) .route-objective::after, .map-route-item:nth-child(even) .route-objective::before { content: ""; position: absolute; top: 50%; width: 31px; border-top: 1px dashed color-mix(in srgb, var(--gold) 43%, transparent); }
-.map-route-item:nth-child(odd) .route-objective::after { left: 100%; }
-.map-route-item:nth-child(even) .route-objective::before { right: 100%; }
-.route-objective:hover { z-index: 2; transform: translateY(-2px); border-color: color-mix(in srgb, var(--gold) 52%, transparent); box-shadow: 0 11px 24px rgba(49,58,52,.11); }
-.map-route-item.selected .route-objective { border-color: var(--gold); box-shadow: inset 3px 0 var(--gold), 0 10px 23px color-mix(in srgb, var(--gold) 12%, transparent); }
-.map-route-item.boss .route-objective { border-color: color-mix(in srgb, var(--coral) 43%, transparent); background: linear-gradient(125deg, color-mix(in srgb, var(--paper) 93%, white), color-mix(in srgb, var(--coral) 10%, var(--paper))); }
-.map-route-item.boss.selected .route-objective { border-color: var(--coral); box-shadow: inset 3px 0 var(--coral), 0 10px 23px color-mix(in srgb, var(--coral) 14%, transparent); }
-.map-route-item.completed .route-objective { opacity: .65; background: color-mix(in srgb, var(--sage) 8%, var(--paper)); }
-.route-date { width: 40px; height: 40px; display: grid; align-content: center; border: 1px solid color-mix(in srgb, var(--gold) 24%, transparent); border-radius: 7px; color: var(--gold); background: color-mix(in srgb, var(--gold) 8%, var(--paper)); text-align: center; }
+.treasure-route { min-height: 720px; position: relative; overflow: hidden; padding: 40px 28px 48px; border: 2px solid color-mix(in srgb, var(--gold) 55%, #8B5A2B); border-radius: 14px; background: radial-gradient(circle at 50% 50%, rgba(245, 230, 200, 0.95), rgba(220, 195, 155, 0.98)), radial-gradient(circle at 10% 20%, rgba(139, 90, 43, 0.15), transparent 40%), radial-gradient(circle at 90% 80%, rgba(139, 90, 43, 0.18), transparent 45%), color-mix(in srgb, var(--paper) 75%, var(--parchment)); box-shadow: 0 18px 40px rgba(45, 30, 15, 0.15), inset 0 0 50px rgba(100, 60, 20, 0.22), inset 0 0 0 6px color-mix(in srgb, var(--gold) 20%, transparent); }
+.treasure-route::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.25; background-image: radial-gradient(color-mix(in srgb, var(--ink) 45%, transparent) 0.6px, transparent 1px), repeating-linear-gradient(45deg, transparent 0 28px, color-mix(in srgb, var(--gold) 22%, transparent) 29px, transparent 30px 60px), repeating-linear-gradient(-45deg, transparent 0 28px, color-mix(in srgb, var(--gold) 22%, transparent) 29px, transparent 30px 60px); background-size: 8px 8px, 120px 120px, 120px 120px; }
+.treasure-route::after { content: ""; position: absolute; right: -42px; bottom: -55px; width: 220px; height: 220px; pointer-events: none; border: 2px solid color-mix(in srgb, var(--gold) 16%, transparent); border-radius: 50%; box-shadow: inset 0 0 0 16px color-mix(in srgb, var(--gold) 6%, transparent), inset 0 0 0 45px color-mix(in srgb, var(--gold) 4%, transparent); }
+
+.map-coordinates { position: absolute; pointer-events: none; font-family: monospace; font-size: 8px; font-weight: 700; color: color-mix(in srgb, var(--gold) 55%, var(--ink-soft)); letter-spacing: 0.15em; opacity: 0.65; }
+.coord-top { top: 8px; left: 60px; right: 120px; display: flex; justify-content: space-between; }
+.coord-side { left: 8px; top: 60px; bottom: 60px; display: flex; flex-direction: column; justify-content: space-between; }
+
+.map-sea-label { position: absolute; z-index: 0; color: color-mix(in srgb, var(--forest) 25%, transparent); font-family: "Fraunces Variable", serif; font-size: 10px; font-style: italic; letter-spacing: .2em; text-transform: uppercase; }
+.sea-north { top: 32px; left: 45px; transform: rotate(-5deg); font-weight: 700; }
+.sea-center { top: 46%; left: 18px; transform: rotate(90deg); opacity: 0.35; font-size: 11px; }
+.sea-south { right: 45px; bottom: 32px; transform: rotate(4deg); font-weight: 700; }
+
+.map-deco-element { position: absolute; pointer-events: none; opacity: 0.25; color: var(--forest); }
+.deco-ship { top: 85px; right: 120px; transform: rotate(-8deg); }
+.deco-anchor { bottom: 55px; left: 45px; transform: rotate(12deg); }
+.deco-kraken { bottom: 170px; right: 35px; font-size: 28px; opacity: 0.3; transform: scaleX(-1); }
+
+.antique-compass { position: absolute; z-index: 1; top: 25px; right: 25px; width: 72px; height: 72px; display: grid; place-items: center; border: 2px solid color-mix(in srgb, var(--gold) 45%, #8B5A2B); border-radius: 50%; color: var(--gold); background: color-mix(in srgb, var(--paper) 45%, transparent); box-shadow: 0 0 18px rgba(180, 130, 50, 0.15), inset 0 0 10px rgba(180, 130, 50, 0.1); }
+.antique-compass .compass-n { position: absolute; top: -14px; font-size: 9px; font-weight: 900; color: var(--coral); }
+.antique-compass .compass-s { position: absolute; bottom: -14px; font-size: 8px; font-weight: 800; }
+.antique-compass .compass-e { position: absolute; right: -14px; font-size: 8px; font-weight: 800; }
+.antique-compass .compass-w { position: absolute; left: -14px; font-size: 8px; font-weight: 800; }
+.antique-compass .compass-needle { color: var(--coral); transform: rotate(25deg); opacity: 0.78; }
+.antique-compass .compass-center { position: absolute; font-family: serif; font-size: 32px; font-style: normal; opacity: 0.3; }
+
+.winding-path { position: relative; z-index: 1; max-width: 800px; margin: 40px auto 0; padding: 0 0 30px; list-style: none; }
+.winding-path::before { content: ""; position: absolute; z-index: 0; top: 15px; bottom: 50px; left: 50%; width: 4px; border-left: 3px dashed color-mix(in srgb, var(--gold) 55%, #8B5A2B); transform: translateX(-1.5px); filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15)); }
+
+.map-route-item { min-height: 108px; position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 66px minmax(0, 1fr); align-items: center; }
+.map-route-item.path-left .route-objective { grid-column: 1; grid-row: 1; transform: rotate(-1deg); }
+.map-route-item.path-right .route-objective { grid-column: 3; grid-row: 1; transform: rotate(1deg); }
+.map-route-item.path-left .route-objective::after, .map-route-item.path-right .route-objective::before { content: ""; position: absolute; top: 50%; width: 33px; border-top: 2px dashed color-mix(in srgb, var(--gold) 50%, #8B5A2B); }
+.map-route-item.path-left .route-objective::after { left: 100%; }
+.map-route-item.path-right .route-objective::before { right: 100%; }
+
+.treasure-card { min-width: 0; position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr) 17px; align-items: center; gap: 9px; padding: 11px; border: 1px solid color-mix(in srgb, var(--gold) 48%, #A07030) !important; border-radius: 9px; color: var(--ink); background: linear-gradient(135deg, color-mix(in srgb, var(--paper) 96%, #F5E6CE), color-mix(in srgb, var(--parchment) 90%, #E6D2B5)) !important; box-shadow: 0 8px 22px rgba(60, 40, 20, 0.12) !important; cursor: pointer; text-align: left; transition: transform .2s, border-color .2s, box-shadow .2s; }
+.treasure-card:hover { z-index: 2; transform: translateY(-3px) scale(1.01) !important; border-color: var(--gold) !important; box-shadow: 0 12px 28px rgba(60, 40, 20, 0.18) !important; }
+.map-route-item.selected .treasure-card { border-color: var(--gold) !important; box-shadow: inset 4px 0 var(--gold), 0 12px 28px rgba(180, 130, 50, 0.22) !important; }
+.map-route-item.boss .treasure-card { border-color: color-mix(in srgb, var(--coral) 55%, #8B5A2B) !important; background: linear-gradient(125deg, color-mix(in srgb, var(--paper) 93%, white), color-mix(in srgb, var(--coral) 12%, #F5E6CE)) !important; }
+.map-route-item.boss.selected .treasure-card { border-color: var(--coral) !important; box-shadow: inset 4px 0 var(--coral), 0 12px 28px rgba(220, 70, 50, 0.2) !important; }
+.map-route-item.completed .treasure-card { opacity: .72; background: color-mix(in srgb, var(--sage) 12%, #F5E6CE) !important; }
+
+.route-date { width: 40px; height: 40px; display: grid; align-content: center; border: 1px solid color-mix(in srgb, var(--gold) 32%, transparent); border-radius: 7px; color: var(--gold); background: color-mix(in srgb, var(--gold) 12%, var(--paper)); text-align: center; }
 .route-date strong, .route-date small { display: block; line-height: 1; }
 .route-date strong { font-family: "Fraunces Variable", serif; font-size: 16px; }
 .route-date small { margin-top: 2px; font-size: 6px; font-weight: 800; text-transform: uppercase; }
 .route-copy { min-width: 0; }
 .route-copy > small, .route-copy > strong, .route-copy > span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.route-copy > small { color: var(--gold); font-size: 6px; font-weight: 900; letter-spacing: .12em; }
+.route-copy > small { color: var(--gold); font-size: 6.5px; font-weight: 900; letter-spacing: .12em; }
 .map-route-item.boss .route-copy > small { color: var(--coral); }
 .route-copy > strong { margin: 3px 0; font-family: "Fraunces Variable", serif; font-size: 13px; }
-.route-copy > span { color: var(--ink-soft); font-size: 7px; }
-.route-objective > svg { color: color-mix(in srgb, var(--gold) 55%, var(--ink-soft)); }
-.route-marker { z-index: 1; grid-column: 2; grid-row: 1; display: grid; place-items: center; }
-.route-marker > i { width: 35px; height: 35px; display: grid; place-items: center; border: 2px solid var(--gold); border-radius: 50%; color: var(--paper); background: var(--forest); box-shadow: 0 0 0 5px color-mix(in srgb, var(--paper) 92%, transparent), 0 0 0 7px color-mix(in srgb, var(--gold) 23%, transparent); font-size: 9px; font-style: normal; font-weight: 900; transition: transform .2s; }
-.map-route-item:hover .route-marker > i, .map-route-item.selected .route-marker > i { transform: scale(1.12); }
-.map-route-item.boss .route-marker > i { width: 43px; height: 43px; border-color: color-mix(in srgb, var(--coral) 82%, white); background: var(--coral); box-shadow: 0 0 0 5px color-mix(in srgb, var(--paper) 92%, transparent), 0 0 17px color-mix(in srgb, var(--coral) 28%, transparent); animation: fortress-pulse 2.5s ease-in-out infinite; }
-.map-route-item.completed .route-marker > i { border-color: color-mix(in srgb, var(--sage) 76%, white); background: var(--sage); }
-.route-treasure { position: relative; z-index: 2; display: grid; justify-items: center; gap: 6px; margin-top: 6px; color: var(--gold); }
-.route-treasure span { width: 46px; height: 46px; display: grid; place-items: center; border: 2px solid var(--gold); border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 6px color-mix(in srgb, var(--gold) 10%, transparent), 0 0 21px color-mix(in srgb, var(--gold) 23%, transparent); font-size: 21px; animation: treasure-pulse 2.2s ease-in-out infinite; }
-.route-treasure strong { font-size: 6px; letter-spacing: .14em; }
+.route-copy > span { color: var(--ink-soft); font-size: 7.5px; }
+.treasure-card > .card-arrow { color: color-mix(in srgb, var(--gold) 65%, var(--ink-soft)); }
+
+.route-marker { z-index: 1; grid-column: 2; grid-row: 1; display: grid; place-items: center; position: relative; }
+.route-marker > i { width: 37px; height: 37px; display: grid; place-items: center; border: 2px solid var(--gold); border-radius: 50%; color: var(--paper); background: var(--forest); box-shadow: 0 0 0 5px color-mix(in srgb, #F5E6CE 95%, transparent), 0 0 0 8px color-mix(in srgb, var(--gold) 30%, transparent); font-size: 10px; font-style: normal; font-weight: 900; transition: transform .2s; }
+.map-route-item:hover .route-marker > i, .map-route-item.selected .route-marker > i { transform: scale(1.15); }
+.map-route-item.boss .route-marker > i { width: 45px; height: 45px; border-color: color-mix(in srgb, var(--coral) 85%, white); background: var(--coral); box-shadow: 0 0 0 5px color-mix(in srgb, #F5E6CE 95%, transparent), 0 0 20px color-mix(in srgb, var(--coral) 35%, transparent); animation: fortress-pulse 2.5s ease-in-out infinite; }
+.map-route-item.completed .route-marker > i { border-color: color-mix(in srgb, var(--sage) 80%, white); background: var(--sage); }
+.marker-footprints { position: absolute; bottom: -16px; color: var(--sage); opacity: 0.85; transform: rotate(20deg); }
+
+.treasure-spot { position: relative; z-index: 2; display: grid; justify-items: center; gap: 6px; margin-top: 28px; color: var(--gold); }
+.x-marks-the-spot { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; }
+.x-mark { position: absolute; font-size: 38px; font-weight: 900; color: var(--coral); text-shadow: 0 0 12px rgba(230, 60, 40, 0.4); opacity: 0.9; transform: scaleY(0.9); }
+.treasure-chest-glow { position: relative; z-index: 1; width: 52px; height: 52px; display: grid; place-items: center; border: 2px solid var(--gold); border-radius: 50%; color: #FFF8E7; background: linear-gradient(135deg, var(--gold), #8B5A2B); box-shadow: 0 0 0 6px color-mix(in srgb, var(--gold) 20%, transparent), 0 0 25px color-mix(in srgb, var(--gold) 50%, transparent); animation: treasure-pulse 2.2s ease-in-out infinite; }
+.treasure-spot strong { font-size: 8px; letter-spacing: .16em; font-weight: 900; color: #8B5A2B; }
+.treasure-spot small { font-size: 6.5px; letter-spacing: .1em; color: var(--ink-soft); font-weight: 800; }
+
 .map-empty-state { min-height: 520px; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--ink-soft); text-align: center; }
 .map-empty-state svg { color: var(--gold); }
 .map-empty-state h2 { margin: 13px 0 5px; color: var(--ink); font-family: "Fraunces Variable", serif; }
 .map-empty-state p { max-width: 330px; font-size: 10px; }
 .map-empty-state button { border: 0; color: var(--gold); background: transparent; cursor: pointer; font-size: 10px; font-weight: 800; }
-.map-objective-sheet { position: sticky; top: 86px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent); border-radius: 11px; background: color-mix(in srgb, var(--paper) 94%, var(--parchment)); box-shadow: 0 14px 35px rgba(40,53,47,.1), inset 0 0 0 3px color-mix(in srgb, var(--gold) 4%, transparent); }
-.map-objective-sheet.boss { border-color: color-mix(in srgb, var(--coral) 45%, transparent); }
+
+.parchment-scroll { position: sticky; top: 86px; overflow: hidden; border: 2px solid color-mix(in srgb, var(--gold) 45%, #8B5A2B); border-radius: 12px; background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 98%, #FFFDF5), color-mix(in srgb, var(--parchment) 95%, #F0E2CA)) !important; box-shadow: 0 16px 40px rgba(45, 30, 15, 0.16), inset 0 0 30px rgba(100, 60, 20, 0.08) !important; }
+.map-objective-sheet.boss { border-color: color-mix(in srgb, var(--coral) 55%, #8B5A2B); }
 .sheet-banner { display: flex; align-items: center; gap: 10px; padding: 15px; color: #fffaf0; background: linear-gradient(135deg, var(--forest), var(--forest-deep)); }
 .map-objective-sheet.boss .sheet-banner { background: linear-gradient(135deg, color-mix(in srgb, var(--coral) 78%, #43251f), #3a2526); }
 .sheet-banner > span { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid rgba(240,210,139,.45); border-radius: 50%; color: #f1cf7a; background: rgba(237,198,108,.1); }
