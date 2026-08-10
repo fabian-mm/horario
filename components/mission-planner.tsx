@@ -13,6 +13,7 @@ import { addMissionProgress, calculatePlayerProgress, calculateStreak, formatLon
 import { getScheduledActivityLabel, getScheduledActivityXp, getScheduledOccurrences, getWeekDates, getWeeklyFreeSlots, ScheduledOccurrence, sortDailyMissionsByTime, weekdayMeta } from "@/lib/schedule";
 import { formatTime12Hour, formatTimeRange12Hour } from "@/lib/time";
 import { resolveActivityType } from "@/lib/activity-types";
+import { applyDailyLoginReward, buildUpcomingActivityReminders, getNotificationPermission, requestNotificationPermission, showBrowserNotification } from "@/lib/notifications";
 import { findMissionType, isTimedMissionType } from "@/lib/mission-types";
 import { resolveSubjectName } from "@/lib/subjects";
 import { getUserInitials } from "@/lib/users";
@@ -68,7 +69,16 @@ export function MissionPlanner() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [focusedWeeklyQuestId, setFocusedWeeklyQuestId] = useState<string | null>(null);
   const [reward, setReward] = useState<RewardEvent | null>(null);
+  const [dailyLoginState, setDailyLoginState] = useState(() => ({
+    lastLoginDate: null as string | null,
+    streak: 0,
+    totalBonusXp: 0,
+    lastAwardedXp: 0,
+    awardedToday: false,
+  }));
+  const [notificationsPermission, setNotificationsPermission] = useState<"default" | "granted" | "denied" | "unsupported">("unsupported");
   const rewardSequence = useRef(0);
+  const reminderTimersRef = useRef<number[]>([]);
   const [missionTypesOpen, setMissionTypesOpen] = useState(false);
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("month");
   const [freeTimeOpen, setFreeTimeOpen] = useState(false);
@@ -124,6 +134,50 @@ export function MissionPlanner() {
     return () => window.clearTimeout(timeout);
   }, [reward]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setNotificationsPermission(getNotificationPermission());
+  }, []);
+
+  useEffect(() => {
+    if (!auth.user?.id) {
+      setDailyLoginState({ lastLoginDate: null, streak: 0, totalBonusXp: 0, lastAwardedXp: 0, awardedToday: false });
+      return;
+    }
+    const applied = applyDailyLoginReward(auth.user.id, new Date());
+    setDailyLoginState(applied.state);
+    if (applied.awarded) {
+      setReward({ id: Date.now(), title: "Entrada diaria", xp: applied.xpAwarded, boss: false, activity: false });
+      showBrowserNotification("Entrada diaria", `¡Ganaste ${applied.xpAwarded} XP y tu racha va en ${applied.state.streak} días!`);
+    }
+  }, [auth.user?.id]);
+
+  useEffect(() => {
+    if (!auth.user?.id || !catalogWeeklyQuests.length) {
+      reminderTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      reminderTimersRef.current = [];
+      return;
+    }
+    reminderTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    reminderTimersRef.current = [];
+    const reminders = buildUpcomingActivityReminders(catalogWeeklyQuests, new Date(), 7);
+    reminderTimersRef.current = reminders.map((reminder) => window.setTimeout(() => {
+      showBrowserNotification(reminder.title, reminder.body);
+    }, reminder.delayMs));
+    return () => {
+      reminderTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      reminderTimersRef.current = [];
+    };
+  }, [auth.user?.id, catalogWeeklyQuests]);
+
+  const enableNotifications = async () => {
+    const permission = await requestNotificationPermission();
+    setNotificationsPermission(permission);
+    if (permission === "granted") {
+      showBrowserNotification("Alertas activadas", "Recibirás recordatorios 20 minutos antes de tus actividades y tu recompensa diaria de XP.");
+    }
+  };
+
   const openNew = (date = selectedDate, subject?: string) => { setSelectedDate(date); setDraftSubject(subject); setEditing(null); setModalOpen(true); };
   const openEdit = (mission: Mission) => { setDraftSubject(undefined); setEditing(mission); setModalOpen(true); };
   const movePeriod = (amount: number) => {
@@ -138,7 +192,18 @@ export function MissionPlanner() {
     setSelectedDate(next);
     setMonth(new Date(next.getFullYear(), next.getMonth(), 1));
   };
-  const player = useMemo(() => calculatePlayerProgress(missions, catalogWeeklyQuests), [missions, catalogWeeklyQuests]);
+  const player = useMemo(() => {
+    const base = calculatePlayerProgress(missions, catalogWeeklyQuests);
+    const totalXp = base.totalXp + dailyLoginState.totalBonusXp;
+    const xpInLevel = totalXp % base.xpPerLevel;
+    return {
+      ...base,
+      totalXp,
+      xpInLevel,
+      progress: Math.round((xpInLevel / base.xpPerLevel) * 100),
+      xpToNextLevel: base.xpPerLevel - xpInLevel,
+    };
+  }, [catalogWeeklyQuests, dailyLoginState.totalBonusXp, missions]);
   const nextMilestone = useMemo(() => getNextXpMilestone(player.totalXp), [player.totalXp]);
   const gameStats = useMemo(() => missions.reduce((stats, mission) => {
     const status = getMissionStatus(mission);
@@ -151,7 +216,7 @@ export function MissionPlanner() {
     return stats;
   }, { pending: 0, completed: 0, bosses: 0, bossesDefeated: 0 }), [missions]);
   const pending = gameStats.pending;
-  const streak = useMemo(() => calculateStreak(missions, catalogWeeklyQuests), [missions, catalogWeeklyQuests]);
+  const streak = useMemo(() => calculateStreak(missions, catalogWeeklyQuests, new Date(), dailyLoginState.lastLoginDate ? [dailyLoginState.lastLoginDate] : []), [catalogWeeklyQuests, dailyLoginState.lastLoginDate, missions]);
   const monthName = new Intl.DateTimeFormat("es-CO", { month: "long" }).format(month);
   const calendarTitle = calendarMode === "month" ? monthName : calendarMode === "week" ? `semana del ${formatLongDate(toISODate(getWeekDates(selectedDate)[0]))}` : formatLongDate(selectedIso);
   const campaignProgress = missions.length ? Math.round((gameStats.completed / missions.length) * 100) : 0;
@@ -283,8 +348,10 @@ export function MissionPlanner() {
           <div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "world" ? "Buscar tarea o materia..." : view === "map" ? "Buscar un destino..." : view === "weekly" ? "Buscar una actividad..." : "Buscar una misión..."} /></div>
           <div className="top-actions">
             {(missionsLoading || scheduleLoading || subjectsLoading || activityTypesLoading || missionTypesLoading || missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError) && <span className={`sync-state ${missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError ? "error" : ""}`}>{missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError ? "Sin guardar" : "Sincronizando"}</span>}
+            <button className="secondary-button compact" type="button" onClick={enableNotifications}>{notificationsPermission === "granted" ? "Alertas activas" : notificationsPermission === "denied" ? "Alertas desactivadas" : "Activar alertas"}</button>
             <span className="level-hud" title={`${player.rank} · ${player.totalXp} XP total`}><Sparkles size={14} /><b>NIV. {player.level}</b><small>{player.xpInLevel}/{player.xpPerLevel} XP</small></span>
             <span className="streak">🔥 <b>{streak}</b><small> DÍAS DE RACHA</small></span>
+            {dailyLoginState.lastAwardedXp > 0 && <span className="streak" title={`Bonus diario de ${dailyLoginState.lastAwardedXp} XP`}><span aria-hidden="true">☀️</span> <b>+{dailyLoginState.lastAwardedXp}</b><small> XP HOY</small></span>}
             <button className="primary-button compact" onClick={() => openNew(selectedDate, view === "world" ? selectedSubject ?? undefined : undefined)}><Plus size={18} /> Nueva misión</button>
           </div>
         </header>

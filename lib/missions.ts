@@ -184,7 +184,7 @@ export const formatLongDate = (isoDate: string) =>
     new Date(`${isoDate}T12:00:00`),
   );
 
-export const calculateStreak = (missions: Mission[], weeklyQuests: WeeklyQuest[] = [], referenceDate = new Date()) => {
+export const calculateStreak = (missions: Mission[], weeklyQuests: WeeklyQuest[] = [], referenceDate = new Date(), dailyVisitDates: string[] = []) => {
   const completedDates = new Set(
     missions
       .filter((mission) => getMissionStatus(mission) === "completed")
@@ -193,6 +193,7 @@ export const calculateStreak = (missions: Mission[], weeklyQuests: WeeklyQuest[]
   weeklyQuests.forEach((weeklyQuest) => weeklyQuest.dailyMissions.forEach((activity) =>
     activity.completedDates?.forEach((date) => completedDates.add(date)),
   ));
+  dailyVisitDates.forEach((date) => completedDates.add(date));
 
   let streak = 0;
   const day = new Date(referenceDate);
