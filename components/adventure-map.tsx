@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Anchor, Check, ChevronRight, Clock3, Crown, FileCheck2, Flag, Gem, MapPinned, Navigation, Plus, ScrollText, Ship, Sparkles, Swords, Trophy } from "lucide-react";
+import { Anchor, Check, ChevronRight, Clock3, Crown, FileCheck2, Flag, MapPinned, Navigation, Plus, ScrollText, Ship, Sparkles, Swords, Trophy } from "lucide-react";
 import { formatLongDate, formatProgressDuration, getMissionProgress, getMissionStatus, getMissionXp, isProgressMission, Mission, MissionStatus, priorityMeta, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
 import { formatTime12Hour } from "@/lib/time";
+import { createTreasureMapLayout, createTreasurePath } from "@/lib/treasure-map";
 import { MissionProgress } from "@/components/mission-progress";
 
 type Props = {
@@ -14,49 +15,31 @@ type Props = {
   onAddProgress: (id: string, minutes: 30 | 60) => void;
 };
 
-// Organic horizontal marker position percentages for clean circular nodes
-const NODE_POSITIONS = [
-  { xPercent: 22 },
-  { xPercent: 78 },
-  { xPercent: 35 },
-  { xPercent: 82 },
-  { xPercent: 18 },
-  { xPercent: 65 },
-];
-
 export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddProgress }: Props) {
   const orderedMissions = useMemo(() => sortMissionsByDateTime(missions), [missions]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selectedMission = orderedMissions.find((mission) => mission.id === selectedId) ?? orderedMissions.find((mission) => getMissionStatus(mission) !== "completed") ?? orderedMissions[0] ?? null;
+  const selectedMission = orderedMissions.find((mission) => mission.id === selectedId) ?? null;
   const completed = orderedMissions.filter((mission) => getMissionStatus(mission) === "completed").length;
   const bosses = orderedMissions.filter((mission) => mission.priority === "boss");
   const defeatedBosses = bosses.filter((mission) => getMissionStatus(mission) === "completed").length;
   const journeyProgress = orderedMissions.length ? Math.round((completed / orderedMissions.length) * 100) : 0;
-
-  // Generate SVG bezier curve path connecting nodes organically
-  const svgPathData = useMemo(() => {
-    if (!orderedMissions.length) return "";
-    const nodeHeight = 90;
-    const startY = 40;
-
-    const points = orderedMissions.map((_, i) => ({
-      x: NODE_POSITIONS[i % NODE_POSITIONS.length].xPercent,
-      y: startY + i * nodeHeight,
-    }));
-
-    // Add final treasure chest point at 50% center
-    const finalY = startY + orderedMissions.length * nodeHeight;
-    points.push({ x: 50, y: finalY });
-
-    let path = `M ${points[0].x} ${points[0].y}`;
-    for (let i = 0; i < points.length - 1; i++) {
-      const p1 = points[i];
-      const p2 = points[i + 1];
-      const midY = (p1.y + p2.y) / 2;
-      path += ` C ${p1.x} ${midY}, ${p2.x} ${midY}, ${p2.x} ${p2.y}`;
-    }
-    return path;
-  }, [orderedMissions]);
+  const mapPoints = useMemo(
+    () => createTreasureMapLayout(orderedMissions.map((mission) => mission.id)),
+    [orderedMissions],
+  );
+  const treasurePoint = useMemo(() => {
+    const lastPoint = mapPoints.at(-1);
+    if (!lastPoint) return { x: 50, y: 360 };
+    return {
+      x: lastPoint.x < 50 ? 72 : 28,
+      y: lastPoint.y + 145,
+    };
+  }, [mapPoints]);
+  const mapHeight = orderedMissions.length ? treasurePoint.y + 95 : 520;
+  const svgPathData = useMemo(
+    () => createTreasurePath([...mapPoints, treasurePoint]),
+    [mapPoints, treasurePoint],
+  );
 
   return (
     <div className="adventure-map-view">
@@ -64,7 +47,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
         <div>
           <span className="eyebrow">CARTA DE NAVEGACIÓN</span>
           <h1>Mapa del <i>Tesoro de Campaña</i></h1>
-          <p>Toca los círculos del mapa para inspeccionar cada objetivo de tu travesía.</p>
+          <p>Pasa el cursor sobre una fecha para descubrir el objetivo; tócala para abrir su ficha.</p>
         </div>
         <button className="primary-button compact" type="button" onClick={onAdd}>
           <Plus size={18} /> Nueva misión
@@ -109,7 +92,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
               {/* Dynamic SVG Serpentine Winding Trail */}
               <svg
                 className="treasure-svg-canvas"
-                viewBox={`0 0 100 ${orderedMissions.length * 90 + 70}`}
+                viewBox={`0 0 100 ${mapHeight}`}
                 preserveAspectRatio="none"
                 aria-hidden="true"
               >
@@ -125,29 +108,27 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
                 />
               </svg>
 
-              <div className="clean-nodes-list" style={{ height: `${orderedMissions.length * 90 + 50}px` }}>
+              <div className="clean-nodes-list" style={{ height: `${mapHeight}px` }}>
                 {orderedMissions.map((mission, index) => {
                   const status = getMissionStatus(mission);
                   const isBoss = mission.priority === "boss";
                   const isSelected = selectedMission?.id === mission.id;
-                  const isCompleted = status === "completed";
-                  const posConfig = NODE_POSITIONS[index % NODE_POSITIONS.length];
-                  const topY = 40 + index * 90;
+                  const point = mapPoints[index];
 
                   return (
                     <div
                       key={mission.id}
                       className={`map-node-wrapper ${status} ${isBoss ? "boss" : ""} ${isSelected ? "selected" : ""}`}
                       style={{
-                        left: `${posConfig.xPercent}%`,
-                        top: `${topY}px`,
+                        left: `${point.x}%`,
+                        top: `${point.y}px`,
                       }}
                     >
                       <button
                         type="button"
                         className="map-circle-node"
                         onClick={() => setSelectedId(mission.id)}
-                        aria-label={`Misión: ${mission.title} · ${mission.subject}`}
+                        aria-label={`${formatLongDate(mission.date)}. ${mission.title} · ${mission.subject}. ${statusMeta[status].label}`}
                         aria-pressed={isSelected}
                       >
                         <span className="node-date-num">
@@ -157,23 +138,12 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
                           {new Intl.DateTimeFormat("es-CO", { month: "short" }).format(new Date(`${mission.date}T12:00:00`))}
                         </span>
 
-                        {isCompleted && (
-                          <span className="node-badge completed-badge" title="Cumplida">
-                            <Check size={13} />
-                          </span>
-                        )}
-                        {isBoss && !isCompleted && (
-                          <span className="node-badge boss-badge" title="Fortaleza Final">
-                            <Swords size={13} />
-                          </span>
-                        )}
-
-                        {/* Hover / Focus Tooltip Overlay */}
-                        <div className={`node-tooltip ${posConfig.xPercent > 50 ? "tooltip-left" : "tooltip-right"}`}>
+                        <div className={`node-tooltip ${point.x > 50 ? "tooltip-left" : "tooltip-right"}`} role="tooltip">
                           <span className="tooltip-kicker">
                             {isBoss ? "🏰 FORTALEZA DE JEFES" : priorityMeta[mission.priority].label.toUpperCase()}
                           </span>
                           <strong className="tooltip-title">{mission.title} · {mission.subject}</strong>
+                          <span className={`tooltip-status ${status}`}><i />{statusMeta[status].label}</span>
                           <span className="tooltip-meta">
                             <Clock3 size={11} />
                             {isProgressMission(mission)
@@ -191,8 +161,8 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
                 <div
                   className="treasure-spot clean-treasure-spot"
                   style={{
-                    left: "50%",
-                    top: `${40 + orderedMissions.length * 90}px`,
+                    left: `${treasurePoint.x}%`,
+                    top: `${treasurePoint.y}px`,
                   }}
                   aria-hidden="true"
                 >

@@ -753,15 +753,16 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .antique-compass .compass-w { position: absolute; left: -14px; font-size: 8px; font-weight: 800; }
 .antique-compass .compass-needle { color: var(--coral); transform: rotate(25deg); opacity: 0.78; }
 .antique-compass .compass-center { position: absolute; font-family: serif; font-size: 32px; font-style: normal; opacity: 0.3; }
-.map-route-container { position: relative; width: 100%; min-height: 500px; padding: 20px 0 40px; }
+.map-route-container { position: relative; width: 100%; min-height: 500px; margin: 20px 0 40px; }
 
 .treasure-svg-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
-.treasure-path-background { stroke: color-mix(in srgb, #8B5A2B 30%, transparent); stroke-width: 5; fill: none; stroke-linecap: round; }
-.treasure-path-active { stroke: color-mix(in srgb, var(--gold) 85%, #8B5A2B); stroke-width: 3.5; fill: none; stroke-linecap: round; filter: drop-shadow(0 2px 4px rgba(100, 60, 20, 0.25)); }
+.treasure-path-background { stroke: color-mix(in srgb, #8B5A2B 38%, transparent); stroke-width: 7; fill: none; stroke-linecap: round; }
+.treasure-path-active { stroke: color-mix(in srgb, var(--gold) 82%, #70411f); stroke-width: 3; fill: none; stroke-linecap: round; stroke-dasharray: 8 7; filter: drop-shadow(0 2px 3px rgba(100, 60, 20, 0.24)); animation: treasure-route-dash 18s linear infinite; }
 
 /* Clean Circular Medallion Nodes */
 .clean-nodes-list { position: relative; width: 100%; margin: 0; padding: 0; }
 .map-node-wrapper { position: absolute; z-index: 3; transform: translate(-50%, -50%); }
+.map-node-wrapper:hover, .map-node-wrapper:focus-within { z-index: 20; }
 
 .map-circle-node { position: relative; width: 46px; height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid var(--gold); border-radius: 50%; color: var(--ink); background: linear-gradient(135deg, color-mix(in srgb, var(--paper) 98%, #FFF8EA), color-mix(in srgb, var(--parchment) 92%, #E6D2B5)); box-shadow: 0 0 0 4px color-mix(in srgb, #F5E6CE 95%, transparent), 0 6px 16px rgba(60, 40, 20, 0.18); cursor: pointer; transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s, box-shadow 0.2s; }
 .map-circle-node:hover, .map-circle-node:focus, .map-node-wrapper.selected .map-circle-node { z-index: 10; transform: scale(1.18); border-color: var(--gold); box-shadow: 0 0 0 6px color-mix(in srgb, var(--gold) 35%, transparent), 0 10px 24px rgba(180, 130, 50, 0.35); }
@@ -773,21 +774,25 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .map-node-wrapper.boss .node-date-month { color: var(--coral); }
 .map-node-wrapper.completed .node-date-month { color: var(--sage); }
 
-.node-badge { position: absolute; top: -3px; right: -3px; width: 17px; height: 17px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--sage); border: 1.5px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
-.boss-badge { background: var(--coral); }
-
 /* Hover Tooltip Overlay Card */
-.node-tooltip { position: absolute; z-index: 30; width: 210px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--gold) 55%, #8B5A2B); border-radius: 8px; background: linear-gradient(135deg, color-mix(in srgb, var(--paper) 98%, #FFFDF5), color-mix(in srgb, var(--parchment) 95%, #F0E2CA)); box-shadow: 0 10px 25px rgba(45, 30, 15, 0.22); text-align: left; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s; }
+.node-tooltip { position: absolute; z-index: 30; width: 220px; padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--gold) 55%, #8B5A2B); border-radius: 8px; background: linear-gradient(135deg, color-mix(in srgb, var(--paper) 98%, #FFFDF5), color-mix(in srgb, var(--parchment) 95%, #F0E2CA)); box-shadow: 0 10px 25px rgba(45, 30, 15, 0.22); text-align: left; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s; }
 .tooltip-left { right: 56px; top: 50%; transform: translateY(-50%) translateX(-6px); }
 .tooltip-right { left: 56px; top: 50%; transform: translateY(-50%) translateX(6px); }
+.tooltip-left::after, .tooltip-right::after { content: ""; position: absolute; top: 50%; width: 9px; height: 9px; border: solid color-mix(in srgb, var(--gold) 55%, #8B5A2B); background: color-mix(in srgb, var(--paper) 96%, var(--parchment)); transform: translateY(-50%) rotate(45deg); }
+.tooltip-left::after { right: -6px; border-width: 1px 1px 0 0; }
+.tooltip-right::after { left: -6px; border-width: 0 0 1px 1px; }
 
-.map-circle-node:hover .node-tooltip, .map-circle-node:focus .node-tooltip, .map-node-wrapper.selected .node-tooltip { opacity: 1; visibility: visible; pointer-events: auto; }
-.map-circle-node:hover .tooltip-left, .map-circle-node:focus .tooltip-left, .map-node-wrapper.selected .tooltip-left { transform: translateY(-50%) translateX(0); }
-.map-circle-node:hover .tooltip-right, .map-circle-node:focus .tooltip-right, .map-node-wrapper.selected .tooltip-right { transform: translateY(-50%) translateX(0); }
+.map-circle-node:hover .node-tooltip, .map-circle-node:focus-visible .node-tooltip { opacity: 1; visibility: visible; }
+.map-circle-node:hover .tooltip-left, .map-circle-node:focus-visible .tooltip-left { transform: translateY(-50%) translateX(0); }
+.map-circle-node:hover .tooltip-right, .map-circle-node:focus-visible .tooltip-right { transform: translateY(-50%) translateX(0); }
 
 .tooltip-kicker { display: block; font-size: 6.5px; font-weight: 900; letter-spacing: 0.12em; color: var(--gold); }
 .map-node-wrapper.boss .tooltip-kicker { color: var(--coral); }
 .tooltip-title { display: block; font-family: "Fraunces Variable", serif; font-size: 12px; color: var(--ink); margin: 2px 0 4px; white-space: normal; line-height: 1.25; }
+.tooltip-status { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; color: var(--ink-soft); font-size: 7px; font-weight: 800; }
+.tooltip-status i { width: 6px; height: 6px; flex: none; border-radius: 50%; background: currentColor; }
+.tooltip-status.submitted { color: var(--gold); }
+.tooltip-status.completed { color: var(--sage); }
 .tooltip-meta { display: inline-flex; align-items: center; gap: 4px; font-size: 8px; color: var(--ink-soft); margin-right: 8px; }
 .tooltip-xp { font-size: 8px; font-weight: 800; color: var(--gold); }
 
@@ -970,6 +975,7 @@ fieldset { margin: 0; padding: 0; border: 0; }
 
 @keyframes boss-glow { 50% { box-shadow: 0 0 8px rgba(184,77,58,.16); } }
 @keyframes treasure-pulse { 50% { transform: scale(1.22) rotate(12deg); filter: drop-shadow(0 0 5px var(--gold)); } }
+@keyframes treasure-route-dash { to { stroke-dashoffset: -150; } }
 @keyframes selected-day-pulse { 50% { opacity: .35; } }
 @keyframes territory-sigil { 50% { transform: translateY(-2px) rotate(-3deg); box-shadow: 0 6px 14px color-mix(in srgb, var(--gold) 18%, transparent); } }
 @keyframes reward-arrive { from { opacity: 0; transform: translateY(18px) scale(.94); } }
@@ -1139,7 +1145,7 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .node-date-month { font-size: 6px; }
   .map-node-wrapper.boss .map-circle-node { width: 46px; height: 46px; }
   .node-badge { width: 15px; height: 15px; }
-  .node-tooltip { width: 180px; padding: 8px 10px; }
+  .node-tooltip { width: min(140px, calc(100vw - 190px)); padding: 8px 10px; }
   .tooltip-left { right: 48px; }
   .tooltip-right { left: 48px; }
   .treasure-chest-glow { width: 40px; height: 40px; }
