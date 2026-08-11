@@ -1215,3 +1215,263 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .day-agenda-hours time { font-size: 11px; font-weight: 700; }
   .time-field-hint { font-size: 10px; }
 }
+
+/* Interfaz cómoda: escala de lectura, espacios y objetivos táctiles consistentes. */
+.app-shell { font-size: 16px; line-height: 1.5; }
+.app-shell p { font-size: 14px; line-height: 1.55; }
+.app-shell small { font-size: 12px; line-height: 1.45; }
+.app-shell :where(.eyebrow, .nav-label, .quest-kicker, .quest-board-ribbon, .mission-badge, .sync-state, .map-node-status, .map-node-xp) { font-size: 11px; line-height: 1.4; }
+
+.sidebar { width: 280px; padding: 28px 22px 24px; }
+.sidebar-collapse { left: 234px; width: 40px; height: 40px; }
+.sidebar.collapsed { width: 84px; padding-inline: 14px; }
+.sidebar.collapsed .sidebar-collapse { left: 22px; }
+.content { width: calc(100% - 280px); margin-left: 280px; }
+.content.sidebar-collapsed { width: calc(100% - 84px); margin-left: 84px; }
+.brand { padding-bottom: 30px; }
+.brand small { font-size: 11px; }
+.sidebar nav button,
+.sidebar .settings { min-height: 48px; padding: 12px 13px; font-size: 15px; }
+.rank-card { padding: 15px; }
+.rank-top,
+.rank-quick-stats span,
+.next-milestone-card > span,
+.next-milestone-card > small { font-size: 11px; }
+.rank-identity strong { font-size: 14px; }
+.rank-identity small,
+.rank-card > small,
+.profile small { font-size: 11px; }
+.profile b { font-size: 14px; }
+
+.topbar { height: 78px; padding-inline: 32px; }
+.search-box { min-height: 46px; padding-inline: 15px; border-radius: 11px; }
+.search-box input { font-size: 15px; }
+.notification-button { height: 44px; padding-inline: 14px; font-size: 13px; }
+.primary-button { min-height: 44px; padding-inline: 18px; font-size: 14px; }
+.workspace { max-width: 1480px; padding: 30px 32px 48px; }
+.page-heading { margin-bottom: 22px; }
+.eyebrow { font-size: 11px; }
+.page-heading p,
+.world-heading p,
+.weekly-heading p { font-size: 14px; }
+.calendar-view-switch button,
+.free-time-toggle,
+.month-controls button { min-height: 40px; font-size: 12px; }
+.month-controls button { min-width: 40px; }
+.month-controls .today { min-width: 66px; font-size: 12px; }
+.planner-grid { grid-template-columns: minmax(0, 1fr) minmax(330px, 33%); gap: 24px; }
+.calendar-day { height: 94px; padding: 8px; }
+.day-number { width: 28px; height: 28px; font-size: 15px; }
+.week-row span { font-size: 11px; }
+.mission-chip { min-height: 22px; padding: 4px 6px; font-size: 10.5px; line-height: 1.25; }
+.day-missions > small,
+.map-legend span,
+.map-legend small { font-size: 10px; }
+.mission-row { min-height: 82px; padding: 13px 16px; }
+.check-button { width: 28px; height: 28px; }
+.mission-copy > span { font-size: 11px; }
+.mission-copy h3 { font-size: 16px; line-height: 1.3; }
+.mission-copy small { font-size: 12px; }
+.edit-button,
+.text-button { min-height: 40px; font-size: 12px; }
+.quest-focus p { font-size: 12px; }
+.quest-tags span,
+.quest-focus-action > button { min-height: 34px; font-size: 11px; }
+.day-agenda-hours time { font-size: 12px; }
+.day-agenda-event time,
+.day-agenda-event small { font-size: 11px; }
+.day-agenda-event strong { font-size: 14px; }
+
+.mission-modal label,
+.mission-modal legend { font-size: 13px; line-height: 1.4; }
+.mission-modal input,
+.mission-modal textarea,
+.mission-modal select { min-height: 46px; padding: 11px 12px; font-size: 15px; }
+.mission-modal textarea { min-height: 96px; }
+.mission-modal fieldset { min-width: 0; }
+.mission-modal .quest-type-cards { max-width: 100%; }
+.mission-modal,
+.account-modal { overflow-x: hidden; }
+.time-field-control { height: 48px; }
+.time-field-hint,
+.subject-form-help,
+.activity-types-intro { font-size: 11px; }
+.icon-button { width: 44px; height: 44px; }
+.quest-type-fieldset > legend,
+.duration-fieldset > legend,
+.tone-picker legend { font-size: 11px; }
+.quest-type-card strong,
+.quest-type-manage strong,
+.mission-type-template strong,
+.activity-type-item strong { font-size: 13px; }
+.quest-type-card small,
+.quest-type-manage small,
+.mission-type-template small,
+.activity-type-item small { font-size: 11px; }
+.activity-type-select-field > button,
+.subject-select-field > button,
+.new-activity-type,
+.tone-picker button { min-height: 42px; font-size: 12px; }
+
+.subject-bar strong { font-size: 16px; }
+.subject-bar small,
+.subject-average small,
+.subject-library-intro p,
+.subject-library-intro > small { font-size: 11px; }
+.world-map-panel p,
+.task-details p { font-size: 12px; }
+.task-reward,
+.task-topline time,
+.task-details span { font-size: 11px; }
+.task-status-actions button { width: 36px; height: 36px; }
+.task-drawer .drawer-list { font-size: 14px; }
+
+.weekly-quest-tabs > button { min-height: 62px; }
+.weekly-quest-tabs > button strong { font-size: 14px; }
+.weekly-quest-tabs > button small,
+.weekly-status,
+.weekly-command-bar p,
+.schedule-day > header span,
+.class-time,
+.schedule-xp,
+.automatic-schedule-name > span,
+.automatic-schedule-name > small { font-size: 11px; }
+.weekly-command-actions button { min-height: 40px; padding-inline: 12px; font-size: 12px; }
+.schedule-day > header button { width: 38px; height: 38px; }
+.daily-class-card { min-height: 76px; padding: 12px; }
+.daily-class-card > strong { font-size: 14px; }
+.daily-class-card > small,
+.daily-class-card .scheduled-activity-caption { font-size: 11px; }
+.schedule-activity-title { font-size: 13px !important; }
+.day-time-direction { font-size: 10px; }
+
+.tooltip-kicker,
+.tooltip-status,
+.tooltip-meta,
+.tooltip-xp,
+.map-start-point small,
+.treasure-spot small,
+.sheet-banner small,
+.sheet-rank,
+.sheet-reward small,
+.objective-stats dt,
+.objective-clue small { font-size: 10px; }
+.tooltip-title,
+.sheet-subject,
+.objective-stats dd,
+.objective-clue p,
+.sheet-status-actions button,
+.open-objective-button,
+.sheet-placeholder p { font-size: 12px; }
+.node-date-month { font-size: 9px; }
+.mobile-tabbar { display: none; }
+
+@media (max-height: 780px) and (min-width: 921px) {
+  .next-milestone-card { display: none; }
+  .sidebar { padding-top: 22px; }
+  .brand { padding-bottom: 22px; }
+  .sidebar nav button { min-height: 44px; }
+}
+
+@media (max-width: 920px) {
+  .sidebar,
+  .sidebar.collapsed { width: min(88vw, 340px); padding: 24px 22px max(102px, env(safe-area-inset-bottom)); }
+  .sidebar nav button,
+  .sidebar.collapsed nav button,
+  .sidebar .settings,
+  .sidebar.collapsed .settings { min-height: 52px; padding: 13px 14px; font-size: 16px; }
+  .content,
+  .content.sidebar-collapsed { width: 100%; margin-left: 0; padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
+  .mobile-tabbar { position: fixed; z-index: 35; right: 10px; bottom: max(8px, env(safe-area-inset-bottom)); left: 10px; height: 68px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 5px; border: 1px solid color-mix(in srgb, var(--gold) 25%, var(--line)); border-radius: 17px; background: color-mix(in srgb, var(--paper) 92%, transparent); box-shadow: 0 12px 35px rgba(14,38,33,.2); backdrop-filter: blur(18px); }
+  .mobile-tabbar { transition: opacity .2s ease, transform .2s ease; }
+  .mobile-tabbar.menu-open { opacity: 0; pointer-events: none; transform: translateY(110%); }
+  .mobile-tabbar button { position: relative; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; margin: 0; padding: 4px 2px; border: 0; border-radius: 12px; color: var(--ink-soft); background: transparent; font-size: 11px; font-weight: 750; text-align: center; }
+  .mobile-tabbar button.active { color: var(--forest); background: color-mix(in srgb, var(--sage) 16%, var(--paper)); box-shadow: inset 0 -2px var(--gold); }
+  .mobile-tabbar button em { position: absolute; top: 4px; right: 12px; min-width: 17px; height: 17px; display: grid; place-items: center; padding: 0 4px; border-radius: 9px; color: white; background: var(--coral); font-size: 10px; font-style: normal; }
+}
+
+@media (max-width: 660px) {
+  .app-shell { font-size: 17px; }
+  .app-shell p { font-size: 15px; }
+  .topbar { height: 68px; padding: 8px 12px; gap: 9px; }
+  .topbar > .mobile-menu { display: none; }
+  .topbar .sync-state:not(.error) { display: none; }
+  .topbar .sync-state.error { position: fixed; z-index: 14; top: 76px; right: 12px; left: 12px; padding: 9px 12px; text-align: center; }
+  .search-box { min-height: 46px; padding-inline: 13px; }
+  .notification-button,
+  .primary-button.compact { width: 46px; height: 46px; }
+  .workspace { padding: 20px 14px 34px; }
+  .page-heading,
+  .world-heading,
+  .weekly-heading,
+  .subjects-heading,
+  .adventure-map-heading { width: 100%; flex-direction: column; align-items: stretch; gap: 14px; margin-bottom: 18px; }
+  h1 { font-size: clamp(32px, 10vw, 40px); line-height: 1.05; }
+  .page-heading p { display: block; font-size: 13px; }
+  .calendar-heading-tools { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .calendar-view-switch { grid-column: 1 / -1; width: 100%; }
+  .calendar-view-switch button { flex: 1; min-height: 44px; font-size: 13px; }
+  .free-time-toggle { width: 100%; min-height: 44px; font-size: 12px; }
+  .month-controls { width: 100%; justify-content: space-between; }
+  .month-controls button { min-height: 44px; flex: 1; }
+  .campaign-dashboard { margin-bottom: 14px; }
+  .quest-focus { min-height: 150px; padding: 17px 15px; }
+  .quest-focus h2 { max-width: none; font-size: 22px; }
+  .quest-focus p { max-width: none; font-size: 12px; }
+  .quest-tags { gap: 6px; }
+  .quest-tags span { min-height: 28px; padding: 5px 7px; font-size: 10px; }
+  .planner-grid { display: block; }
+  .mission-log { margin-top: 16px; }
+  .map-card { border-radius: 12px; }
+  .quest-board-ribbon { min-height: 42px; padding: 10px 12px; font-size: 11px; }
+  .map-card.calendar-mode-month { overflow-x: auto; }
+  .map-card.calendar-mode-month .week-row,
+  .map-card.calendar-mode-month .calendar-grid { min-width: 650px; }
+  .map-card.calendar-mode-month .calendar-day { height: 96px; padding: 7px; }
+  .map-card.calendar-mode-month .mission-chip { min-height: 22px; height: auto; display: flex; padding: 4px 5px; color: var(--ink) !important; font-size: 10px; line-height: 1.2; box-shadow: inset 3px 0 currentColor; }
+  .map-card.calendar-mode-month .mission-chip i { display: inline-flex; }
+  .map-card.calendar-mode-week .mission-chip,
+  .map-card.calendar-mode-day .mission-chip { min-height: 38px; padding: 9px 10px; font-size: 12px; }
+  .day-agenda { height: min(720px, calc(100dvh - 190px)); min-height: 540px; background: linear-gradient(90deg, color-mix(in srgb, var(--paper) 92%, white) 0 72px, rgba(255,253,247,.67) 72px); }
+  .day-agenda-hours > div { grid-template-columns: 62px minmax(0, 1fr); gap: 8px; }
+  .day-agenda-hours time { font-size: 12px; }
+  .day-agenda-events { margin-left: 78px; margin-right: 10px; }
+  .day-agenda-event { grid-template-columns: 30px minmax(0, 1fr); min-height: 58px; padding: 9px; }
+  .day-agenda-event > button { width: 30px; height: 30px; }
+  .day-agenda-event strong { font-size: 14px; }
+  .day-agenda-empty span { font-size: 12px; }
+  .day-agenda-empty button,
+  .empty-state button { min-height: 44px; padding: 9px 12px; font-size: 13px; }
+  .section-heading h2 { font-size: 21px; line-height: 1.2; }
+  .mission-row,
+  .planner-grid .mission-row { min-height: 76px; padding: 12px; }
+  .check-button { width: 32px; height: 32px; }
+  .mission-copy h3 { font-size: 16px; }
+  .mission-copy > span,
+  .mission-copy small { font-size: 11px; }
+  .modal-backdrop { align-items: end; padding: 0; }
+  .mission-modal,
+  .account-modal { width: 100%; max-height: 92dvh; border-radius: 20px 20px 0 0; }
+  .modal-heading { position: sticky; z-index: 4; top: 0; padding: 16px 18px; background: color-mix(in srgb, var(--paper) 96%, white); }
+  .mission-modal form { gap: 18px; padding: 18px 16px calc(24px + env(safe-area-inset-bottom)); }
+  .mission-modal label,
+  .mission-modal legend { font-size: 14px; }
+  .mission-modal input,
+  .mission-modal textarea,
+  .mission-modal select { min-height: 50px; font-size: 16px; border-radius: 10px; }
+  .time-field-control { height: 52px; }
+  .quest-type-grid { grid-template-columns: 1fr 1fr; gap: 9px; }
+  .quest-type-card,
+  .quest-type-manage { min-height: 76px; padding: 11px; }
+  .priority-option { min-height: 58px; }
+  .world-map-panel { padding: 23px 19px; }
+  .world-map-panel p { font-size: 13px; }
+  .subject-bar > button { min-height: 72px; padding: 14px; }
+  .task-status-actions button { width: 44px; height: 44px; }
+  .weekly-command-actions button { min-height: 44px; font-size: 12px; }
+  .schedule-day > header { padding: 12px 14px; }
+  .schedule-day > header span { font-size: 11px; }
+  .schedule-day > header strong { font-size: 16px; }
+  .daily-class-card { min-height: 82px; padding: 13px; }
+  .daily-class-card > strong { font-size: 15px; }
+}

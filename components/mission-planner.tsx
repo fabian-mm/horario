@@ -116,6 +116,20 @@ export function MissionPlanner() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const savedMode = window.localStorage.getItem("planner-calendar-mode");
+      if (savedMode === "month" || savedMode === "week" || savedMode === "day") {
+        setCalendarMode(savedMode);
+      } else if (window.matchMedia("(max-width: 660px)").matches) {
+        setCalendarMode("day");
+      }
+    } catch {
+      if (window.matchMedia("(max-width: 660px)").matches) setCalendarMode("day");
+    }
+  }, []);
+
+  useEffect(() => {
     if (!mobileNav || typeof document === "undefined") return;
     const previousOverflow = document.body.style.overflow;
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -139,6 +153,15 @@ export function MissionPlanner() {
       }
       return next;
     });
+  };
+
+  const changeCalendarMode = (mode: CalendarMode) => {
+    setCalendarMode(mode);
+    try {
+      window.localStorage.setItem("planner-calendar-mode", mode);
+    } catch {
+      // La vista cambia igualmente aunque el navegador bloquee el almacenamiento.
+    }
   };
 
   useEffect(() => {
@@ -499,7 +522,7 @@ export function MissionPlanner() {
           <div className="page-heading">
             <div><span className="eyebrow">TU PRÓXIMA TRAVESÍA</span><h1>Mapa de <i>{calendarTitle}</i></h1><p>Alterna entre mes, semana o día y encuentra tus espacios disponibles.</p></div>
             <div className="calendar-heading-tools">
-              <div className="calendar-view-switch" aria-label="Vista del calendario">{([{ id: "month", label: "Mes", icon: <LayoutGrid size={14} /> }, { id: "week", label: "Semana", icon: <CalendarRange size={14} /> }, { id: "day", label: "Día", icon: <List size={14} /> }] as { id: CalendarMode; label: string; icon: React.ReactNode }[]).map((option) => <button key={option.id} className={calendarMode === option.id ? "active" : ""} type="button" onClick={() => setCalendarMode(option.id)}>{option.icon}{option.label}</button>)}</div>
+              <div className="calendar-view-switch" aria-label="Vista del calendario">{([{ id: "month", label: "Mes", icon: <LayoutGrid size={14} /> }, { id: "week", label: "Semana", icon: <CalendarRange size={14} /> }, { id: "day", label: "Día", icon: <List size={14} /> }] as { id: CalendarMode; label: string; icon: React.ReactNode }[]).map((option) => <button key={option.id} className={calendarMode === option.id ? "active" : ""} type="button" onClick={() => changeCalendarMode(option.id)}>{option.icon}{option.label}</button>)}</div>
               <button className={`free-time-toggle ${freeTimeOpen ? "active" : ""}`} type="button" onClick={() => setFreeTimeOpen((current) => !current)}><Sunrise size={15} /> Huecos libres</button>
               <div className="month-controls">
                 <button aria-label="Periodo anterior" onClick={() => movePeriod(-1)}><ChevronLeft /></button>
@@ -602,6 +625,14 @@ export function MissionPlanner() {
           </div>
         </div>}
       </section>
+
+      <nav className={`mobile-tabbar ${mobileNav ? "menu-open" : ""}`} aria-label="Navegación móvil">
+        <button type="button" className={view === "calendar" ? "active" : ""} aria-current={view === "calendar" ? "page" : undefined} onClick={() => { setView("calendar"); setFilter("all"); setMobileNav(false); }}><Compass size={21} /><span>Agenda</span>{pending > 0 && <em>{pending}</em>}</button>
+        <button type="button" className={view === "world" ? "active" : ""} aria-current={view === "world" ? "page" : undefined} onClick={() => { setView("world"); setMobileNav(false); }}><Globe2 size={21} /><span>Materias</span></button>
+        <button type="button" className={view === "map" ? "active" : ""} aria-current={view === "map" ? "page" : undefined} onClick={() => { setView("map"); setFilter("all"); setMobileNav(false); }}><MapPinned size={21} /><span>Mapa</span></button>
+        <button type="button" className={view === "weekly" ? "active" : ""} aria-current={view === "weekly" ? "page" : undefined} onClick={() => { setFocusedWeeklyQuestId(null); setView("weekly"); setMobileNav(false); }}><CalendarRange size={21} /><span>Horario</span></button>
+        <button type="button" onClick={() => setMobileNav(true)} aria-controls="main-sidebar" aria-expanded={mobileNav}><Menu size={21} /><span>Más</span></button>
+      </nav>
 
       <MissionForm open={modalOpen} initialDate={selectedDate} initialSubject={draftSubject} mission={editing} onClose={() => setModalOpen(false)} onSave={upsert} onDelete={remove} subjects={subjects} missionTypes={missionTypes} onManageSubjects={() => setView("world")} onManageMissionTypes={() => setMissionTypesOpen(true)} />
       <MissionTypesManager open={missionTypesOpen} missionTypes={missionTypes} missions={missions} onClose={() => { setMissionTypesOpen(false); setModalOpen(true); }} onSave={upsertMissionType} onDelete={removeMissionType} />
