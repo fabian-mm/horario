@@ -1569,7 +1569,8 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .weekly-activity-bubble .daily-class-card { padding-right: 27px; }
 .bubble-drag-handle { position: absolute; z-index: 2; top: 6px; right: 5px; width: 27px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; color: color-mix(in srgb, var(--activity-accent, var(--ink-soft)) 70%, var(--ink)); background: color-mix(in srgb, var(--paper) 78%, transparent); cursor: grab; touch-action: none; opacity: .78; }
 .bubble-drag-handle:active { cursor: grabbing; color: var(--gold); background: color-mix(in srgb, var(--gold) 13%, var(--paper)); opacity: 1; }
-.bubble-actions { display: grid; grid-template-columns: 1fr 30px 30px; gap: 4px; margin-top: 4px; }
+.bubble-actions { display: none; grid-template-columns: 1fr 30px 30px; gap: 4px; margin-top: 4px; }
+.weekly-activity-bubble.actions-open .bubble-actions { display: grid; }
 .bubble-actions button { min-width: 0; height: 30px; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 0 6px; border: 1px solid color-mix(in srgb, var(--forest) 13%, transparent); border-radius: 7px; color: var(--ink-soft); background: color-mix(in srgb, var(--paper) 92%, white); cursor: pointer; font-size: 10px; font-weight: 750; }
 .bubble-actions button:first-child { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 24%, transparent); }
 .bubble-actions button:hover:not(:disabled) { border-color: color-mix(in srgb, var(--gold) 46%, transparent); color: var(--forest); background: color-mix(in srgb, var(--gold) 8%, var(--paper)); }

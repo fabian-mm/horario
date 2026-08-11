@@ -59,9 +59,12 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
   const [copiedDailyMission, setCopiedDailyMission] = useState<DailyClassQuest | null>(null);
   const [draggedDailyMissionId, setDraggedDailyMissionId] = useState<string | null>(null);
   const [dragOverDay, setDragOverDay] = useState<Weekday | null>(null);
+  const [openBubbleActionsId, setOpenBubbleActionsId] = useState<string | null>(null);
   const [weeklyActionFeedback, setWeeklyActionFeedback] = useState<string | null>(null);
   const pointerDragIdRef = useRef<string | null>(null);
   const pointerDragTargetRef = useRef<Weekday | null>(null);
+  const pointerDragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const pointerDragMovedRef = useRef(false);
   const selectedWeeklyQuest = weeklyQuests.find((weeklyQuest) => weeklyQuest.id === selectedId) ?? weeklyQuests.find((weeklyQuest) => weeklyQuest.id === focusedWeeklyQuestId) ?? weeklyQuests[0] ?? null;
   const classesByDay = useMemo(() => {
     const grouped = new Map<Weekday, DailyClassQuest[]>();
@@ -108,6 +111,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
     setDailyModalOpen(true);
   };
   const openEditDaily = (dailyMission: DailyClassQuest) => {
+    setOpenBubbleActionsId(null);
     setDailyFormError(null);
     setDailyDraft({ ...dailyMission, title: "" });
     setDailyModalOpen(true);
@@ -138,6 +142,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
     setDailyModalOpen(false);
   };
   const copyDaily = (dailyMission: DailyClassQuest) => {
+    setOpenBubbleActionsId(null);
     setCopiedDailyMission({ ...dailyMission });
     setWeeklyActionFeedback(`${getScheduledActivityLabel(dailyMission)} copiada. Elige un día para pegarla.`);
   };
@@ -148,6 +153,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
     setWeeklyActionFeedback(`${getScheduledActivityLabel(duplicate)} pegada en ${weekdayMeta[dayOfWeek].label}.`);
   };
   const moveDaily = (activityId: string, dayOfWeek: Weekday) => {
+    setOpenBubbleActionsId(null);
     if (!selectedWeeklyQuest) return;
     const activity = selectedWeeklyQuest.dailyMissions.find((item) => item.id === activityId);
     if (!activity || activity.dayOfWeek === dayOfWeek) return;
@@ -155,6 +161,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
     setWeeklyActionFeedback(`${getScheduledActivityLabel(activity)} movida a ${weekdayMeta[dayOfWeek].label}.`);
   };
   const startDraggingDaily = (event: DragEvent<HTMLElement>, dailyMission: DailyClassQuest) => {
+    setOpenBubbleActionsId(null);
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", dailyMission.id);
     setDraggedDailyMissionId(dailyMission.id);
@@ -173,12 +180,16 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
     event.currentTarget.setPointerCapture(event.pointerId);
     pointerDragIdRef.current = dailyMission.id;
     pointerDragTargetRef.current = dailyMission.dayOfWeek;
+    pointerDragStartRef.current = { x: event.clientX, y: event.clientY };
+    pointerDragMovedRef.current = false;
     setDraggedDailyMissionId(dailyMission.id);
     setDragOverDay(dailyMission.dayOfWeek);
   };
   const updatePointerDragging = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (!pointerDragIdRef.current) return;
     event.preventDefault();
+    const start = pointerDragStartRef.current;
+    if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) pointerDragMovedRef.current = true;
     const dayElement = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-weekday]") as HTMLElement | null;
     const day = Number(dayElement?.dataset.weekday) as Weekday;
     if (day >= 1 && day <= 7) {
@@ -190,9 +201,13 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
     event.preventDefault();
     event.stopPropagation();
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    if (pointerDragIdRef.current && pointerDragTargetRef.current) moveDaily(pointerDragIdRef.current, pointerDragTargetRef.current);
+    const activityId = pointerDragIdRef.current;
+    if (activityId && pointerDragMovedRef.current && pointerDragTargetRef.current) moveDaily(activityId, pointerDragTargetRef.current);
+    if (activityId && !pointerDragMovedRef.current) setOpenBubbleActionsId((current) => current === activityId ? null : activityId);
     pointerDragIdRef.current = null;
     pointerDragTargetRef.current = null;
+    pointerDragStartRef.current = null;
+    pointerDragMovedRef.current = false;
     setDraggedDailyMissionId(null);
     setDragOverDay(null);
   };
@@ -200,6 +215,8 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     pointerDragIdRef.current = null;
     pointerDragTargetRef.current = null;
+    pointerDragStartRef.current = null;
+    pointerDragMovedRef.current = false;
     setDraggedDailyMissionId(null);
     setDragOverDay(null);
   };
@@ -298,12 +315,11 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
                       {!!dayClasses.length && <button type="button" onClick={() => openNewDaily(day)} aria-label={`Agregar actividad el ${weekdayMeta[day].label}`} title="Agregar actividad"><Plus size={15} /></button>}
                     </div>
                   </header>
-                  {!!dayClasses.length && <div className="day-time-direction"><span>Temprano</span><i /><span>Tarde</span></div>}
                   <div className="schedule-day-list chronological">
                     {dayClasses.map((dailyMission) => (
                       <article
                         key={dailyMission.id}
-                        className={`weekly-activity-bubble ${draggedDailyMissionId === dailyMission.id ? "dragging" : ""}`}
+                        className={`weekly-activity-bubble ${draggedDailyMissionId === dailyMission.id ? "dragging" : ""} ${openBubbleActionsId === dailyMission.id ? "actions-open" : ""}`}
                         draggable
                         onDragStart={(event) => startDraggingDaily(event, dailyMission)}
                         onDragEnd={() => { setDraggedDailyMissionId(null); setDragOverDay(null); }}
@@ -323,10 +339,17 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
                           onPointerMove={updatePointerDragging}
                           onPointerUp={finishPointerDragging}
                           onPointerCancel={cancelPointerDragging}
-                          aria-label={`Arrastrar ${getScheduledActivityLabel(dailyMission)} a otro día`}
-                          title="Arrastrar a otro día"
+                          onKeyDown={(event) => {
+                            if (event.key !== "Enter" && event.key !== " ") return;
+                            event.preventDefault();
+                            setOpenBubbleActionsId((current) => current === dailyMission.id ? null : dailyMission.id);
+                          }}
+                          aria-expanded={openBubbleActionsId === dailyMission.id}
+                          aria-controls={`bubble-actions-${dailyMission.id}`}
+                          aria-label={`Mover o mostrar opciones de ${getScheduledActivityLabel(dailyMission)}`}
+                          title="Arrastra para mover · pulsa para ver opciones"
                         ><GripVertical size={17} /></button>
-                        <div className="bubble-actions" aria-label={`Acciones para ${getScheduledActivityLabel(dailyMission)}`}>
+                        <div id={`bubble-actions-${dailyMission.id}`} className="bubble-actions" aria-label={`Acciones para ${getScheduledActivityLabel(dailyMission)}`}>
                           <button type="button" onClick={() => copyDaily(dailyMission)} aria-label={`Copiar ${getScheduledActivityLabel(dailyMission)}`} title="Copiar"><Copy size={14} /><span>Copiar</span></button>
                           <button type="button" disabled={dailyMission.dayOfWeek === 1} onClick={() => moveDaily(dailyMission.id, (dailyMission.dayOfWeek - 1) as Weekday)} aria-label={`Mover ${getScheduledActivityLabel(dailyMission)} al día anterior`} title="Mover al día anterior"><ChevronLeft size={15} /></button>
                           <button type="button" disabled={dailyMission.dayOfWeek === 7} onClick={() => moveDaily(dailyMission.id, (dailyMission.dayOfWeek + 1) as Weekday)} aria-label={`Mover ${getScheduledActivityLabel(dailyMission)} al día siguiente`} title="Mover al día siguiente"><ChevronRight size={15} /></button>
