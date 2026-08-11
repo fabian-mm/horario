@@ -1546,3 +1546,47 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .free-time-days article button small b { font-size: 13px; }
   .free-time-days article p { font-size: 13px; }
 }
+
+/* Tablero semanal manipulable: copiar, pegar y mover actividades como burbujas. */
+.weekly-clipboard-bar { min-height: 58px; display: grid; grid-template-columns: 38px minmax(0, 1fr) 36px; align-items: center; gap: 10px; margin-bottom: 12px; padding: 9px 11px; border: 1px solid color-mix(in srgb, var(--gold) 34%, transparent); border-radius: 10px; color: var(--ink); background: linear-gradient(135deg, color-mix(in srgb, var(--gold) 10%, var(--paper)), color-mix(in srgb, var(--paper) 97%, white)); }
+.weekly-clipboard-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 9px; color: var(--gold); background: color-mix(in srgb, var(--gold) 13%, var(--paper)); }
+.weekly-clipboard-bar strong,
+.weekly-clipboard-bar small { display: block; }
+.weekly-clipboard-bar strong { font-size: 13px; }
+.weekly-clipboard-bar small { margin-top: 2px; color: var(--ink-soft); font-size: 11px; }
+.weekly-clipboard-bar > button { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 50%; color: var(--ink-soft); background: color-mix(in srgb, var(--forest) 6%, transparent); cursor: pointer; }
+
+.schedule-day { transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.schedule-day.drag-over { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, var(--paper)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--gold) 22%, transparent), 0 8px 20px color-mix(in srgb, var(--gold) 12%, transparent); transform: translateY(-2px); }
+.schedule-day-actions { display: flex; align-items: center; gap: 4px; }
+.schedule-day > header .schedule-day-actions button { margin: 0; }
+.schedule-day > header .paste-day-button { width: 30px; color: var(--forest); border-color: color-mix(in srgb, var(--sage) 34%, transparent); background: color-mix(in srgb, var(--sage) 12%, var(--paper)); }
+.paste-day-button span { display: none; }
+
+.weekly-activity-bubble { min-width: 0; position: relative; display: grid; cursor: grab; transition: opacity .16s ease, transform .16s ease; }
+.weekly-activity-bubble:active { cursor: grabbing; }
+.weekly-activity-bubble.dragging { opacity: .45; transform: scale(.96) rotate(1deg); }
+.weekly-activity-bubble .daily-class-card { padding-right: 27px; }
+.bubble-drag-handle { position: absolute; z-index: 2; top: 6px; right: 5px; width: 27px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; color: color-mix(in srgb, var(--activity-accent, var(--ink-soft)) 70%, var(--ink)); background: color-mix(in srgb, var(--paper) 78%, transparent); cursor: grab; touch-action: none; opacity: .78; }
+.bubble-drag-handle:active { cursor: grabbing; color: var(--gold); background: color-mix(in srgb, var(--gold) 13%, var(--paper)); opacity: 1; }
+.bubble-actions { display: grid; grid-template-columns: 1fr 30px 30px; gap: 4px; margin-top: 4px; }
+.bubble-actions button { min-width: 0; height: 30px; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 0 6px; border: 1px solid color-mix(in srgb, var(--forest) 13%, transparent); border-radius: 7px; color: var(--ink-soft); background: color-mix(in srgb, var(--paper) 92%, white); cursor: pointer; font-size: 10px; font-weight: 750; }
+.bubble-actions button:first-child { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 24%, transparent); }
+.bubble-actions button:hover:not(:disabled) { border-color: color-mix(in srgb, var(--gold) 46%, transparent); color: var(--forest); background: color-mix(in srgb, var(--gold) 8%, var(--paper)); }
+.bubble-actions button:disabled { opacity: .35; cursor: not-allowed; }
+
+@media (max-width: 660px) {
+  .weekly-clipboard-bar { grid-template-columns: 42px minmax(0, 1fr) 42px; min-height: 70px; padding: 11px 12px; }
+  .weekly-clipboard-icon { width: 40px; height: 40px; }
+  .weekly-clipboard-bar strong { font-size: 14px; }
+  .weekly-clipboard-bar small { font-size: 12px; }
+  .weekly-clipboard-bar > button { width: 40px; height: 40px; }
+  .schedule-day > header .paste-day-button { width: auto; min-width: 82px; padding-inline: 10px; }
+  .paste-day-button span { display: inline; font-size: 12px; }
+  .weekly-activity-bubble { padding-bottom: 2px; }
+  .weekly-activity-bubble .daily-class-card { padding-right: 34px; }
+  .bubble-drag-handle { top: 8px; right: 8px; width: 34px; height: 38px; }
+  .bubble-actions { grid-template-columns: 1fr 44px 44px; gap: 7px; margin-top: 7px; }
+  .bubble-actions button { height: 42px; padding-inline: 10px; font-size: 12px; }
+  .bubble-actions button:first-child { justify-content: flex-start; }
+}

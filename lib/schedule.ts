@@ -64,6 +64,16 @@ export const compareDailyMissionsByTime = (a: Pick<DailyClassQuest, "startTime" 
 
 export const sortDailyMissionsByTime = (dailyMissions: DailyClassQuest[]) => [...dailyMissions].sort(compareDailyMissionsByTime);
 
+export const duplicateScheduledActivity = (activity: DailyClassQuest, dayOfWeek: Weekday, id: string): DailyClassQuest => ({
+  ...activity,
+  id,
+  dayOfWeek,
+  completedDates: [],
+});
+
+export const moveScheduledActivity = (activities: DailyClassQuest[], activityId: string, dayOfWeek: Weekday) =>
+  sortDailyMissionsByTime(activities.map((activity) => activity.id === activityId ? { ...activity, dayOfWeek } : activity));
+
 export const normalizeWeeklyQuest = <T extends WeeklyQuest>(weeklyQuest: T): T => ({
   ...weeklyQuest,
   dailyMissions: sortDailyMissionsByTime(weeklyQuest.dailyMissions),

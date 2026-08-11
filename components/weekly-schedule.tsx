@@ -1,11 +1,11 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
-import { Activity, BookOpen, CalendarRange, Check, Clock3, MapPin, Pencil, Plus, Power, ScrollText, Settings2, Sparkles, Trash2, X } from "lucide-react";
+import { DragEvent, FormEvent, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Activity, BookOpen, CalendarRange, Check, ChevronLeft, ChevronRight, ClipboardPaste, Clock3, Copy, GripVertical, MapPin, Pencil, Plus, Power, ScrollText, Settings2, Sparkles, Trash2, X } from "lucide-react";
 import { ActivityTypesManager } from "@/components/activity-types-manager";
 import type { ActivityType } from "@/lib/activity-types";
 import { findActivityType, resolveActivityType } from "@/lib/activity-types";
-import { DailyClassQuest, getMondayIso, getScheduledActivityLabel, sortDailyMissionsByTime, Weekday, WeeklyQuest, weekdayMeta } from "@/lib/schedule";
+import { DailyClassQuest, duplicateScheduledActivity, getMondayIso, getScheduledActivityLabel, moveScheduledActivity, sortDailyMissionsByTime, Weekday, WeeklyQuest, weekdayMeta } from "@/lib/schedule";
 import { findSubject, Subject } from "@/lib/subjects";
 import { TimeField } from "@/components/time-field";
 import { formatTimeRange12Hour, isTimeBlockWithinDay, shiftTime, timeToMinutes } from "@/lib/time";
@@ -56,6 +56,12 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
   const [dailyDraft, setDailyDraft] = useState<DailyClassQuest>(emptyDailyQuest(1, subjects, activityTypes));
   const [typesModalOpen, setTypesModalOpen] = useState(false);
   const [dailyFormError, setDailyFormError] = useState<string | null>(null);
+  const [copiedDailyMission, setCopiedDailyMission] = useState<DailyClassQuest | null>(null);
+  const [draggedDailyMissionId, setDraggedDailyMissionId] = useState<string | null>(null);
+  const [dragOverDay, setDragOverDay] = useState<Weekday | null>(null);
+  const [weeklyActionFeedback, setWeeklyActionFeedback] = useState<string | null>(null);
+  const pointerDragIdRef = useRef<string | null>(null);
+  const pointerDragTargetRef = useRef<Weekday | null>(null);
   const selectedWeeklyQuest = weeklyQuests.find((weeklyQuest) => weeklyQuest.id === selectedId) ?? weeklyQuests.find((weeklyQuest) => weeklyQuest.id === focusedWeeklyQuestId) ?? weeklyQuests[0] ?? null;
   const classesByDay = useMemo(() => {
     const grouped = new Map<Weekday, DailyClassQuest[]>();
@@ -131,6 +137,78 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
     onSave({ ...selectedWeeklyQuest, dailyMissions: sortDailyMissionsByTime(selectedWeeklyQuest.dailyMissions.filter((item) => item.id !== dailyDraft.id)) });
     setDailyModalOpen(false);
   };
+  const copyDaily = (dailyMission: DailyClassQuest) => {
+    setCopiedDailyMission({ ...dailyMission });
+    setWeeklyActionFeedback(`${getScheduledActivityLabel(dailyMission)} copiada. Elige un día para pegarla.`);
+  };
+  const pasteDaily = (dayOfWeek: Weekday) => {
+    if (!selectedWeeklyQuest || !copiedDailyMission) return;
+    const duplicate = duplicateScheduledActivity(copiedDailyMission, dayOfWeek, crypto.randomUUID());
+    onSave({ ...selectedWeeklyQuest, dailyMissions: sortDailyMissionsByTime([...selectedWeeklyQuest.dailyMissions, duplicate]) });
+    setWeeklyActionFeedback(`${getScheduledActivityLabel(duplicate)} pegada en ${weekdayMeta[dayOfWeek].label}.`);
+  };
+  const moveDaily = (activityId: string, dayOfWeek: Weekday) => {
+    if (!selectedWeeklyQuest) return;
+    const activity = selectedWeeklyQuest.dailyMissions.find((item) => item.id === activityId);
+    if (!activity || activity.dayOfWeek === dayOfWeek) return;
+    onSave({ ...selectedWeeklyQuest, dailyMissions: moveScheduledActivity(selectedWeeklyQuest.dailyMissions, activityId, dayOfWeek) });
+    setWeeklyActionFeedback(`${getScheduledActivityLabel(activity)} movida a ${weekdayMeta[dayOfWeek].label}.`);
+  };
+  const startDraggingDaily = (event: DragEvent<HTMLElement>, dailyMission: DailyClassQuest) => {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", dailyMission.id);
+    setDraggedDailyMissionId(dailyMission.id);
+    setDragOverDay(dailyMission.dayOfWeek);
+  };
+  const dropDaily = (event: DragEvent<HTMLElement>, dayOfWeek: Weekday) => {
+    event.preventDefault();
+    const activityId = event.dataTransfer.getData("text/plain") || draggedDailyMissionId;
+    if (activityId) moveDaily(activityId, dayOfWeek);
+    setDraggedDailyMissionId(null);
+    setDragOverDay(null);
+  };
+  const startPointerDragging = (event: ReactPointerEvent<HTMLButtonElement>, dailyMission: DailyClassQuest) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    pointerDragIdRef.current = dailyMission.id;
+    pointerDragTargetRef.current = dailyMission.dayOfWeek;
+    setDraggedDailyMissionId(dailyMission.id);
+    setDragOverDay(dailyMission.dayOfWeek);
+  };
+  const updatePointerDragging = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!pointerDragIdRef.current) return;
+    event.preventDefault();
+    const dayElement = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-weekday]") as HTMLElement | null;
+    const day = Number(dayElement?.dataset.weekday) as Weekday;
+    if (day >= 1 && day <= 7) {
+      pointerDragTargetRef.current = day;
+      setDragOverDay(day);
+    }
+  };
+  const finishPointerDragging = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (pointerDragIdRef.current && pointerDragTargetRef.current) moveDaily(pointerDragIdRef.current, pointerDragTargetRef.current);
+    pointerDragIdRef.current = null;
+    pointerDragTargetRef.current = null;
+    setDraggedDailyMissionId(null);
+    setDragOverDay(null);
+  };
+  const cancelPointerDragging = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    pointerDragIdRef.current = null;
+    pointerDragTargetRef.current = null;
+    setDraggedDailyMissionId(null);
+    setDragOverDay(null);
+  };
+
+  useEffect(() => {
+    if (!weeklyActionFeedback) return;
+    const timer = window.setTimeout(() => setWeeklyActionFeedback(null), 4200);
+    return () => window.clearTimeout(timer);
+  }, [weeklyActionFeedback]);
   const selectedDailySubject = findSubject(subjects, dailyDraft.subject, dailyDraft.subjectId);
   const selectedActivityType = resolveActivityType(activityTypes, dailyDraft.activityTypeId, dailyDraft.activityTypeName);
   const selectActivityType = (type: ActivityType) => {
@@ -190,22 +268,70 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
             </div>
           </section>
 
+          {(copiedDailyMission || weeklyActionFeedback) && (
+            <div className="weekly-clipboard-bar" role="status" aria-live="polite">
+              <span className="weekly-clipboard-icon"><Copy size={17} /></span>
+              <div>
+                <strong>{copiedDailyMission ? `${getScheduledActivityLabel(copiedDailyMission)} lista para pegar` : "Horario actualizado"}</strong>
+                <small>{weeklyActionFeedback ?? "Usa Pegar en el día que quieras. La actividad original no cambiará."}</small>
+              </div>
+              {copiedDailyMission && <button type="button" onClick={() => setCopiedDailyMission(null)} aria-label="Vaciar actividad copiada"><X size={16} /></button>}
+            </div>
+          )}
+
           <section className="weekly-board" aria-label={`Horario de ${selectedWeeklyQuest.title}`}>
             {([1, 2, 3, 4, 5, 6, 7] as Weekday[]).map((day) => {
               const dayClasses = sortDailyMissionsByTime(classesByDay.get(day) ?? []);
               return (
-                <div className={`schedule-day ${day > 5 ? "weekend" : ""}`} key={day}>
-                  <header><div><span>{weekdayMeta[day].short}</span><strong>{weekdayMeta[day].label}</strong></div>{!!dayClasses.length && <button type="button" onClick={() => openNewDaily(day)} aria-label={`Agregar actividad el ${weekdayMeta[day].label}`}><Plus size={15} /></button>}</header>
+                <div
+                  className={`schedule-day ${day > 5 ? "weekend" : ""} ${dragOverDay === day ? "drag-over" : ""}`}
+                  key={day}
+                  data-weekday={day}
+                  onDragEnter={() => draggedDailyMissionId && setDragOverDay(day)}
+                  onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }}
+                  onDrop={(event) => dropDaily(event, day)}
+                >
+                  <header>
+                    <div><span>{weekdayMeta[day].short}</span><strong>{weekdayMeta[day].label}</strong></div>
+                    <div className="schedule-day-actions">
+                      {copiedDailyMission && <button className="paste-day-button" type="button" onClick={() => pasteDaily(day)} aria-label={`Pegar ${getScheduledActivityLabel(copiedDailyMission)} el ${weekdayMeta[day].label}`} title="Pegar actividad"><ClipboardPaste size={15} /><span>Pegar</span></button>}
+                      {!!dayClasses.length && <button type="button" onClick={() => openNewDaily(day)} aria-label={`Agregar actividad el ${weekdayMeta[day].label}`} title="Agregar actividad"><Plus size={15} /></button>}
+                    </div>
+                  </header>
                   {!!dayClasses.length && <div className="day-time-direction"><span>Temprano</span><i /><span>Tarde</span></div>}
                   <div className="schedule-day-list chronological">
                     {dayClasses.map((dailyMission) => (
-                      <button key={dailyMission.id} type="button" className={`daily-class-card activity-tone-${resolveActivityType(activityTypes, dailyMission.activityTypeId, dailyMission.activityTypeName).tone}`} onClick={() => openEditDaily(dailyMission)}>
-                        <span className="class-time"><Clock3 size={11} />{formatTimeRange12Hour(dailyMission.startTime, dailyMission.endTime)}</span>
-                        <strong className="scheduled-activity-name">{getScheduledActivityLabel(dailyMission)}</strong>
-                        <small className="scheduled-activity-caption">{dailyMission.activityCategory === "class" ? "ACTIVIDAD · MATERIA" : "ACTIVIDAD GENERAL"}</small>
-                        <b className="schedule-xp"><Sparkles size={10} />+{dailyMission.activityPoints ?? 10} XP</b>
-                        {dailyMission.location && <span className="class-location"><MapPin size={10} />{dailyMission.location}</span>}
-                      </button>
+                      <article
+                        key={dailyMission.id}
+                        className={`weekly-activity-bubble ${draggedDailyMissionId === dailyMission.id ? "dragging" : ""}`}
+                        draggable
+                        onDragStart={(event) => startDraggingDaily(event, dailyMission)}
+                        onDragEnd={() => { setDraggedDailyMissionId(null); setDragOverDay(null); }}
+                      >
+                        <button type="button" className={`daily-class-card activity-tone-${resolveActivityType(activityTypes, dailyMission.activityTypeId, dailyMission.activityTypeName).tone}`} onClick={() => openEditDaily(dailyMission)}>
+                          <span className="class-time"><Clock3 size={11} />{formatTimeRange12Hour(dailyMission.startTime, dailyMission.endTime)}</span>
+                          <strong className="scheduled-activity-name">{getScheduledActivityLabel(dailyMission)}</strong>
+                          <small className="scheduled-activity-caption">{dailyMission.activityCategory === "class" ? "ACTIVIDAD · MATERIA" : "ACTIVIDAD GENERAL"}</small>
+                          <b className="schedule-xp"><Sparkles size={10} />+{dailyMission.activityPoints ?? 10} XP</b>
+                          {dailyMission.location && <span className="class-location"><MapPin size={10} />{dailyMission.location}</span>}
+                        </button>
+                        <button
+                          type="button"
+                          className="bubble-drag-handle"
+                          draggable={false}
+                          onPointerDown={(event) => startPointerDragging(event, dailyMission)}
+                          onPointerMove={updatePointerDragging}
+                          onPointerUp={finishPointerDragging}
+                          onPointerCancel={cancelPointerDragging}
+                          aria-label={`Arrastrar ${getScheduledActivityLabel(dailyMission)} a otro día`}
+                          title="Arrastrar a otro día"
+                        ><GripVertical size={17} /></button>
+                        <div className="bubble-actions" aria-label={`Acciones para ${getScheduledActivityLabel(dailyMission)}`}>
+                          <button type="button" onClick={() => copyDaily(dailyMission)} aria-label={`Copiar ${getScheduledActivityLabel(dailyMission)}`} title="Copiar"><Copy size={14} /><span>Copiar</span></button>
+                          <button type="button" disabled={dailyMission.dayOfWeek === 1} onClick={() => moveDaily(dailyMission.id, (dailyMission.dayOfWeek - 1) as Weekday)} aria-label={`Mover ${getScheduledActivityLabel(dailyMission)} al día anterior`} title="Mover al día anterior"><ChevronLeft size={15} /></button>
+                          <button type="button" disabled={dailyMission.dayOfWeek === 7} onClick={() => moveDaily(dailyMission.id, (dailyMission.dayOfWeek + 1) as Weekday)} aria-label={`Mover ${getScheduledActivityLabel(dailyMission)} al día siguiente`} title="Mover al día siguiente"><ChevronRight size={15} /></button>
+                        </div>
+                      </article>
                     ))}
                     {!dayClasses.length && <button className="empty-class-slot" type="button" onClick={() => openNewDaily(day)}><Plus size={13} /> Agregar actividad</button>}
                   </div>
