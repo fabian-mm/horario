@@ -562,7 +562,47 @@ export function MissionPlanner() {
 
           </div>
 
-          {freeTimeOpen && <section className="free-time-panel" aria-labelledby="free-time-title"><div className="free-time-heading"><span><CalendarClock size={20} /></span><div><small>RUTA SIN OBSTÁCULOS</small><h2 id="free-time-title">Momentos libres de esta semana</h2><p>Entre 7:00 AM y 10:00 PM. Los trabajos acumulables no bloquean horas; las demás actividades usan su duración real.</p></div><button type="button" onClick={() => setFreeTimeOpen(false)} aria-label="Cerrar huecos libres"><X size={16} /></button></div><div className="free-time-days">{getWeekDates(selectedDate).map((date) => { const iso = toISODate(date); const slots = freeTimeSlots.filter((slot) => slot.date === iso); return <article key={iso}><header><strong>{weekdayMeta[(((date.getDay() + 6) % 7) + 1) as keyof typeof weekdayMeta].label}</strong><small>{date.getDate()}</small></header><div>{slots.length ? slots.map((slot) => <button type="button" key={`${slot.startTime}-${slot.endTime}`} onClick={() => selectDate(date, { switchToDayView: true })}><span>{formatTimeRange12Hour(slot.startTime, slot.endTime)}</span><small>{Math.floor(slot.durationMinutes / 60) ? `${Math.floor(slot.durationMinutes / 60)} h ` : ""}{slot.durationMinutes % 60 ? `${slot.durationMinutes % 60} min` : ""}</small></button>) : <p>Sin huecos de 30 min</p>}</div></article>; })}</div></section>}
+          {freeTimeOpen && (
+            <section className="free-time-panel" aria-labelledby="free-time-title">
+              <div className="free-time-heading">
+                <span><CalendarClock size={22} /></span>
+                <div>
+                  <small>RUTA SIN OBSTÁCULOS</small>
+                  <h2 id="free-time-title">Tiempo libre de esta semana</h2>
+                  <p>Espacios disponibles entre 7:00 AM y 10:00 PM. Toca uno para abrir ese día.</p>
+                </div>
+                <button type="button" onClick={() => setFreeTimeOpen(false)} aria-label="Cerrar huecos libres"><X size={18} /></button>
+              </div>
+              <div className="free-time-days">
+                {getWeekDates(selectedDate).map((date) => {
+                  const iso = toISODate(date);
+                  const slots = freeTimeSlots.filter((slot) => slot.date === iso);
+                  const weekday = weekdayMeta[(((date.getDay() + 6) % 7) + 1) as keyof typeof weekdayMeta].label;
+                  return (
+                    <article key={iso} className={slots.length ? "has-free-time" : "fully-booked"}>
+                      <header>
+                        <div><strong>{weekday}</strong><span>{slots.length} {slots.length === 1 ? "espacio" : "espacios"}</span></div>
+                        <small>{date.getDate()}</small>
+                      </header>
+                      <div>
+                        {slots.length ? slots.map((slot) => {
+                          const hours = Math.floor(slot.durationMinutes / 60);
+                          const minutes = slot.durationMinutes % 60;
+                          const duration = `${hours ? `${hours} h` : ""}${hours && minutes ? " " : ""}${minutes ? `${minutes} min` : ""}`;
+                          return (
+                            <button type="button" key={`${slot.startTime}-${slot.endTime}`} onClick={() => { setFreeTimeOpen(false); selectDate(date, { switchToDayView: true }); }}>
+                              <span><Clock3 size={15} />{formatTimeRange12Hour(slot.startTime, slot.endTime)}</span>
+                              <small><b>{duration}</b> disponibles</small>
+                            </button>
+                          );
+                        }) : <p>Sin espacios libres de 30 minutos o más.</p>}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
           <div className="planner-grid">
           <section className={`map-card calendar-mode-${calendarMode}`}>

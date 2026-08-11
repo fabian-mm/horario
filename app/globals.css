@@ -1501,3 +1501,48 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .daily-class-card,
   .subject-library-card { content-visibility: auto; contain-intrinsic-size: auto 82px; }
 }
+
+/* Tiempo libre: lectura rápida y bloques horarios cómodos. */
+.free-time-panel { margin-bottom: 22px; border-radius: 14px; }
+.free-time-heading { grid-template-columns: 48px minmax(0, 1fr) 44px; gap: 13px; padding: 16px 18px; }
+.free-time-heading > span { width: 46px; height: 46px; }
+.free-time-heading small { font-size: 11px; line-height: 1.4; }
+.free-time-heading h2 { margin: 2px 0 4px; font-size: 22px; line-height: 1.15; }
+.free-time-heading p { max-width: 720px; font-size: 13px; line-height: 1.45; }
+.free-time-heading > button { width: 42px; height: 42px; }
+.free-time-days { grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); gap: 12px; overflow: visible; padding: 14px; }
+.free-time-days article { min-width: 0; padding: 13px; border: 1px solid color-mix(in srgb, var(--forest) 13%, transparent); border-radius: 11px; background: color-mix(in srgb, var(--paper) 96%, white); }
+.free-time-days article:last-child { border-right: 1px solid color-mix(in srgb, var(--forest) 13%, transparent); }
+.free-time-days article.has-free-time { border-color: color-mix(in srgb, var(--sage) 33%, transparent); background: linear-gradient(145deg, color-mix(in srgb, var(--sage) 8%, var(--paper)), color-mix(in srgb, var(--paper) 97%, white)); }
+.free-time-days article.fully-booked { opacity: .78; background: color-mix(in srgb, var(--ink-soft) 4%, var(--paper)); }
+.free-time-days article > header { margin-bottom: 11px; }
+.free-time-days article > header > div { min-width: 0; }
+.free-time-days article > header strong { font-family: "Fraunces Variable", serif; font-size: 15px; line-height: 1.2; }
+.free-time-days article > header span { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 11px; font-weight: 650; }
+.free-time-days article > header small { width: 34px; height: 34px; flex: none; font-size: 12px; }
+.free-time-days article > div { gap: 8px; }
+.free-time-days article button { min-height: 64px; padding: 10px 11px; border-radius: 9px; transition: border-color .16s ease, background-color .16s ease, transform .16s ease; }
+.free-time-days article button:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--sage) 55%, transparent); background: color-mix(in srgb, var(--sage) 13%, var(--paper)); }
+.free-time-days article button span { display: flex; align-items: center; gap: 6px; color: var(--forest); font-size: 13px; line-height: 1.3; white-space: normal; }
+.free-time-days article button span svg { flex: none; color: var(--gold); }
+.free-time-days article button small { margin-top: 5px; color: var(--ink-soft); font-size: 11px; }
+.free-time-days article button small b { color: var(--gold); font-size: 12px; }
+.free-time-days article p { margin: 8px 0; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
+
+@media (max-width: 660px) {
+  .free-time-panel { margin-inline: 0; border-radius: 13px; }
+  .free-time-heading { grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 10px; padding: 15px 13px; }
+  .free-time-heading > span { width: 42px; height: 42px; }
+  .free-time-heading h2 { font-size: 21px; }
+  .free-time-heading p { font-size: 12px; }
+  .free-time-days { grid-template-columns: 1fr; gap: 10px; padding: 11px; }
+  .free-time-days article { padding: 14px; }
+  .free-time-days article > header strong { font-size: 17px; }
+  .free-time-days article > header span { font-size: 12px; }
+  .free-time-days article > header small { width: 38px; height: 38px; font-size: 13px; }
+  .free-time-days article button { min-height: 72px; padding: 12px 13px; }
+  .free-time-days article button span { font-size: 15px; }
+  .free-time-days article button small { font-size: 12px; }
+  .free-time-days article button small b { font-size: 13px; }
+  .free-time-days article p { font-size: 13px; }
+}
