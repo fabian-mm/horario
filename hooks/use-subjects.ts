@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutationCoordinator } from "@/hooks/use-mutation-coordinator";
+import { getRequestError, isAbortError, readApiResponse } from "@/lib/http";
 import { removeById, restoreById, upsertById } from "@/lib/optimistic";
 import { Subject } from "@/lib/subjects";
 
@@ -18,15 +19,15 @@ export function useSubjects(enabled: boolean) {
     if (!enabled) {
       setSubjects([]);
       setLoading(false);
+      setError(null);
       return;
     }
     let canceled = false;
+    const controller = new AbortController();
     setLoading(true);
-    fetch("/api/subjects")
+    fetch("/api/subjects", { signal: controller.signal })
       .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error ?? "No se pudieron cargar las materias.");
-        return body as Subject[];
+        return readApiResponse<Subject[]>(response, "No se pudieron cargar las materias.");
       })
       .then((data) => {
         if (!canceled) {
@@ -35,10 +36,10 @@ export function useSubjects(enabled: boolean) {
         }
       })
       .catch((requestError) => {
-        if (!canceled) setError(requestError instanceof Error ? requestError.message : "No se pudieron cargar las materias.");
+        if (!canceled && !isAbortError(requestError)) setError(getRequestError(requestError, "No se pudieron cargar las materias."));
       })
       .finally(() => { if (!canceled) setLoading(false); });
-    return () => { canceled = true; };
+    return () => { canceled = true; controller.abort(); };
   }, [enabled]);
 
   const upsert = async (subject: Subject) => {
@@ -56,9 +57,7 @@ export function useSubjects(enabled: boolean) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(subject),
         });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? "No se pudo guardar la materia.");
-        return body as Subject;
+        return readApiResponse<Subject>(response, "No se pudo guardar la materia.");
       });
       if (mutations.isLatest(subject.id, version)) {
         setSubjects((current) => sortSubjects(upsertById(current, saved)));
@@ -68,7 +67,7 @@ export function useSubjects(enabled: boolean) {
       if (mutations.isLatest(subject.id, version)) {
         setSubjects((current) => sortSubjects(restoreById(current, subject.id, existing)));
       }
-      setError(requestError instanceof Error ? requestError.message : "No se pudo guardar la materia.");
+      setError(getRequestError(requestError, "No se pudo guardar la materia."));
       return null;
     }
   };
@@ -81,17 +80,14 @@ export function useSubjects(enabled: boolean) {
     try {
       await mutations.enqueue(async () => {
         const response = await fetch(`/api/subjects/${encodeURIComponent(id)}`, { method: "DELETE" });
-        if (!response.ok) {
-          const body = await response.json();
-          throw new Error(body.error ?? "No se pudo eliminar la materia.");
-        }
+        await readApiResponse(response, "No se pudo eliminar la materia.");
       });
       return true;
     } catch (requestError) {
       if (mutations.isLatest(id, version)) {
         setSubjects((current) => sortSubjects(restoreById(current, id, previous)));
       }
-      setError(requestError instanceof Error ? requestError.message : "No se pudo eliminar la materia.");
+      setError(getRequestError(requestError, "No se pudo eliminar la materia."));
       return false;
     }
   };

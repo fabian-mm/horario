@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useMutationCoordinator } from "@/hooks/use-mutation-coordinator";
 import type { ActivityType } from "@/lib/activity-types";
+import { getRequestError, isAbortError, readApiResponse } from "@/lib/http";
 import { removeById, restoreById, upsertById } from "@/lib/optimistic";
 
 export function useActivityTypes(enabled: boolean) {
@@ -15,15 +16,15 @@ export function useActivityTypes(enabled: boolean) {
     if (!enabled) {
       setActivityTypes([]);
       setLoading(false);
+      setError(null);
       return;
     }
     let canceled = false;
+    const controller = new AbortController();
     setLoading(true);
-    fetch("/api/activity-types")
+    fetch("/api/activity-types", { signal: controller.signal })
       .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error ?? "No se pudieron cargar los tipos de actividad.");
-        return body as ActivityType[];
+        return readApiResponse<ActivityType[]>(response, "No se pudieron cargar los tipos de actividad.");
       })
       .then((data) => {
         if (!canceled) {
@@ -32,10 +33,10 @@ export function useActivityTypes(enabled: boolean) {
         }
       })
       .catch((requestError) => {
-        if (!canceled) setError(requestError instanceof Error ? requestError.message : "No se pudieron cargar los tipos de actividad.");
+        if (!canceled && !isAbortError(requestError)) setError(getRequestError(requestError, "No se pudieron cargar los tipos de actividad."));
       })
       .finally(() => { if (!canceled) setLoading(false); });
-    return () => { canceled = true; };
+    return () => { canceled = true; controller.abort(); };
   }, [enabled]);
 
   const upsert = async (activityType: ActivityType) => {
@@ -49,9 +50,7 @@ export function useActivityTypes(enabled: boolean) {
     try {
       const saved = await mutations.enqueue(async () => {
         const response = await fetch("/api/activity-types", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(activityType) });
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error ?? "No se pudo guardar el tipo de actividad.");
-        return body as ActivityType;
+        return readApiResponse<ActivityType>(response, "No se pudo guardar el tipo de actividad.");
       });
       if (mutations.isLatest(activityType.id, version)) {
         setActivityTypes((current) => upsertById(current, saved));
@@ -61,7 +60,7 @@ export function useActivityTypes(enabled: boolean) {
       if (mutations.isLatest(activityType.id, version)) {
         setActivityTypes((current) => restoreById(current, activityType.id, existing));
       }
-      setError(requestError instanceof Error ? requestError.message : "No se pudo guardar el tipo de actividad.");
+      setError(getRequestError(requestError, "No se pudo guardar el tipo de actividad."));
       return null;
     }
   };
@@ -74,17 +73,14 @@ export function useActivityTypes(enabled: boolean) {
     try {
       await mutations.enqueue(async () => {
         const response = await fetch(`/api/activity-types/${encodeURIComponent(id)}`, { method: "DELETE" });
-        if (!response.ok) {
-          const body = await response.json();
-          throw new Error(body.error ?? "No se pudo eliminar el tipo de actividad.");
-        }
+        await readApiResponse(response, "No se pudo eliminar el tipo de actividad.");
       });
       return true;
     } catch (requestError) {
       if (mutations.isLatest(id, version)) {
         setActivityTypes((current) => restoreById(current, id, previous));
       }
-      setError(requestError instanceof Error ? requestError.message : "No se pudo eliminar el tipo de actividad.");
+      setError(getRequestError(requestError, "No se pudo eliminar el tipo de actividad."));
       return false;
     }
   };

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutationCoordinator } from "@/hooks/use-mutation-coordinator";
+import { getRequestError, isAbortError, readApiResponse } from "@/lib/http";
 import { removeById, restoreById, upsertById } from "@/lib/optimistic";
 import { normalizeWeeklyQuest, type WeeklyQuest } from "@/lib/schedule";
 
@@ -15,15 +16,15 @@ export function useWeeklyQuests(enabled: boolean) {
     if (!enabled) {
       setWeeklyQuests([]);
       setLoading(false);
+      setError(null);
       return;
     }
     let canceled = false;
+    const controller = new AbortController();
     setLoading(true);
-    fetch("/api/weekly-quests")
+    fetch("/api/weekly-quests", { signal: controller.signal })
       .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error ?? "No se pudo cargar el horario.");
-        return body as WeeklyQuest[];
+        return readApiResponse<WeeklyQuest[]>(response, "No se pudo cargar el horario.");
       })
       .then((data) => {
         if (!canceled) {
@@ -32,10 +33,10 @@ export function useWeeklyQuests(enabled: boolean) {
         }
       })
       .catch((requestError) => {
-        if (!canceled) setError(requestError instanceof Error ? requestError.message : "No se pudo cargar el horario.");
+        if (!canceled && !isAbortError(requestError)) setError(getRequestError(requestError, "No se pudo cargar el horario."));
       })
       .finally(() => { if (!canceled) setLoading(false); });
-    return () => { canceled = true; };
+    return () => { canceled = true; controller.abort(); };
   }, [enabled]);
 
   const saveRemote = async (weeklyQuest: WeeklyQuest) => {
@@ -44,9 +45,7 @@ export function useWeeklyQuests(enabled: boolean) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(normalizeWeeklyQuest(weeklyQuest)),
     });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? "No se pudo guardar la misión semanal.");
-    return body as WeeklyQuest;
+    return readApiResponse<WeeklyQuest>(response, "No se pudo guardar la misión semanal.");
   };
 
   const upsert = async (weeklyQuest: WeeklyQuest) => {
@@ -65,7 +64,7 @@ export function useWeeklyQuests(enabled: boolean) {
       if (mutations.isLatest(normalizedWeeklyQuest.id, version)) {
         setWeeklyQuests((current) => restoreById(current, normalizedWeeklyQuest.id, previous));
       }
-      setError(requestError instanceof Error ? requestError.message : "No se pudo guardar la misión semanal.");
+      setError(getRequestError(requestError, "No se pudo guardar la misión semanal."));
       return null;
     }
   };
@@ -78,17 +77,14 @@ export function useWeeklyQuests(enabled: boolean) {
     try {
       await mutations.enqueue(async () => {
         const response = await fetch(`/api/weekly-quests/${encodeURIComponent(id)}`, { method: "DELETE" });
-        if (!response.ok) {
-          const body = await response.json();
-          throw new Error(body.error ?? "No se pudo eliminar la misión semanal.");
-        }
+        await readApiResponse(response, "No se pudo eliminar la misión semanal.");
       });
       return true;
     } catch (requestError) {
       if (mutations.isLatest(id, version)) {
         setWeeklyQuests((current) => restoreById(current, id, previous));
       }
-      setError(requestError instanceof Error ? requestError.message : "No se pudo eliminar la misión semanal.");
+      setError(getRequestError(requestError, "No se pudo eliminar la misión semanal."));
       return false;
     }
   };

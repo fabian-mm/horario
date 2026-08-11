@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Anchor, Check, ChevronRight, Clock3, Crown, FileCheck2, Flag, MapPinned, Navigation, Plus, ScrollText, Ship, Sparkles, Swords, Trophy } from "lucide-react";
+import { Anchor, Check, ChevronRight, Clock3, Crown, FileCheck2, Flag, MapPinned, Navigation, ScrollText, Ship, Sparkles, Swords, Trophy } from "lucide-react";
 import { formatLongDate, formatProgressDuration, getMissionProgress, getMissionStatus, getMissionXp, isProgressMission, Mission, MissionStatus, priorityMeta, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
 import { formatTime12Hour } from "@/lib/time";
 import { createTreasureMapLayout, createTreasurePath } from "@/lib/treasure-map";
@@ -18,7 +18,7 @@ type Props = {
 export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddProgress }: Props) {
   const orderedMissions = useMemo(() => sortMissionsByDateTime(missions), [missions]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selectedMission = orderedMissions.find((mission) => mission.id === selectedId) ?? null;
+  const selectedMission = orderedMissions.find((mission) => mission.id === selectedId) ?? orderedMissions[0] ?? null;
   const completed = orderedMissions.filter((mission) => getMissionStatus(mission) === "completed").length;
   const bosses = orderedMissions.filter((mission) => mission.priority === "boss");
   const defeatedBosses = bosses.filter((mission) => getMissionStatus(mission) === "completed").length;
@@ -49,9 +49,6 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
           <h1>Mapa del <i>Tesoro de Campaña</i></h1>
           <p>Pasa el cursor sobre una fecha para descubrir el objetivo; tócala para abrir su ficha.</p>
         </div>
-        <button className="primary-button compact" type="button" onClick={onAdd}>
-          <Plus size={18} /> Nueva misión
-        </button>
       </header>
 
       <div className="map-expedition-hud" aria-label="Progreso del mapa">

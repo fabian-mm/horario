@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutationCoordinator } from "@/hooks/use-mutation-coordinator";
+import { getRequestError, isAbortError, readApiResponse } from "@/lib/http";
 import { getMissionStatus, Mission, MissionStatus, sortMissionsByDateTime } from "@/lib/missions";
 import { removeById, restoreById, upsertById } from "@/lib/optimistic";
 
@@ -9,33 +10,37 @@ export function useMissions(enabled: boolean) {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const missionsRef = useRef<Mission[]>([]);
   const mutations = useMutationCoordinator();
 
   useEffect(() => {
     if (!enabled) {
+      missionsRef.current = [];
       setMissions([]);
       setLoading(false);
+      setError(null);
       return;
     }
     let canceled = false;
+    const controller = new AbortController();
     setLoading(true);
-    fetch("/api/missions")
+    fetch("/api/missions", { signal: controller.signal })
       .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error ?? "No se pudieron cargar las misiones.");
-        return body as Mission[];
+        return readApiResponse<Mission[]>(response, "No se pudieron cargar las misiones.");
       })
       .then((data) => {
         if (!canceled) {
-          setMissions(sortMissionsByDateTime(data.map((mission) => ({ ...mission, status: getMissionStatus(mission) }))));
+          const normalized = sortMissionsByDateTime(data.map((mission) => ({ ...mission, status: getMissionStatus(mission) })));
+          missionsRef.current = normalized;
+          setMissions(normalized);
           setError(null);
         }
       })
       .catch((requestError) => {
-        if (!canceled) setError(requestError instanceof Error ? requestError.message : "No se pudieron cargar las misiones.");
+        if (!canceled && !isAbortError(requestError)) setError(getRequestError(requestError, "No se pudieron cargar las misiones."));
       })
       .finally(() => { if (!canceled) setLoading(false); });
-    return () => { canceled = true; };
+    return () => { canceled = true; controller.abort(); };
   }, [enabled]);
 
   const saveRemote = async (mission: Mission) => {
@@ -44,37 +49,39 @@ export function useMissions(enabled: boolean) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(mission),
     });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? "No se pudo guardar la misión.");
-    return body as Mission;
+    return readApiResponse<Mission>(response, "No se pudo guardar la misión.");
   };
 
   const upsert = async (mission: Mission) => {
     const normalizedMission = sortMissionsByDateTime([mission])[0];
-    const previous = missions.find((item) => item.id === normalizedMission.id);
+    const previous = missionsRef.current.find((item) => item.id === normalizedMission.id);
     const version = mutations.begin(normalizedMission.id);
-    setMissions((current) => sortMissionsByDateTime(upsertById(current, normalizedMission)));
+    missionsRef.current = sortMissionsByDateTime(upsertById(missionsRef.current, normalizedMission));
+    setMissions(missionsRef.current);
     setError(null);
     try {
       const saved = await mutations.enqueue(() => saveRemote(normalizedMission));
       if (mutations.isLatest(normalizedMission.id, version)) {
-        setMissions((current) => sortMissionsByDateTime(upsertById(current, saved)));
+        missionsRef.current = sortMissionsByDateTime(upsertById(missionsRef.current, saved));
+        setMissions(missionsRef.current);
       }
       return saved;
     } catch (requestError) {
       if (mutations.isLatest(normalizedMission.id, version)) {
-        setMissions((current) => sortMissionsByDateTime(restoreById(current, normalizedMission.id, previous)));
+        missionsRef.current = sortMissionsByDateTime(restoreById(missionsRef.current, normalizedMission.id, previous));
+        setMissions(missionsRef.current);
       }
-      setError(requestError instanceof Error ? requestError.message : "No se pudo guardar la misión.");
+      setError(getRequestError(requestError, "No se pudo guardar la misión."));
       return null;
     }
   };
 
   const updateMission = (id: string, transform: (mission: Mission) => Mission) => {
-    const current = missions.find((mission) => mission.id === id);
-    if (!current) return;
+    const current = missionsRef.current.find((mission) => mission.id === id);
+    if (!current) return null;
     const updated = sortMissionsByDateTime([transform(current)])[0];
     void upsert(updated);
+    return updated;
   };
 
   const toggle = (id: string) => updateMission(id, (mission) => ({
@@ -90,27 +97,26 @@ export function useMissions(enabled: boolean) {
   }));
 
   const remove = async (id: string) => {
-    const previous = missions.find((mission) => mission.id === id);
+    const previous = missionsRef.current.find((mission) => mission.id === id);
     const version = mutations.begin(id);
-    setMissions((current) => removeById(current, id));
+    missionsRef.current = removeById(missionsRef.current, id);
+    setMissions(missionsRef.current);
     setError(null);
     try {
       await mutations.enqueue(async () => {
         const response = await fetch(`/api/missions/${encodeURIComponent(id)}`, { method: "DELETE" });
-        if (!response.ok) {
-          const body = await response.json();
-          throw new Error(body.error ?? "No se pudo eliminar la misión.");
-        }
+        await readApiResponse(response, "No se pudo eliminar la misión.");
       });
       return true;
     } catch (requestError) {
       if (mutations.isLatest(id, version)) {
-        setMissions((current) => sortMissionsByDateTime(restoreById(current, id, previous)));
+        missionsRef.current = sortMissionsByDateTime(restoreById(missionsRef.current, id, previous));
+        setMissions(missionsRef.current);
       }
-      setError(requestError instanceof Error ? requestError.message : "No se pudo eliminar la misión.");
+      setError(getRequestError(requestError, "No se pudo eliminar la misión."));
       return false;
     }
   };
 
-  return { missions, loading, error, upsert, toggle, setStatus, remove };
+  return { missions, loading, error, upsert, updateMission, toggle, setStatus, remove };
 }

@@ -178,7 +178,6 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
             {selectedWeeklyQuest?.id === weeklyQuest.id && <Check size={14} />}
           </button>
         ))}
-        <button className="add-week-tab" type="button" onClick={openNewWeekly}><Plus size={17} /><span>Crear misión semanal</span></button>
       </div>
 
       {selectedWeeklyQuest ? (
@@ -196,7 +195,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
               const dayClasses = sortDailyMissionsByTime(classesByDay.get(day) ?? []);
               return (
                 <div className={`schedule-day ${day > 5 ? "weekend" : ""}`} key={day}>
-                  <header><div><span>{weekdayMeta[day].short}</span><strong>{weekdayMeta[day].label}</strong></div><button type="button" onClick={() => openNewDaily(day)} aria-label={`Agregar actividad el ${weekdayMeta[day].label}`}><Plus size={15} /></button></header>
+                  <header><div><span>{weekdayMeta[day].short}</span><strong>{weekdayMeta[day].label}</strong></div>{!!dayClasses.length && <button type="button" onClick={() => openNewDaily(day)} aria-label={`Agregar actividad el ${weekdayMeta[day].label}`}><Plus size={15} /></button>}</header>
                   {!!dayClasses.length && <div className="day-time-direction"><span>Temprano</span><i /><span>Tarde</span></div>}
                   <div className="schedule-day-list chronological">
                     {dayClasses.map((dailyMission) => (
@@ -214,7 +213,6 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
               );
             })}
           </section>
-          <div className="weekly-calendar-note"><CalendarRange size={16} /><span><strong>Sincronizado con el mapa principal.</strong> Cada actividad aparecerá automáticamente y podrás completarla por separado cada día.</span></div>
         </>
       ) : (
         <div className="weekly-empty"><CalendarRange size={42} /><h2>{loading ? "Consultando tus rutinas..." : "Crea tu primera misión semanal"}</h2><p>Define desde cuándo se repite y añade las clases que corresponden a cada día.</p>{!loading && <button type="button" onClick={openNewWeekly}>Crear mi horario</button>}</div>

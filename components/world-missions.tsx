@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { BookOpen, Check, ChevronRight, CircleDot, Clock3, Crown, FileCheck2, Flag, GraduationCap, NotebookPen, Pencil, Plus, ScrollText, Trash2, Trophy, X } from "lucide-react";
+import { BookOpen, Check, ChevronRight, CircleDot, Clock3, FileCheck2, Flag, GraduationCap, NotebookPen, Pencil, Plus, ScrollText, Trash2, X } from "lucide-react";
 import { calculateSubjectAverage, getMissionStatus, getMissionXp, Mission, MissionStatus, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
 import { isProgressMission } from "@/lib/missions";
 import { MissionProgress } from "@/components/mission-progress";
@@ -31,7 +31,22 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
   const [subjectName, setSubjectName] = useState("");
   const openSubject = (subject?: Subject) => { setEditingSubject(subject ?? null); setSubjectName(subject?.name ?? ""); setModalOpen(true); };
   const saveSubject = (event: FormEvent) => { event.preventDefault(); onSaveSubject({ ...editingSubject, id: editingSubject?.id ?? crypto.randomUUID(), name: subjectName.trim() }); setModalOpen(false); };
-  const usageFor = (subject: Subject) => missions.filter((mission) => mission.subjectId === subject.id || mission.subject === subject.name || subject.aliases?.includes(mission.subject)).length + weeklyQuests.reduce((count, week) => count + week.dailyMissions.filter((activity) => activity.subjectId === subject.id || activity.subject === subject.name || (activity.subject && subject.aliases?.includes(activity.subject))).length, 0);
+  const usageBySubjectId = useMemo(() => {
+    const usage = new Map(subjects.map((subject) => [subject.id, 0]));
+    const idByName = new Map<string, string>();
+    subjects.forEach((subject) => {
+      idByName.set(subject.name, subject.id);
+      subject.aliases?.forEach((alias) => idByName.set(alias, subject.id));
+    });
+    const registerUsage = (subjectId?: string, subjectName?: string) => {
+      const resolvedId = subjectId && usage.has(subjectId) ? subjectId : subjectName ? idByName.get(subjectName) : undefined;
+      if (resolvedId) usage.set(resolvedId, (usage.get(resolvedId) ?? 0) + 1);
+    };
+    missions.forEach((mission) => registerUsage(mission.subjectId, mission.subject));
+    weeklyQuests.forEach((week) => week.dailyMissions.forEach((activity) => registerUsage(activity.subjectId, activity.subject)));
+    return usage;
+  }, [missions, subjects, weeklyQuests]);
+  const usageFor = (subject: Subject) => usageBySubjectId.get(subject.id) ?? 0;
   const subjectGroups = useMemo(() => {
     const grouped = new Map<string, Mission[]>();
     subjects.forEach((subject) => grouped.set(subject.name, []));
@@ -44,39 +59,59 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
     return grouped;
   }, [missions, subjects]);
   const displaySubjects = useMemo(() => Array.from(subjectGroups.keys()).sort((a, b) => a.localeCompare(b, "es")), [subjectGroups]);
+  const subjectSummaries = useMemo(() => {
+    const summaries = new Map<string, {
+      tasks: Mission[];
+      pending: number;
+      impact: number;
+      completed: number;
+      progress: number;
+      average: ReturnType<typeof calculateSubjectAverage>;
+    }>();
+    subjectGroups.forEach((tasks, subject) => {
+      let pending = 0;
+      let completed = 0;
+      let impact = 0;
+      tasks.forEach((mission) => {
+        const status = getMissionStatus(mission);
+        if (status === "pending") pending += 1;
+        if (status === "completed") completed += 1;
+        impact += mission.weight ?? 0;
+      });
+      summaries.set(subject, {
+        tasks,
+        pending,
+        impact,
+        completed,
+        progress: tasks.length ? Math.round((completed / tasks.length) * 100) : 0,
+        average: calculateSubjectAverage(tasks),
+      });
+    });
+    return summaries;
+  }, [subjectGroups]);
   const selectedSubjectRecord = subjects.find((subject) => subject.name === selectedSubject);
-  const subjectTasks = selectedSubject ? subjectGroups.get(selectedSubject) ?? [] : [];
-  const pendingCount = subjectTasks.filter((mission) => getMissionStatus(mission) === "pending").length;
-  const impact = subjectTasks.reduce((sum, mission) => sum + (mission.weight ?? 0), 0);
-  const selectedAverage = calculateSubjectAverage(subjectTasks);
-  const selectedCompleted = subjectTasks.filter((mission) => getMissionStatus(mission) === "completed").length;
-  const selectedProgress = subjectTasks.length ? Math.round((selectedCompleted / subjectTasks.length) * 100) : 0;
-  const worldStats = useMemo(() => missions.reduce((stats, mission) => {
-    const completed = getMissionStatus(mission) === "completed";
-    if (completed) stats.completed += 1;
-    if (mission.priority === "boss") {
-      stats.bosses += 1;
-      if (completed) stats.bossesDefeated += 1;
-    }
-    return stats;
-  }, { bosses: 0, bossesDefeated: 0, completed: 0 }), [missions]);
-
+  const selectedSummary = selectedSubject ? subjectSummaries.get(selectedSubject) : undefined;
+  const subjectTasks = selectedSummary?.tasks ?? [];
+  const pendingCount = selectedSummary?.pending ?? 0;
+  const impact = selectedSummary?.impact ?? 0;
+  const selectedAverage = selectedSummary?.average ?? calculateSubjectAverage([]);
+  const selectedProgress = selectedSummary?.progress ?? 0;
   return (
     <div className="world-layout">
       <section className="world-main">
         <div className="world-heading">
           <div><span className="eyebrow">TERRITORIOS DEL SEMESTRE</span><h1>Misiones de <i>Mundo</i></h1><p>Explora cada materia y consulta las tareas de ese territorio.</p></div>
-          <div className="world-heading-actions"><button className="secondary-button compact" onClick={() => openSubject()}><Plus size={18} /> Nueva materia</button><button className="primary-button compact" onClick={() => onAdd(selectedSubject ?? undefined)}><Plus size={18} /> Nueva tarea</button></div>
+          <div className="world-heading-actions"><button className="secondary-button compact" onClick={() => openSubject()}><Plus size={18} /> Nueva materia</button></div>
         </div>
 
         <div className="subject-bar" aria-label="Materias">
           {displaySubjects.map((subject, index) => {
             const Icon = subjectIcon(index);
-            const tasks = subjectGroups.get(subject) ?? [];
-            const pending = tasks.filter((mission) => getMissionStatus(mission) === "pending").length;
-            const completed = tasks.filter((mission) => getMissionStatus(mission) === "completed").length;
-            const territoryProgress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
-            const result = calculateSubjectAverage(tasks);
+            const summary = subjectSummaries.get(subject);
+            const tasks = summary?.tasks ?? [];
+            const pending = summary?.pending ?? 0;
+            const territoryProgress = summary?.progress ?? 0;
+            const result = summary?.average ?? calculateSubjectAverage([]);
             return (
               <button key={subject} className={selectedSubject === subject ? "active" : ""} onClick={() => onSelectSubject(subject)}>
                 <span className="subject-icon"><Icon size={18} /><i>{index + 1}</i></span>
@@ -92,7 +127,7 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
           {!displaySubjects.length && <div className="no-subjects"><BookOpen size={25} /><span>Aún no hay materias registradas.</span></div>}
         </div>
 
-        <div className="world-map-panel">
+        {!subjects.length && <div className="world-map-panel">
           <div className="world-decoration">✣</div>
           <span className="eyebrow">CÓMO FUNCIONA</span>
           <h2>Elige un territorio para abrir su diario</h2>
@@ -100,8 +135,7 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
           <div className="status-guide">
             {(Object.keys(statusMeta) as MissionStatus[]).map((status) => <span key={status} className={status}><i />{statusMeta[status].label}</span>)}
           </div>
-          <div className="world-game-stats"><span><Trophy size={15} /><b>{worldStats.completed}</b> victorias</span><span><Crown size={15} /><b>{worldStats.bossesDefeated}/{worldStats.bosses}</b> jefes</span></div>
-        </div>
+        </div>}
       </section>
 
       <aside className={`task-drawer ${selectedSubject ? "visible" : ""}`}>

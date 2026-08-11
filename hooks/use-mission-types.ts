@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutationCoordinator } from "@/hooks/use-mutation-coordinator";
+import { getRequestError, isAbortError, readApiResponse } from "@/lib/http";
 import { sortMissionTypes, type MissionType } from "@/lib/mission-types";
 import { removeById, restoreById, upsertById } from "@/lib/optimistic";
 
@@ -15,18 +16,15 @@ export function useMissionTypes(enabled: boolean) {
     if (!enabled) {
       setMissionTypes([]);
       setLoading(false);
+      setError(null);
       return;
     }
     let canceled = false;
+    const controller = new AbortController();
     setLoading(true);
-    fetch("/api/mission-types")
+    fetch("/api/mission-types", { signal: controller.signal })
       .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok)
-          throw new Error(
-            body.error ?? "No se pudieron cargar los tipos de misión.",
-          );
-        return body as MissionType[];
+        return readApiResponse<MissionType[]>(response, "No se pudieron cargar los tipos de misión.");
       })
       .then((data) => {
         if (!canceled) {
@@ -35,11 +33,9 @@ export function useMissionTypes(enabled: boolean) {
         }
       })
       .catch((requestError) => {
-        if (!canceled)
+        if (!canceled && !isAbortError(requestError))
           setError(
-            requestError instanceof Error
-              ? requestError.message
-              : "No se pudieron cargar los tipos de misión.",
+            getRequestError(requestError, "No se pudieron cargar los tipos de misión."),
           );
       })
       .finally(() => {
@@ -47,6 +43,7 @@ export function useMissionTypes(enabled: boolean) {
       });
     return () => {
       canceled = true;
+      controller.abort();
     };
   }, [enabled]);
 
@@ -71,12 +68,7 @@ export function useMissionTypes(enabled: boolean) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(missionType),
         });
-        const body = await response.json();
-        if (!response.ok)
-          throw new Error(
-            body.error ?? "No se pudo guardar el tipo de misión.",
-          );
-        return body as MissionType;
+        return readApiResponse<MissionType>(response, "No se pudo guardar el tipo de misión.");
       });
       if (mutations.isLatest(missionType.id, version)) {
         setMissionTypes((current) => sortMissionTypes(upsertById(current, saved)));
@@ -87,9 +79,7 @@ export function useMissionTypes(enabled: boolean) {
         setMissionTypes((current) => sortMissionTypes(restoreById(current, missionType.id, existing)));
       }
       setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "No se pudo guardar el tipo de misión.",
+        getRequestError(requestError, "No se pudo guardar el tipo de misión."),
       );
       return null;
     }
@@ -105,12 +95,7 @@ export function useMissionTypes(enabled: boolean) {
         const response = await fetch(`/api/mission-types/${encodeURIComponent(id)}`, {
           method: "DELETE",
         });
-        if (!response.ok) {
-          const body = await response.json();
-          throw new Error(
-            body.error ?? "No se pudo eliminar el tipo de misión.",
-          );
-        }
+        await readApiResponse(response, "No se pudo eliminar el tipo de misión.");
       });
       return true;
     } catch (requestError) {
@@ -118,9 +103,7 @@ export function useMissionTypes(enabled: boolean) {
         setMissionTypes((current) => sortMissionTypes(restoreById(current, id, previous)));
       }
       setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "No se pudo eliminar el tipo de misión.",
+        getRequestError(requestError, "No se pudo eliminar el tipo de misión."),
       );
       return false;
     }

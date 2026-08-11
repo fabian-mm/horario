@@ -10,7 +10,7 @@ type Props = {
   open: boolean;
   user: AppUser;
   onClose: () => void;
-  onLogout: () => Promise<void>;
+  onLogout: () => Promise<string | null>;
   onUpdate: (values: { name: string; subtitle: string }) => Promise<string | null>;
   theme: ThemeId;
   onThemeChange: (theme: ThemeId) => void;
@@ -20,14 +20,35 @@ export function AccountPanel({ open, user, onClose, onLogout, onUpdate, theme, o
   const [name, setName] = useState(user.name);
   const [subtitle, setSubtitle] = useState(user.subtitle);
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<"save" | "logout" | null>(null);
 
-  useEffect(() => { setName(user.name); setSubtitle(user.subtitle); }, [user]);
+  useEffect(() => {
+    setName(user.name);
+    setSubtitle(user.subtitle);
+    setMessage(null);
+    setPendingAction(null);
+  }, [open, user]);
   if (!open) return null;
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    const error = await onUpdate({ name, subtitle });
-    setMessage(error ?? "Cuenta actualizada.");
+    setPendingAction("save");
+    try {
+      const error = await onUpdate({ name, subtitle });
+      setMessage(error ?? "Cuenta actualizada.");
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const logout = async () => {
+    setPendingAction("logout");
+    try {
+      const error = await onLogout();
+      if (error) setMessage(error);
+    } finally {
+      setPendingAction(null);
+    }
   };
 
   return (
@@ -51,7 +72,7 @@ export function AccountPanel({ open, user, onClose, onLogout, onUpdate, theme, o
           <label>Nombre<input required value={name} onChange={(event) => setName(event.target.value)} /></label>
           <label>Descripción<input required value={subtitle} onChange={(event) => setSubtitle(event.target.value)} /></label>
           {message && <p className="account-message">{message}</p>}
-          <div className="account-actions"><button type="button" className="logout-button" onClick={onLogout}><LogOut size={16} /> Cerrar sesión</button><button className="primary-button">Guardar cambios</button></div>
+          <div className="account-actions"><button type="button" className="logout-button" onClick={logout} disabled={pendingAction !== null}><LogOut size={16} /> {pendingAction === "logout" ? "Cerrando..." : "Cerrar sesión"}</button><button className="primary-button" disabled={pendingAction !== null}>{pendingAction === "save" ? "Guardando..." : "Guardar cambios"}</button></div>
         </form>
       </section>
     </div>

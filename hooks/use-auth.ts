@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { getRequestError, readApiResponse } from "@/lib/http";
 import type { AppUser } from "@/lib/users";
 
 type AuthPayload = { user: AppUser | null; error?: string };
@@ -11,9 +12,7 @@ async function authRequest(url: string, body?: unknown) {
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
-  const data = await response.json() as AuthPayload;
-  if (!response.ok) throw new Error(data.error ?? "No fue posible completar la solicitud.");
-  return data;
+  return readApiResponse<AuthPayload>(response, "No fue posible completar la solicitud.");
 }
 
 export function useAuth() {
@@ -29,7 +28,7 @@ export function useAuth() {
       setError(null);
     } catch (requestError) {
       setUser(null);
-      setError(requestError instanceof Error ? requestError.message : "No se pudo comprobar la sesión.");
+      setError(getRequestError(requestError, "No se pudo comprobar la sesión."));
     } finally {
       setLoading(false);
     }
@@ -44,7 +43,7 @@ export function useAuth() {
       setError(null);
       return null;
     } catch (requestError) {
-      const message = requestError instanceof Error ? requestError.message : "No se pudo crear la cuenta.";
+      const message = getRequestError(requestError, "No se pudo crear la cuenta.");
       setError(message);
       return message;
     }
@@ -57,27 +56,36 @@ export function useAuth() {
       setError(null);
       return null;
     } catch (requestError) {
-      const message = requestError instanceof Error ? requestError.message : "No se pudo iniciar sesión.";
+      const message = getRequestError(requestError, "No se pudo iniciar sesión.");
       setError(message);
       return message;
     }
   };
 
   const logout = async () => {
-    await authRequest("/api/auth/logout", {});
-    setUser(null);
-    setError(null);
+    try {
+      await authRequest("/api/auth/logout", {});
+      setUser(null);
+      setError(null);
+      return null;
+    } catch (requestError) {
+      const message = getRequestError(requestError, "No se pudo cerrar la sesión.");
+      setError(message);
+      return message;
+    }
   };
 
   const updateAccount = async (values: { name: string; subtitle: string }) => {
     try {
       const response = await fetch("/api/account", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
-      const data = await response.json() as AuthPayload;
-      if (!response.ok) throw new Error(data.error ?? "No se pudo guardar la cuenta.");
+      const data = await readApiResponse<AuthPayload>(response, "No se pudo guardar la cuenta.");
       setUser(data.user);
+      setError(null);
       return null;
     } catch (requestError) {
-      return requestError instanceof Error ? requestError.message : "No se pudo guardar la cuenta.";
+      const message = getRequestError(requestError, "No se pudo guardar la cuenta.");
+      setError(message);
+      return message;
     }
   };
 
