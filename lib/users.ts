@@ -1,8 +1,11 @@
+import type { ThemeId } from "@/lib/themes";
+
 export type AppUser = {
   id: string;
   name: string;
   email: string;
   subtitle: string;
+  theme?: ThemeId;
   createdAt: string;
   updatedAt: string;
 };

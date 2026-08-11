@@ -6,6 +6,7 @@ import { getDatabaseErrorMessage, getDb, getPublicDatabaseIssue, logDatabaseErro
 import { registerSchema } from "@/lib/validation";
 import type { AppUser, UserDocument } from "@/lib/users";
 import { checkRateLimit, getRequestAddress, rateLimitHeaders } from "@/lib/rate-limit";
+import { DEFAULT_THEME } from "@/lib/themes";
 
 export async function POST(request: Request) {
   const rateLimit = checkRateLimit(`register:${getRequestAddress(request)}`, 5, 60 * 60 * 1000);
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
     email: parsed.data.email,
     passwordHash: await hash(parsed.data.password, 12),
     subtitle: "Explorador del semestre",
+    theme: DEFAULT_THEME,
     createdAt: now,
     updatedAt: now,
   };

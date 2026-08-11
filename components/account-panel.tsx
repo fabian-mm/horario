@@ -13,7 +13,7 @@ type Props = {
   onLogout: () => Promise<string | null>;
   onUpdate: (values: { name: string; subtitle: string }) => Promise<string | null>;
   theme: ThemeId;
-  onThemeChange: (theme: ThemeId) => void;
+  onThemeChange: (theme: ThemeId) => Promise<string | null>;
 };
 
 export function AccountPanel({ open, user, onClose, onLogout, onUpdate, theme, onThemeChange }: Props) {
@@ -27,7 +27,7 @@ export function AccountPanel({ open, user, onClose, onLogout, onUpdate, theme, o
     setSubtitle(user.subtitle);
     setMessage(null);
     setPendingAction(null);
-  }, [open, user]);
+  }, [open, user.id, user.name, user.subtitle]);
   if (!open) return null;
 
   const save = async (event: FormEvent) => {
@@ -51,6 +51,11 @@ export function AccountPanel({ open, user, onClose, onLogout, onUpdate, theme, o
     }
   };
 
+  const changeTheme = async (nextTheme: ThemeId) => {
+    const error = await onThemeChange(nextTheme);
+    setMessage(error ? `El tema cambió en este dispositivo, pero no pudo sincronizarse: ${error}` : "Tema sincronizado con tu cuenta.");
+  };
+
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
       <section className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title" onMouseDown={(event) => event.stopPropagation()}>
@@ -58,10 +63,10 @@ export function AccountPanel({ open, user, onClose, onLogout, onUpdate, theme, o
         <form className="account-form" onSubmit={save}>
           <div className="account-identity"><span>{getUserInitials(user.name)}</span><div><strong>{user.email}</strong><small><Database size={12} /> Sincronizado con MongoDB</small></div></div>
           <section className="theme-settings" aria-labelledby="theme-title">
-            <div className="theme-heading"><span><Palette size={16} /></span><div><strong id="theme-title">Tema de la aventura</strong><small>Se guarda en este navegador.</small></div></div>
+            <div className="theme-heading"><span><Palette size={16} /></span><div><strong id="theme-title">Tema de la aventura</strong><small>Sincronizado con tu cuenta y este navegador.</small></div></div>
             <div className="theme-options" role="radiogroup" aria-label="Tema de colores">
               {appThemes.map((item) => (
-                <button key={item.id} type="button" role="radio" aria-checked={theme === item.id} className={theme === item.id ? "active" : ""} onClick={() => onThemeChange(item.id)}>
+                <button key={item.id} type="button" role="radio" aria-checked={theme === item.id} className={theme === item.id ? "active" : ""} onClick={() => void changeTheme(item.id)}>
                   <span className="theme-swatches" aria-hidden="true">{item.colors.map((color) => <i key={color} style={{ background: color }} />)}</span>
                   <span><strong>{item.name}</strong><small>{item.description}</small></span>
                   {theme === item.id && <Check size={15} />}

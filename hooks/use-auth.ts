@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getRequestError, readApiResponse } from "@/lib/http";
 import type { AppUser } from "@/lib/users";
+import type { ThemeId } from "@/lib/themes";
 
 type AuthPayload = { user: AppUser | null; error?: string };
 
@@ -19,6 +20,7 @@ export function useAuth() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const accountUpdateSequence = useRef(0);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -75,16 +77,19 @@ export function useAuth() {
     }
   };
 
-  const updateAccount = async (values: { name: string; subtitle: string }) => {
+  const updateAccount = async (values: { name?: string; subtitle?: string; theme?: ThemeId }) => {
+    const sequence = ++accountUpdateSequence.current;
     try {
       const response = await fetch("/api/account", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
       const data = await readApiResponse<AuthPayload>(response, "No se pudo guardar la cuenta.");
-      setUser(data.user);
-      setError(null);
+      if (sequence === accountUpdateSequence.current) {
+        setUser(data.user);
+        setError(null);
+      }
       return null;
     } catch (requestError) {
       const message = getRequestError(requestError, "No se pudo guardar la cuenta.");
-      setError(message);
+      if (sequence === accountUpdateSequence.current) setError(message);
       return message;
     }
   };

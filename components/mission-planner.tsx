@@ -67,7 +67,7 @@ function calendarDays(month: Date) {
 
 export function MissionPlanner() {
   const auth = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme(auth.user?.id, auth.user?.theme);
   const { missions, loading: missionsLoading, error: missionsError, upsert, updateMission, toggle, setStatus, remove } = useMissions(Boolean(auth.user));
   const { weeklyQuests, loading: scheduleLoading, error: scheduleError, upsert: upsertWeeklyQuest, remove: removeWeeklyQuest } = useWeeklyQuests(Boolean(auth.user));
   const { subjects, loading: subjectsLoading, error: subjectsError, upsert: upsertSubject, remove: removeSubject } = useSubjects(Boolean(auth.user));
@@ -692,7 +692,10 @@ export function MissionPlanner() {
         onLogout={auth.logout}
         onUpdate={auth.updateAccount}
         theme={theme}
-        onThemeChange={setTheme}
+        onThemeChange={(nextTheme) => {
+          setTheme(nextTheme);
+          return auth.updateAccount({ theme: nextTheme });
+        }}
       />
       <GameFeedback reward={reward} onDismiss={() => setReward(null)} />
     </main>

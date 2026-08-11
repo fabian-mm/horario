@@ -5,9 +5,10 @@ import type { UserDocument } from "@/lib/users";
 import { z } from "zod";
 
 const updateSchema = z.object({
-  name: z.string().trim().min(2).max(80),
-  subtitle: z.string().trim().min(1).max(100),
-});
+  name: z.string().trim().min(2).max(80).optional(),
+  subtitle: z.string().trim().min(1).max(100).optional(),
+  theme: z.enum(["guild", "rose", "ocean", "arcane", "ember"]).optional(),
+}).refine((values) => Object.keys(values).length > 0, "No hay cambios para guardar.");
 
 export async function PUT(request: Request) {
   const userId = await getSessionUserId();
