@@ -44,7 +44,7 @@ Si ya tenías misiones o clases, la aplicación incorpora automáticamente sus m
 
 ## Mapa de campaña
 
-Abre **Mapa de campaña** desde el menú lateral para ver las misiones como una ruta cronológica de destinos. Cada nodo muestra la fecha, la materia y la importancia; los jefes finales aparecen como fortalezas especiales.
+Abre **Mapa de campaña** desde el menú lateral para ver las misiones como una ruta cronológica e irregular de destinos. Cada esfera muestra únicamente la fecha. Pasa el cursor por encima —o enfócala con el teclado— para ver la materia, el objetivo, su estado, horario o progreso y la recompensa de XP.
 
 Selecciona cualquier destino para abrir su pergamino de información. Allí puedes consultar recompensa, fecha, hora, impacto, nota y observaciones, cambiar el estado de la misión o abrir su ficha completa. El buscador también filtra los destinos visibles del mapa.
 
@@ -59,6 +59,19 @@ Pulsa **Tipos y XP** para administrar las opciones disponibles. La aplicación i
 Las horas de comienzo y final usan el mismo control accesible. Si la hora final no es posterior a la inicial, verás el aviso junto al campo y el formulario no se guardará hasta corregirla. En móvil aparecen en filas separadas para que los controles conserven un tamaño cómodo.
 
 Una rutina activa proyecta automáticamente sus actividades sobre todas las fechas correspondientes del calendario principal. Cada aparición se completa por separado desde la agenda del día: así, marcar la actividad de hoy no completa las semanas futuras. Al completarla recibes los puntos definidos por su tipo. Puedes volver a marcarla como pendiente o pausar toda la rutina sin borrarla.
+
+## Alertas y recordatorios
+
+Pulsa **Activar alertas** en la barra superior y acepta el permiso del navegador. La aplicación enviará inmediatamente una alerta de prueba; después el botón cambiará a **Probar alerta** para que puedas comprobar el canal cuando quieras.
+
+Los avisos de las actividades del horario semanal se preparan 20 minutos antes y muestran la hora en formato AM/PM. La programación se actualiza al volver a la aplicación, recuperar el foco y cada 15 minutos mientras continúa ejecutándose.
+
+Requisitos y comprobaciones:
+
+- En producción la aplicación debe abrirse mediante HTTPS, como ocurre normalmente en Vercel.
+- Si el permiso aparece bloqueado, actívalo desde la configuración del sitio y revisa que el sistema no tenga habilitado **No molestar**.
+- En iPhone o iPad, añade la página a la pantalla de inicio, ábrela desde su icono y concede el permiso desde allí.
+- Esta versión puede mostrar alertas desde una pestaña abierta o suspendida por poco tiempo. Si el navegador cierra completamente la aplicación, no puede garantizar el aviso exacto: para eso se necesita Web Push enviado por un proceso permanente del servidor.
 
 ## Logros y felicitaciones
 

@@ -277,6 +277,7 @@ nav button em { margin-left: auto; padding: 1px 7px; border-radius: 12px; color:
 .sync-alert { position: fixed; z-index: 12; top: 78px; right: 28px; max-width: 390px; display: flex; align-items: flex-start; gap: 9px; padding: 10px 12px; border: 1px solid rgba(164,72,56,.2); border-radius: 8px; color: #87483d; background: rgba(255,245,241,.97); box-shadow: 0 10px 30px rgba(75,42,35,.14); font-size: 9px; line-height: 1.45; }
 .sync-alert svg { flex: none; margin-top: 1px; }
 .sync-alert strong { display: block; }
+.sync-alert.notification-alert { top: auto; bottom: 24px; border-color: color-mix(in srgb, var(--sage) 35%, transparent); color: var(--forest); background: color-mix(in srgb, var(--paper) 97%, var(--sage)); }
 .streak { color: #775838; font-size: 12px; }
 .streak small { font-size: 8px; letter-spacing: .08em; }
 .primary-button { border: 0; padding: 11px 17px; border-radius: 7px; color: #fffaf1; background: var(--forest); cursor: pointer; font-weight: 600; font-size: 12px; box-shadow: 0 6px 14px rgba(18,63,56,.18); transition: transform .2s, background .2s; }

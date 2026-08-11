@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Activity, AlertTriangle, Award, BookOpen, CalendarClock, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, Hourglass, LayoutGrid, List, LoaderCircle, MapPin, MapPinned, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Sunrise, Swords, Target, Trophy, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Activity, AlertTriangle, Award, BellRing, BookOpen, CalendarClock, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, Hourglass, LayoutGrid, List, LoaderCircle, MapPin, MapPinned, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Sunrise, Swords, Target, Trophy, X } from "lucide-react";
 import { useActivityTypes } from "@/hooks/use-activity-types";
 import { useAuth } from "@/hooks/use-auth";
 import { useMissionTypes } from "@/hooks/use-mission-types";
@@ -79,6 +79,8 @@ export function MissionPlanner() {
   const [notificationsPermission, setNotificationsPermission] = useState<"default" | "granted" | "denied" | "unsupported">("unsupported");
   const rewardSequence = useRef(0);
   const reminderTimersRef = useRef<number[]>([]);
+  const deliveredReminderIdsRef = useRef(new Set<string>());
+  const [notificationFeedback, setNotificationFeedback] = useState<string | null>(null);
   const [missionTypesOpen, setMissionTypesOpen] = useState(false);
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("month");
   const [freeTimeOpen, setFreeTimeOpen] = useState(false);
@@ -146,6 +148,10 @@ export function MissionPlanner() {
   }, []);
 
   useEffect(() => {
+    deliveredReminderIdsRef.current.clear();
+  }, [auth.user?.id]);
+
+  useEffect(() => {
     if (!auth.user?.id) {
       setDailyLoginState({ lastLoginDate: null, streak: 0, totalBonusXp: 0, lastAwardedXp: 0, awardedToday: false });
       return;
@@ -154,35 +160,74 @@ export function MissionPlanner() {
     setDailyLoginState(applied.state);
     if (applied.awarded) {
       setReward({ id: Date.now(), title: "Entrada diaria", xp: applied.xpAwarded, boss: false, activity: false });
-      showBrowserNotification("Entrada diaria", `¡Ganaste ${applied.xpAwarded} XP y tu racha va en ${applied.state.streak} días!`);
+      void showBrowserNotification("Entrada diaria", `¡Ganaste ${applied.xpAwarded} XP y tu racha va en ${applied.state.streak} días!`, { tag: `daily-login:${applied.state.lastLoginDate ?? "today"}` });
     }
   }, [auth.user?.id]);
 
   useEffect(() => {
-    if (!auth.user?.id || !catalogWeeklyQuests.length) {
-      reminderTimersRef.current.forEach((timer) => window.clearTimeout(timer));
-      reminderTimersRef.current = [];
-      return;
-    }
-    reminderTimersRef.current.forEach((timer) => window.clearTimeout(timer));
-    reminderTimersRef.current = [];
-    const reminders = buildUpcomingActivityReminders(catalogWeeklyQuests, new Date(), 7);
-    reminderTimersRef.current = reminders.map((reminder) => window.setTimeout(() => {
-      showBrowserNotification(reminder.title, reminder.body);
-    }, reminder.delayMs));
-    return () => {
+    const clearReminderTimers = () => {
       reminderTimersRef.current.forEach((timer) => window.clearTimeout(timer));
       reminderTimersRef.current = [];
     };
-  }, [auth.user?.id, catalogWeeklyQuests]);
 
-  const enableNotifications = async () => {
+    if (!auth.user?.id || !catalogWeeklyQuests.length || notificationsPermission !== "granted") {
+      clearReminderTimers();
+      return;
+    }
+
+    const scheduleReminders = () => {
+      clearReminderTimers();
+      const reminders = buildUpcomingActivityReminders(catalogWeeklyQuests, new Date(), 7)
+        .filter((reminder) => !deliveredReminderIdsRef.current.has(reminder.id));
+      reminderTimersRef.current = reminders.map((reminder) => window.setTimeout(() => {
+        void showBrowserNotification(reminder.title, reminder.body, { tag: reminder.id }).then((result) => {
+          if (result === "shown") deliveredReminderIdsRef.current.add(reminder.id);
+        });
+      }, reminder.delayMs));
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") scheduleReminders();
+    };
+
+    scheduleReminders();
+    const refreshTimer = window.setInterval(scheduleReminders, 15 * 60 * 1000);
+    window.addEventListener("focus", scheduleReminders);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      clearReminderTimers();
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("focus", scheduleReminders);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [auth.user?.id, catalogWeeklyQuests, notificationsPermission]);
+
+  useEffect(() => {
+    if (!notificationFeedback) return;
+    const timer = window.setTimeout(() => setNotificationFeedback(null), 6500);
+    return () => window.clearTimeout(timer);
+  }, [notificationFeedback]);
+
+  const enableNotifications = useCallback(async () => {
     const permission = await requestNotificationPermission();
     setNotificationsPermission(permission);
     if (permission === "granted") {
-      showBrowserNotification("Alertas activadas", "Recibirás recordatorios 20 minutos antes de tus actividades y tu recompensa diaria de XP.");
+      const result = await showBrowserNotification(
+        "Alertas activadas",
+        "Prueba recibida. Te avisaremos 20 minutos antes de tus actividades mientras la aplicación pueda ejecutarse.",
+        { tag: "notification-test" },
+      );
+      setNotificationFeedback(result === "shown"
+        ? "Notificación de prueba enviada. Revisa también que el sistema no tenga activado No molestar."
+        : "El navegador concedió permiso, pero el sistema no pudo mostrar la notificación de prueba.");
+      return;
     }
-  };
+    setNotificationFeedback(permission === "denied"
+      ? "Las notificaciones están bloqueadas. Debes permitirlas desde la configuración del sitio o del teléfono."
+      : permission === "unsupported"
+        ? "Este navegador no admite alertas aquí. En iPhone, añade la aplicación a la pantalla de inicio y ábrela desde su icono."
+        : "No se concedió el permiso de notificaciones.");
+  }, []);
 
   const openNew = (date = selectedDate, subject?: string) => { selectDate(date, { switchToDayView: false }); setDraftSubject(subject); setEditing(null); setModalOpen(true); };
   const openEdit = (mission: Mission) => { setDraftSubject(undefined); setEditing(mission); setModalOpen(true); };
@@ -352,7 +397,7 @@ export function MissionPlanner() {
           <div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "world" ? "Buscar tarea o materia..." : view === "map" ? "Buscar un destino..." : view === "weekly" ? "Buscar una actividad..." : "Buscar una misión..."} /></div>
           <div className="top-actions">
             {(missionsLoading || scheduleLoading || subjectsLoading || activityTypesLoading || missionTypesLoading || missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError) && <span className={`sync-state ${missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError ? "error" : ""}`}>{missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError ? "Sin guardar" : "Sincronizando"}</span>}
-            <button className="secondary-button compact" type="button" onClick={enableNotifications}>{notificationsPermission === "granted" ? "Alertas activas" : notificationsPermission === "denied" ? "Alertas desactivadas" : "Activar alertas"}</button>
+            <button className="secondary-button compact" type="button" onClick={enableNotifications}>{notificationsPermission === "granted" ? "Probar alerta" : notificationsPermission === "denied" ? "Permiso bloqueado" : notificationsPermission === "unsupported" ? "Alertas no compatibles" : "Activar alertas"}</button>
             <span className="level-hud" title={`${player.rank} · ${player.totalXp} XP total`}><Sparkles size={14} /><b>NIV. {player.level}</b><small>{player.xpInLevel}/{player.xpPerLevel} XP</small></span>
             <span className="streak">🔥 <b>{streak}</b><small> DÍAS DE RACHA</small></span>
             {dailyLoginState.lastAwardedXp > 0 && <span className="streak" title={`Bonus diario de ${dailyLoginState.lastAwardedXp} XP`}><span aria-hidden="true">☀️</span> <b>+{dailyLoginState.lastAwardedXp}</b><small> XP HOY</small></span>}
@@ -361,6 +406,7 @@ export function MissionPlanner() {
         </header>
 
         {(missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError) && <div className="sync-alert" role="alert"><AlertTriangle size={15} /><span><strong>No se pudo sincronizar.</strong> {missionsError ?? scheduleError ?? subjectsError ?? activityTypesError ?? missionTypesError}</span></div>}
+        {notificationFeedback && <div className="sync-alert notification-alert" role="status"><BellRing size={15} /><span><strong>Estado de las alertas</strong>{notificationFeedback}</span></div>}
 
         {view === "world" ? (
           <div className="workspace world-workspace">

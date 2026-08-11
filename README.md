@@ -52,6 +52,7 @@ Genera un secreto con un administrador de contraseñas o con `openssl rand -base
 - Cinco temas de color intercambiables, incluido Reino Rosa, guardados en el navegador.
 - Notas, porcentajes y promedio ponderado.
 - Diseño adaptable a escritorio y celular.
+- Alertas del navegador mediante service worker, con prueba de entrega y recordatorios 20 minutos antes de las actividades.
 - Guardado optimista para una interfaz rápida.
 
 ## Documentación

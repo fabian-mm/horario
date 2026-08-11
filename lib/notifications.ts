@@ -1,5 +1,6 @@
 import type { WeeklyQuest } from "@/lib/schedule";
 import { getScheduledOccurrences } from "@/lib/schedule";
+import { formatTime12Hour } from "@/lib/time";
 
 export type DailyLoginState = {
   lastLoginDate: string | null;
@@ -16,9 +17,12 @@ export type UpcomingReminder = {
   delayMs: number;
 };
 
+export type NotificationDeliveryResult = "shown" | "permission-required" | "unsupported" | "failed";
+
 const DAILY_LOGIN_STORAGE_KEY = "bitacora-daily-login";
 const DAILY_LOGIN_XP = 20;
 const REMINDER_HORIZON_DAYS = 7;
+let workerRegistrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
 
 const toIsoDate = (date: Date) => {
   const year = date.getFullYear();
@@ -81,20 +85,61 @@ export const applyDailyLoginReward = (userId: string | null, referenceDate = new
 };
 
 export const getNotificationPermission = () => {
-  if (typeof window === "undefined" || !("Notification" in window)) return "unsupported" as const;
+  if (typeof window === "undefined" || !window.isSecureContext || !("Notification" in window)) return "unsupported" as const;
   return Notification.permission;
 };
 
 export const requestNotificationPermission = async () => {
-  if (typeof window === "undefined" || !("Notification" in window)) return "unsupported" as const;
+  if (typeof window === "undefined" || !window.isSecureContext || !("Notification" in window)) return "unsupported" as const;
   if (Notification.permission === "granted") return "granted" as const;
   if (Notification.permission === "denied") return "denied" as const;
   return Notification.requestPermission();
 };
 
-export const showBrowserNotification = (title: string, body: string) => {
-  if (typeof window === "undefined" || !("Notification" in window) || Notification.permission !== "granted") return;
-  new Notification(title, { body });
+export const registerNotificationWorker = async () => {
+  if (typeof window === "undefined" || !window.isSecureContext || !("serviceWorker" in navigator)) return null;
+  if (!workerRegistrationPromise) {
+    workerRegistrationPromise = navigator.serviceWorker
+      .register("/sw.js", { scope: "/" })
+      .then(() => navigator.serviceWorker.ready)
+      .catch(() => null);
+  }
+  const registration = await workerRegistrationPromise;
+  if (!registration) workerRegistrationPromise = null;
+  return registration;
+};
+
+export const showBrowserNotification = async (
+  title: string,
+  body: string,
+  options: { tag?: string; url?: string } = {},
+): Promise<NotificationDeliveryResult> => {
+  if (typeof window === "undefined" || !window.isSecureContext || !("Notification" in window)) return "unsupported";
+  if (Notification.permission !== "granted") return "permission-required";
+
+  const notificationOptions = {
+    body,
+    icon: "/favicon.svg",
+    tag: options.tag,
+    data: { url: options.url ?? "/" },
+  };
+
+  const registration = await registerNotificationWorker();
+  if (registration) {
+    try {
+      await registration.showNotification(title, notificationOptions);
+      return "shown";
+    } catch {
+      // Some desktop browsers still support the window constructor as a fallback.
+    }
+  }
+
+  try {
+    new Notification(title, notificationOptions);
+    return "shown";
+  } catch {
+    return "failed";
+  }
 };
 
 export const buildUpcomingActivityReminders = (weeklyQuests: WeeklyQuest[], now = new Date(), horizonDays = REMINDER_HORIZON_DAYS): UpcomingReminder[] => {
@@ -114,7 +159,7 @@ export const buildUpcomingActivityReminders = (weeklyQuests: WeeklyQuest[], now 
       reminders.push({
         id: `${occurrence.occurrenceId}:reminder`,
         title: `Recordatorio: ${occurrence.title}`,
-        body: `${occurrence.subject ?? occurrence.activityTypeName ?? "Tu actividad"} empieza ${occurrence.startTime} · ${occurrence.location ?? "sin lugar"}`,
+        body: `${occurrence.subject ?? occurrence.activityTypeName ?? "Tu actividad"} empieza a las ${formatTime12Hour(occurrence.startTime)} · ${occurrence.location ?? "sin lugar"}`,
         delayMs,
       });
     });
