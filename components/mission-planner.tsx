@@ -116,6 +116,15 @@ export function MissionPlanner() {
   }, []);
 
   useEffect(() => {
+    const preloadTimer = window.setTimeout(() => {
+      preloadView("world");
+      preloadView("map");
+      preloadView("weekly");
+    }, 900);
+    return () => window.clearTimeout(preloadTimer);
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const savedMode = window.localStorage.getItem("planner-calendar-mode");
