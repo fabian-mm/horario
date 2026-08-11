@@ -17,7 +17,7 @@ const randomFrom = (value: string, salt: string) =>
   hashText(`${salt}:${value}`) / 0xffffffff;
 
 export function createTreasureMapLayout(ids: string[]): TreasureMapPoint[] {
-  let currentY = 86;
+  let currentY = 132;
 
   return ids.map((id, index) => {
     const x = 16 + randomFrom(id, "x") * 68;

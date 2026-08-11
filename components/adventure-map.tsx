@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Anchor, Check, ChevronRight, Clock3, Crown, FileCheck2, Flag, MapPinned, Navigation, ScrollText, Ship, Sparkles, Swords, Trophy } from "lucide-react";
+import { Anchor, Castle, Check, ChevronRight, Clock3, Crown, FileCheck2, Flag, MapPinned, Mountain, Navigation, ScrollText, Shield, Ship, Skull, Sparkles, Swords, Trees } from "lucide-react";
 import { formatLongDate, formatProgressDuration, getMissionProgress, getMissionStatus, getMissionXp, isProgressMission, Mission, MissionStatus, priorityMeta, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
 import { formatTime12Hour } from "@/lib/time";
 import { createTreasureMapLayout, createTreasurePath } from "@/lib/treasure-map";
@@ -14,6 +14,8 @@ type Props = {
   onStatusChange: (id: string, status: MissionStatus) => void;
   onAddProgress: (id: string, minutes: 30 | 60) => void;
 };
+
+const START_POINT = { x: 11, y: 48 };
 
 export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddProgress }: Props) {
   const orderedMissions = useMemo(() => sortMissionsByDateTime(missions), [missions]);
@@ -32,14 +34,15 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
     if (!lastPoint) return { x: 50, y: 360 };
     return {
       x: lastPoint.x < 50 ? 72 : 28,
-      y: lastPoint.y + 145,
+      y: lastPoint.y + 230,
     };
   }, [mapPoints]);
-  const mapHeight = orderedMissions.length ? treasurePoint.y + 95 : 520;
+  const mapHeight = orderedMissions.length ? Math.max(620, treasurePoint.y + 120) : 620;
   const svgPathData = useMemo(
-    () => createTreasurePath([...mapPoints, treasurePoint]),
+    () => createTreasurePath([START_POINT, ...mapPoints, treasurePoint]),
     [mapPoints, treasurePoint],
   );
+  const remainingMissions = Math.max(0, orderedMissions.length - completed);
 
   return (
     <div className="adventure-map-view">
@@ -48,6 +51,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
           <span className="eyebrow">CARTA DE NAVEGACIÓN</span>
           <h1>Mapa del <i>Tesoro de Campaña</i></h1>
           <p>Pasa el cursor sobre una fecha para descubrir el objetivo; tócala para abrir su ficha.</p>
+          <div className="map-chapter"><Shield size={12} /><span>CAPÍTULO I</span><i />La senda del navegante</div>
         </div>
       </header>
 
@@ -60,6 +64,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
 
       <div className="adventure-map-grid">
         <section className="treasure-route parchment-map" aria-label="Ruta del Tesoro">
+          <div className="map-inner-frame" aria-hidden="true" />
           {/* Map Grid Coordinates */}
           <div className="map-coordinates coord-top" aria-hidden="true"><span>74° W</span><span>72° W</span><span>70° W</span><span>68° W</span></div>
           <div className="map-coordinates coord-side" aria-hidden="true"><span>14° N</span><span>12° N</span><span>10° N</span><span>08° N</span></div>
@@ -68,6 +73,15 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
           <div className="map-sea-label sea-north" aria-hidden="true">MAR DE LOS SABERES</div>
           <div className="map-sea-label sea-center" aria-hidden="true">ARCHIPIÉLAGO DEL CONOCIMIENTO</div>
           <div className="map-sea-label sea-south" aria-hidden="true">GOLFO DEL EXAMEN FINAL</div>
+
+          <div className="map-terrain" aria-hidden="true">
+            <span className="terrain-island island-west" />
+            <span className="terrain-island island-east" />
+            <span className="terrain-island island-south" />
+            <div className="rpg-landmark landmark-mountains"><Mountain /><small>CUMBRES DEL ESFUERZO</small></div>
+            <div className="rpg-landmark landmark-forest"><Trees /><small>BOSQUE DE LA CONSTANCIA</small></div>
+            <div className="rpg-landmark landmark-ruins"><Skull /><small>RUINAS DEL OLVIDO</small></div>
+          </div>
 
           {/* Nautical decorative elements */}
           <div className="map-deco-element deco-ship" aria-hidden="true" title="Barco de exploración"><Ship size={26} /></div>
@@ -106,6 +120,10 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
               </svg>
 
               <div className="clean-nodes-list" style={{ height: `${mapHeight}px` }}>
+                <div className="map-start-point" style={{ left: `${START_POINT.x}%`, top: `${START_POINT.y}px` }} aria-hidden="true">
+                  <span><Ship size={17} /></span>
+                  <small>PUERTO INICIAL</small>
+                </div>
                 {orderedMissions.map((mission, index) => {
                   const status = getMissionStatus(mission);
                   const isBoss = mission.priority === "boss";
@@ -164,12 +182,13 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
                   aria-hidden="true"
                 >
                   <div className="x-marks-the-spot">
-                    <span className="x-mark">✖</span>
+                    <span className="x-mark">✦</span>
                     <span className="treasure-chest-glow">
-                      <Trophy size={24} />
+                      <Castle size={24} />
                     </span>
                   </div>
-                  <strong>EL TESORO DE LA CAMPAÑA</strong>
+                  <strong>FORTALEZA FINAL</strong>
+                  <small>{remainingMissions ? `${remainingMissions} ${remainingMissions === 1 ? "victoria pendiente" : "victorias pendientes"}` : "Tesoro desbloqueado"}</small>
                 </div>
               </div>
             </div>
@@ -189,20 +208,22 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
               <div className="sheet-banner">
                 <span>{selectedMission.priority === "boss" ? <Swords size={20} /> : <Flag size={20} />}</span>
                 <div>
-                  <small>DESTINO EN LA CARTA</small>
+                  <small>CONTRATO DE AVENTURA</small>
                   <strong>{priorityMeta[selectedMission.priority].label}</strong>
                 </div>
+                <b className="sheet-rank">{selectedMission.priority === "boss" ? "JEFE" : selectedMission.priority === "important" ? "RANGO A" : "RANGO B"}</b>
               </div>
               <div className="sheet-content">
                 <span className={`status-pill ${getMissionStatus(selectedMission)}`}><i />{statusMeta[getMissionStatus(selectedMission)].label}</span>
-                <h2>{selectedMission.title} · {selectedMission.subject}</h2>
+                <h2>{selectedMission.title}</h2>
+                <p className="sheet-subject">Territorio: {selectedMission.subject}</p>
                 <div className="sheet-reward">
                   <Sparkles size={17} />
                   <span><small>BOTÍN DE XP</small><strong>+{getMissionXp(selectedMission)} XP</strong></span>
                 </div>
                 <dl className="objective-stats">
                   <div><dt>Fecha</dt><dd>{formatLongDate(selectedMission.date)}</dd></div>
-                  <div><dt>{isProgressMission(selectedMission) ? "Meta" : "Hora"}</dt><dd><Clock3 size={12} /> {isProgressMission(selectedMission) ? formatProgressDuration(selectedMission.progressGoalMinutes ?? 0) : selectedMission.time}</dd></div>
+                  <div><dt>{isProgressMission(selectedMission) ? "Meta" : "Hora"}</dt><dd><Clock3 size={12} /> {isProgressMission(selectedMission) ? formatProgressDuration(selectedMission.progressGoalMinutes ?? 0) : formatTime12Hour(selectedMission.time)}</dd></div>
                   <div><dt>Impacto</dt><dd>{selectedMission.weight !== undefined ? `${selectedMission.weight}%` : "Sin definir"}</dd></div>
                   <div><dt>Nota</dt><dd>{selectedMission.grade?.trim() || "Pendiente"}</dd></div>
                 </dl>
@@ -216,7 +237,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
                   </div>
                 )}
                 <button className="open-objective-button" type="button" onClick={() => onEdit(selectedMission)}>
-                  Inspeccionar objetivo <ChevronRight size={15} />
+                  Abrir ficha completa <ChevronRight size={15} />
                 </button>
               </div>
             </>
