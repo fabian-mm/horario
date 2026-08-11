@@ -107,6 +107,41 @@ export function MissionPlanner() {
   const [freeTimeOpen, setFreeTimeOpen] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      setSidebarCollapsed(window.localStorage.getItem("planner-sidebar-collapsed") === "true");
+    } catch {
+      // Algunos navegadores bloquean el almacenamiento en modos privados estrictos.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!mobileNav || typeof document === "undefined") return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNav(false);
+    };
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileNav]);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      try {
+        window.localStorage.setItem("planner-sidebar-collapsed", String(next));
+      } catch {
+        // El plegado sigue funcionando aunque el navegador no permita recordarlo.
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
     if (view !== "world" || !subjects.length) return;
     if (!selectedSubject || !subjects.some((subject) => subject.name === selectedSubject)) {
       setSelectedSubject(subjects[0].name);
@@ -373,9 +408,9 @@ export function MissionPlanner() {
 
   return (
     <main className="app-shell" data-theme={theme}>
-      <aside className={`sidebar ${mobileNav ? "open" : ""} ${sidebarCollapsed ? "collapsed" : ""}`}>
-        <button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Cerrar menú"><X /></button>
-        <button className="sidebar-collapse" onClick={() => setSidebarCollapsed((current) => !current)} aria-label={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"} title={sidebarCollapsed ? "Mostrar menú" : "Ocultar menú"}>
+      <aside id="main-sidebar" className={`sidebar ${mobileNav ? "open" : ""} ${sidebarCollapsed ? "collapsed" : ""}`} aria-label="Navegación principal">
+        <button type="button" className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Cerrar menú"><X /></button>
+        <button type="button" className="sidebar-collapse" onClick={toggleSidebar} aria-label={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"} aria-expanded={!sidebarCollapsed} title={sidebarCollapsed ? "Mostrar menú" : "Ocultar menú"}>
           {sidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
         </button>
         <div className="brand">
@@ -385,17 +420,17 @@ export function MissionPlanner() {
 
         <nav>
           <span className="nav-label">MAPA DE AVENTURA</span>
-          <button className={view === "world" ? "active" : ""} onPointerEnter={() => preloadView("world")} onFocus={() => preloadView("world")} onClick={() => { setView("world"); setMobileNav(false); }}>
+          <button type="button" title={sidebarCollapsed ? "Misiones de Mundo" : undefined} className={view === "world" ? "active" : ""} onPointerEnter={() => preloadView("world")} onFocus={() => preloadView("world")} onClick={() => { setView("world"); setMobileNav(false); }}>
             <Globe2 size={18} /><span>Misiones de Mundo</span>
           </button>
-          <button className={view === "map" ? "active" : ""} onPointerEnter={() => preloadView("map")} onFocus={() => preloadView("map")} onClick={() => { setView("map"); setFilter("all"); setMobileNav(false); }}>
+          <button type="button" title={sidebarCollapsed ? "Mapa de campaña" : undefined} className={view === "map" ? "active" : ""} onPointerEnter={() => preloadView("map")} onFocus={() => preloadView("map")} onClick={() => { setView("map"); setFilter("all"); setMobileNav(false); }}>
             <MapPinned size={18} /><span>Mapa de campaña</span>
           </button>
-          <button className={view === "weekly" ? "active" : ""} onPointerEnter={() => preloadView("weekly")} onFocus={() => preloadView("weekly")} onClick={() => { setFocusedWeeklyQuestId(null); setView("weekly"); setMobileNav(false); }}>
+          <button type="button" title={sidebarCollapsed ? "Misiones semanales" : undefined} className={view === "weekly" ? "active" : ""} onPointerEnter={() => preloadView("weekly")} onFocus={() => preloadView("weekly")} onClick={() => { setFocusedWeeklyQuestId(null); setView("weekly"); setMobileNav(false); }}>
             <CalendarRange size={18} /><span>Misiones semanales</span>
           </button>
           {filters.map((item) => (
-            <button key={item.id} className={view === "calendar" && filter === item.id ? "active" : ""} onClick={() => { setView("calendar"); setFilter(item.id); setMobileNav(false); }}>
+            <button type="button" title={sidebarCollapsed ? item.label : undefined} key={item.id} className={view === "calendar" && filter === item.id ? "active" : ""} onClick={() => { setView("calendar"); setFilter(item.id); setMobileNav(false); }}>
               {item.icon}<span>{item.label}</span>
               {item.id === "pending" && <em>{pending}</em>}
             </button>
@@ -420,11 +455,11 @@ export function MissionPlanner() {
           </button>
         </div>
       </aside>
-      {mobileNav && <div className="nav-backdrop" onClick={() => setMobileNav(false)} />}
+      {mobileNav && <button type="button" className="nav-backdrop" onClick={() => setMobileNav(false)} aria-label="Cerrar menú" />}
 
       <section className={`content ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
         <header className="topbar">
-          <button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Abrir menú"><Menu /></button>
+          <button type="button" className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Abrir menú" aria-controls="main-sidebar" aria-expanded={mobileNav}><Menu /></button>
           <div className="search-box" aria-busy={query !== deferredQuery}><Search size={18} /><input aria-label="Buscar" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "world" ? "Buscar tarea o materia..." : view === "map" ? "Buscar un destino..." : view === "weekly" ? "Buscar una actividad..." : "Buscar una misión..."} /></div>
           <div className="top-actions">
             {(missionsLoading || scheduleLoading || subjectsLoading || activityTypesLoading || missionTypesLoading || missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError) && <span className={`sync-state ${missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError ? "error" : ""}`}>{missionsError || scheduleError || subjectsError || activityTypesError || missionTypesError ? "Sin guardar" : "Sincronizando"}</span>}

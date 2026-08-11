@@ -212,7 +212,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .app-shell { min-height: 100vh; display: flex; background-color: var(--app-bg); transition: background-color .25s ease, color .25s ease; }
 .sidebar {
   position: fixed; inset: 0 auto 0 0; z-index: 20; width: 256px; padding: 28px 20px 20px;
-  display: flex; flex-direction: column; color: #f8f1df;
+  display: flex; flex-direction: column; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: rgba(240, 207, 121, .42) transparent; color: #f8f1df;
   background:
     radial-gradient(circle at 20% 10%, rgba(228, 190, 107, .08) 0 2px, transparent 3px),
     linear-gradient(160deg, var(--sidebar-start), var(--forest-deep));
@@ -227,7 +227,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .brand small { margin-top: 2px; color: #e1c998; font-size: 8px; }
 .nav-label { display: block; padding: 0 12px 10px; color: #a8c0b5; font-size: 10px; font-weight: 600; letter-spacing: .16em; }
 nav { position: relative; z-index: 1; }
-nav button, .settings { width: 100%; border: 0; background: transparent; color: #bdd0c6; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 11px 12px; margin: 3px 0; border-radius: 9px; text-align: left; font-size: 13px; transition: .2s; }
+nav button, .settings { width: 100%; min-height: 44px; border: 0; background: transparent; color: #bdd0c6; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 11px 12px; margin: 3px 0; border-radius: 9px; text-align: left; font-size: 14px; transition: .2s; }
 nav button:hover, nav button.active { color: #fffaf0; background: rgba(235, 216, 169, .12); }
 nav button.active { box-shadow: inset 3px 0 #d7af58; }
 nav button em { margin-left: auto; padding: 1px 7px; border-radius: 12px; color: var(--forest-deep); background: #d8b45f; font-size: 10px; font-style: normal; font-weight: 700; }
@@ -254,10 +254,11 @@ nav button em { margin-left: auto; padding: 1px 7px; border-radius: 12px; color:
 .profile b { font-size: 11px; }
 .profile small { margin-top: 2px; color: #93aa9f; font-size: 8px; }
 .mobile-close, .mobile-menu { display: none; }
-.sidebar-collapse { position: absolute; z-index: 4; top: 26px; right: -14px; width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid rgba(218,190,124,.45); border-radius: 50%; color: #f1d488; background: var(--forest); cursor: pointer; box-shadow: 0 5px 14px rgba(11,35,31,.25); transition: transform .2s, background .2s; }
+.sidebar-collapse { position: fixed; z-index: 24; top: 16px; left: 210px; width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid rgba(218,190,124,.55); border-radius: 50%; color: #f1d488; background: var(--forest); cursor: pointer; box-shadow: 0 5px 14px rgba(11,35,31,.25); transition: transform .2s, background .2s, left .25s ease; }
 .sidebar-collapse:hover { transform: scale(1.06); background: var(--sidebar-start); }
 .sidebar.collapsed { width: 76px; padding-inline: 12px; }
-.sidebar.collapsed .brand { justify-content: center; padding-inline: 0; }
+.sidebar.collapsed .sidebar-collapse { left: 19px; }
+.sidebar.collapsed .brand { justify-content: center; padding: 48px 0 28px; }
 .sidebar.collapsed .brand > div, .sidebar.collapsed .nav-label, .sidebar.collapsed nav button span, .sidebar.collapsed nav button em, .sidebar.collapsed .rank-card, .sidebar.collapsed .settings span, .sidebar.collapsed .profile div { display: none; }
 .sidebar.collapsed nav button, .sidebar.collapsed .settings { justify-content: center; padding-inline: 0; }
 .sidebar.collapsed nav button.active { box-shadow: inset 0 -2px #d7af58; }
@@ -1005,20 +1006,20 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .auth-copy h1 { font-size: 40px; }
   .auth-copy p, .auth-benefits { display: none; }
   .auth-panel { padding: 30px 20px 45px; }
-  .sidebar, .sidebar.collapsed { width: 256px; padding: 28px 20px 20px; transform: translateX(-105%); transition: transform .25s ease; }
+  .sidebar, .sidebar.collapsed { width: min(86vw, 288px); padding: 28px 20px max(22px, env(safe-area-inset-bottom)); transform: translateX(-105%); transition: transform .25s ease; }
   .sidebar.open { transform: translateX(0); }
   .sidebar-collapse { display: none; }
-  .sidebar.collapsed .brand { justify-content: flex-start; padding: 0 7px 34px; }
+  .sidebar.collapsed .brand { justify-content: flex-start; padding: 0 48px 26px 7px; }
   .sidebar.collapsed .brand > div, .sidebar.collapsed .nav-label, .sidebar.collapsed nav button span, .sidebar.collapsed nav button em, .sidebar.collapsed .rank-card, .sidebar.collapsed .settings span, .sidebar.collapsed .profile div { display: block; }
   .sidebar.collapsed nav button, .sidebar.collapsed .settings { justify-content: flex-start; padding: 11px 12px; }
   .sidebar.collapsed nav button.active { box-shadow: inset 3px 0 #d7af58; }
   .sidebar.collapsed .sidebar-footer { display: block; }
   .sidebar.collapsed .settings { width: 100%; }
   .sidebar.collapsed .profile { width: auto; justify-content: flex-start; padding: 14px 6px 2px; }
-  .nav-backdrop { position: fixed; inset: 0; z-index: 15; background: rgba(10,31,28,.42); }
-  .mobile-close { position: absolute; top: 11px; right: 10px; z-index: 3; display: grid; place-items: center; border: 0; color: white; background: transparent; cursor: pointer; }
+  .nav-backdrop { position: fixed; inset: 0; z-index: 15; border: 0; background: rgba(10,31,28,.52); cursor: pointer; backdrop-filter: blur(2px); }
+  .mobile-close { position: absolute; top: 9px; right: 9px; z-index: 3; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; color: white; background: rgba(5,25,22,.28); cursor: pointer; }
   .content, .content.sidebar-collapsed { width: 100%; margin-left: 0; }
-  .mobile-menu { display: grid; place-items: center; border: 0; background: transparent; cursor: pointer; }
+  .mobile-menu { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; cursor: pointer; }
   .topbar { gap: 15px; padding: 0 22px; }
   .search-box { width: min(360px, 45vw); }
   .world-layout { grid-template-columns: 1fr; }
@@ -1149,4 +1150,68 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .map-compass { top: 16px; right: 14px; width: 40px; height: 40px; }
   .map-objective-sheet { position: static; }
   .sheet-content h2 { font-size: 22px; }
+}
+
+/* Capa de legibilidad: mantiene la estética compacta sin obligar a forzar la vista. */
+.app-shell { font-size: 15px; }
+.app-shell small { font-size: max(10px, .625rem); line-height: 1.4; }
+.app-shell label { font-size: max(12px, .75rem); line-height: 1.4; }
+.app-shell input,
+.app-shell select,
+.app-shell textarea { font-size: 14px; line-height: 1.45; }
+.app-shell :where(
+  .eyebrow,
+  .sync-state,
+  .sync-alert,
+  .rank-top,
+  .rank-quick-stats span,
+  .quest-kicker,
+  .quest-board-ribbon,
+  .mission-badge,
+  .task-status-pill,
+  .map-node-status,
+  .map-node-xp,
+  .node-date-month,
+  .map-landmark,
+  .map-coordinate,
+  .map-sea-label,
+  .time-field-hint
+) { font-size: 10px; line-height: 1.35; }
+.app-shell :where(
+  .calendar-view-switch button,
+  .free-time-toggle,
+  .mission-copy > span,
+  .reward-box small,
+  .edit-button,
+  .subject-average small,
+  .weekly-command-actions button,
+  .day-agenda-event strong,
+  .day-agenda-hours time
+) { font-size: 11px; line-height: 1.4; }
+.sidebar .brand small,
+.sidebar .rank-identity small,
+.sidebar .rank-card > small,
+.sidebar .profile small { font-size: 10px; line-height: 1.35; }
+.sidebar .rank-top,
+.sidebar .rank-quick-stats span { font-size: 10px; }
+.sidebar .rank-identity strong,
+.sidebar .profile b { font-size: 13px; }
+.search-box input { font-size: 14px; }
+.notification-button,
+.primary-button { font-size: 13px; }
+.quest-type-card strong,
+.mission-type-template strong { font-size: 11px; }
+.quest-type-card small,
+.mission-type-template small { font-size: 10px; }
+
+@media (max-width: 660px) {
+  .app-shell { font-size: 16px; }
+  .app-shell input,
+  .app-shell select,
+  .app-shell textarea,
+  .search-box input { font-size: 16px; }
+  .map-card.calendar-mode-week .mission-chip,
+  .map-card.calendar-mode-day .mission-chip { min-height: 32px; padding: 7px 8px; font-size: 11px; line-height: 1.35; }
+  .day-agenda-hours time { font-size: 11px; font-weight: 700; }
+  .time-field-hint { font-size: 10px; }
 }
