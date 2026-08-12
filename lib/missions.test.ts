@@ -97,4 +97,13 @@ describe("accumulated work progress", () => {
     const completed = { ...workMission, progressCompletedMinutes: 420, completed: true, status: "completed" as const };
     expect(validateProgressUpdate(completed, { ...completed, progressGoalMinutes: 480 }, referenceDate).valid).toBe(false);
   });
+
+  it("acepta el día local adyacente al UTC del servidor pero no fechas arbitrarias", () => {
+    const existing = { ...workMission, progressCompletedMinutes: 60, progressEntries: [{ date: "2026-08-18", minutes: 60 }] };
+    const serverDate = new Date("2026-08-20T01:00:00Z");
+    const localPreviousDay = { ...existing, progressCompletedMinutes: 77, progressEntries: [...existing.progressEntries, { date: "2026-08-19", minutes: 17 }] };
+    const arbitraryDate = { ...existing, progressCompletedMinutes: 77, progressEntries: [...existing.progressEntries, { date: "2026-08-10", minutes: 17 }] };
+    expect(validateProgressUpdate(existing, localPreviousDay, serverDate)).toEqual({ valid: true });
+    expect(validateProgressUpdate(existing, arbitraryDate, serverDate).valid).toBe(false);
+  });
 });

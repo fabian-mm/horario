@@ -92,6 +92,12 @@ export const addMissionProgress = (mission: Mission, minutes: number, referenceD
 
 export type ProgressUpdateValidation = { valid: true } | { valid: false; error: string };
 
+const getIsoDayDistance = (left: string, right: string) => {
+  const leftTime = Date.parse(`${left}T12:00:00Z`);
+  const rightTime = Date.parse(`${right}T12:00:00Z`);
+  return Number.isFinite(leftTime) && Number.isFinite(rightTime) ? Math.abs(Math.round((leftTime - rightTime) / 86_400_000)) : Number.POSITIVE_INFINITY;
+};
+
 export const validateProgressUpdate = (existing: Mission | null, incoming: Mission, referenceDate = new Date()): ProgressUpdateValidation => {
   if (!existing) {
     if (isProgressMission(incoming) && (getMissionProgress(incoming).completedMinutes > 0 || (incoming.progressEntries?.length ?? 0) > 0)) {
@@ -119,7 +125,8 @@ export const validateProgressUpdate = (existing: Mission | null, incoming: Missi
   const delta = next.completedMinutes - previous.completedMinutes;
   if (!delta && appended.length) return { valid: false, error: "El historial no coincide con el progreso." };
   if (delta > 0) {
-    if (appended.length !== 1 || appended[0].minutes !== delta || appended[0].date !== toISODate(referenceDate)) {
+    const serverDate = toISODate(referenceDate);
+    if (appended.length !== 1 || appended[0].minutes !== delta || getIsoDayDistance(appended[0].date, serverDate) > 1) {
       return { valid: false, error: "El incremento de tiempo no es válido." };
     }
   }
