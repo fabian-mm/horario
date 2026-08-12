@@ -83,7 +83,16 @@ export async function ensureSubjectStudyTrackingMigration(db: Db, userId: string
     const today = new Date().toISOString().slice(0, 10);
     await db.collection("subjects").updateMany(
       { userId, weeklyStudyTrackingStartDate: { $exists: false } },
-      { $set: { weeklyStudyTrackingStartDate: today, weeklyStudyGoalMinutes: 300 } },
+      { $set: { weeklyStudyTrackingStartDate: today } },
+    );
+  });
+}
+
+export async function ensureSubjectCreditsMigration(db: Db, userId: string) {
+  await runOnce(db, userId, "subject-credits-v1", async () => {
+    await db.collection("subjects").updateMany(
+      { userId, credits: { $exists: false } },
+      { $set: { credits: 3 } },
     );
   });
 }

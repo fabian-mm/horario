@@ -1,12 +1,17 @@
 export type Subject = {
   id: string;
   name: string;
-  weeklyStudyGoalMinutes?: number;
+  credits?: number;
   weeklyStudyTrackingStartDate?: string;
   aliases?: string[];
   createdAt?: string;
   updatedAt?: string;
 };
+
+export const MINUTES_PER_CREDIT_PER_WEEK = 180;
+
+export const getExpectedWeeklyStudyMinutes = (credits: number, scheduledClassMinutes = 0) =>
+  Math.max(0, Math.round(credits * MINUTES_PER_CREDIT_PER_WEEK) - Math.max(0, scheduledClassMinutes));
 
 export const normalizeSubjectName = (value: string) => value.trim().toLocaleLowerCase("es");
 

@@ -625,6 +625,7 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .weekly-study-history-heading strong { margin-top: 2px; font-family: "Fraunces Variable", serif; font-size: 15px; }
 .weekly-study-history-heading > span { color: var(--gold); font-size: 8px; font-weight: 850; }
 .weekly-study-history-list { max-height: 205px; display: grid; gap: 7px; margin-top: 10px; overflow-y: auto; padding-right: 3px; }
+.weekly-study-calculation { margin: 6px 0 0; color: var(--ink-soft); font-size: 7px; line-height: 1.45; }
 .weekly-study-history-list article { display: grid; grid-template-columns: 78px minmax(48px, 1fr) 94px; align-items: center; gap: 7px; padding: 7px 8px; border-radius: 7px; background: color-mix(in srgb, var(--parchment) 50%, var(--paper)); }
 .weekly-study-history-list article > div:first-child strong, .weekly-study-history-list article > div:first-child small, .weekly-study-history-list article > span strong, .weekly-study-history-list article > span small { display: block; }
 .weekly-study-history-list article > div:first-child strong, .weekly-study-history-list article > span strong { font-size: 8px; }

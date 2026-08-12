@@ -96,7 +96,7 @@ export const weeklyQuestSchema = z.object({
 export const subjectSchema = z.object({
   id: z.string().min(1).max(100),
   name: z.string().trim().min(1, "Escribe el nombre de la materia.").max(100),
-  weeklyStudyGoalMinutes: z.number().int().min(30).max(10_080).optional(),
+  credits: z.number().min(0.5).max(30).multipleOf(0.5).optional(),
 });
 
 export const activityTypeSchema = z.object({
