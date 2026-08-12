@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Flag, Swords, X } from "lucide-react";
 import { Mission, MissionStatus, Priority, priorityMeta, statusMeta, toISODate } from "@/lib/missions";
 import { findSubject, Subject } from "@/lib/subjects";
@@ -39,22 +39,28 @@ const emptyForm = (date: Date, subject = "", subjects: Subject[] = []): Mission 
 export function MissionForm({ open, initialDate, initialSubject, mission, onClose, onSave, onDelete, subjects, onManageSubjects }: Props) {
   const [form, setForm] = useState<Mission>(emptyForm(initialDate));
 
-  useEffect(() => {
+  const resetForm = useCallback(() => {
     if (!open) return;
     if (mission) {
       const selectedSubject = findSubject(subjects, mission.subject, mission.subjectId);
       setForm({ ...mission, subject: selectedSubject?.name ?? mission.subject, subjectId: selectedSubject?.id ?? mission.subjectId });
-    } else setForm(emptyForm(initialDate, initialSubject, subjects));
+    } else {
+      setForm(emptyForm(initialDate, initialSubject, subjects));
+    }
   }, [open, mission, initialDate, initialSubject, subjects]);
 
-  if (!open) return null;
-  const selectedSubject = findSubject(subjects, form.subject, form.subjectId);
+  useEffect(() => {
+    resetForm();
+  }, [resetForm]);
 
-  const submit = (event: FormEvent) => {
+  const submit = useCallback((event: FormEvent) => {
     event.preventDefault();
     onSave({ ...form, id: form.id || crypto.randomUUID(), title: form.title.trim(), subject: form.subject.trim(), completed: form.status === "completed" });
     onClose();
-  };
+  }, [form, onSave, onClose]);
+
+  if (!open) return null;
+  const selectedSubject = findSubject(subjects, form.subject, form.subjectId);
 
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>

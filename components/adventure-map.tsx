@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { Check, ChevronRight, Clock3, Crown, FileCheck2, Flag, MapPinned, Plus, ScrollText, Sparkles, Swords } from "lucide-react";
 import { formatLongDate, getMissionStatus, getMissionXp, Mission, MissionStatus, priorityMeta, statusMeta } from "@/lib/missions";
 
@@ -11,7 +11,7 @@ type Props = {
   onStatusChange: (id: string, status: MissionStatus) => void;
 };
 
-export function AdventureMap({ missions, onAdd, onEdit, onStatusChange }: Props) {
+const AdventureMapComponent = ({ missions, onAdd, onEdit, onStatusChange }: Props) => {
   const orderedMissions = useMemo(() => [...missions].sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`)), [missions]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedMission = orderedMissions.find((mission) => mission.id === selectedId) ?? orderedMissions.find((mission) => getMissionStatus(mission) !== "completed") ?? orderedMissions[0] ?? null;
@@ -91,4 +91,6 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange }: Props)
       </div>
     </div>
   );
-}
+};
+
+export const AdventureMap = memo(AdventureMapComponent);

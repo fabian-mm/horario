@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { BookOpen, Check, ChevronRight, CircleDot, Clock3, Crown, FileCheck2, Flag, GraduationCap, NotebookPen, Plus, ScrollText, Trophy } from "lucide-react";
 import { calculateSubjectAverage, getMissionStatus, getMissionXp, Mission, MissionStatus, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
 
@@ -16,7 +16,7 @@ type Props = {
 const subjectIcon = (index: number) => [BookOpen, GraduationCap, ScrollText, NotebookPen][index % 4];
 const taskDateFormatter = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", year: "numeric" });
 
-export function WorldMissions({ missions, selectedSubject, onSelectSubject, onEdit, onAdd, onStatusChange }: Props) {
+const WorldMissionsComponent = ({ missions, selectedSubject, onSelectSubject, onEdit, onAdd, onStatusChange }: Props) => {
   const subjectGroups = useMemo(() => {
     const grouped = new Map<string, Mission[]>();
     missions.forEach((mission) => {
@@ -27,6 +27,7 @@ export function WorldMissions({ missions, selectedSubject, onSelectSubject, onEd
     grouped.forEach((tasks, subject) => grouped.set(subject, sortMissionsByDateTime(tasks)));
     return grouped;
   }, [missions]);
+  
   const subjects = useMemo(() => Array.from(subjectGroups.keys()).sort((a, b) => a.localeCompare(b, "es")), [subjectGroups]);
   const subjectTasks = selectedSubject ? subjectGroups.get(selectedSubject) ?? [] : [];
   const pendingCount = subjectTasks.filter((mission) => getMissionStatus(mission) === "pending").length;
@@ -34,6 +35,7 @@ export function WorldMissions({ missions, selectedSubject, onSelectSubject, onEd
   const selectedAverage = calculateSubjectAverage(subjectTasks);
   const selectedCompleted = subjectTasks.filter((mission) => getMissionStatus(mission) === "completed").length;
   const selectedProgress = subjectTasks.length ? Math.round((selectedCompleted / subjectTasks.length) * 100) : 0;
+  
   const worldStats = useMemo(() => missions.reduce((stats, mission) => {
     const completed = getMissionStatus(mission) === "completed";
     if (completed) stats.completed += 1;
@@ -131,4 +133,6 @@ export function WorldMissions({ missions, selectedSubject, onSelectSubject, onEd
       </aside>
     </div>
   );
-}
+};
+
+export const WorldMissions = memo(WorldMissionsComponent);

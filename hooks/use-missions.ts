@@ -1,6 +1,4 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getMissionStatus, Mission, MissionStatus } from "@/lib/missions";
 
 export function useMissions(enabled: boolean) {
@@ -8,34 +6,42 @@ export function useMissions(enabled: boolean) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchMissions = useCallback(async () => {
+    if (!enabled) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch("/api/missions", { cache: "no-store" });
+      const body = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(body.error ?? "No se pudieron cargar las misiones.");
+      }
+      
+      setMissions((body as Mission[]).map((mission) => ({ 
+        ...mission, 
+        status: getMissionStatus(mission) 
+      })));
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "No se pudieron cargar las misiones.");
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled]);
+
   useEffect(() => {
     if (!enabled) {
       setMissions([]);
       setLoading(false);
       return;
     }
-    let canceled = false;
-    setLoading(true);
-    fetch("/api/missions")
-      .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error ?? "No se pudieron cargar las misiones.");
-        return body as Mission[];
-      })
-      .then((data) => {
-        if (!canceled) {
-          setMissions(data.map((mission) => ({ ...mission, status: getMissionStatus(mission) })));
-          setError(null);
-        }
-      })
-      .catch((requestError) => {
-        if (!canceled) setError(requestError instanceof Error ? requestError.message : "No se pudieron cargar las misiones.");
-      })
-      .finally(() => { if (!canceled) setLoading(false); });
-    return () => { canceled = true; };
-  }, [enabled]);
+    
+    fetchMissions();
+  }, [enabled, fetchMissions]);
 
-  const saveRemote = async (mission: Mission) => {
+  const saveRemote = async (mission: Mission): Promise<Mission> => {
     const response = await fetch("/api/missions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -100,5 +106,5 @@ export function useMissions(enabled: boolean) {
       });
   };
 
-  return { missions, loading, error, upsert, toggle, setStatus, remove };
+  return { missions, loading, error, upsert, toggle, setStatus, remove, refetch: fetchMissions };
 }
