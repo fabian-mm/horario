@@ -44,6 +44,7 @@ export async function POST(request: Request) {
   const derivedStatus = getMissionStatus(parsed.data as Mission);
   const mission = {
     ...parsed.data,
+    weight: parsed.data.progressGoalMinutes ? undefined : parsed.data.weight,
     completed: parsed.data.progressGoalMinutes
       ? progressComplete
       : parsed.data.status === "completed" || parsed.data.completed,

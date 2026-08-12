@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMissionProgress, getMissionProgress, getMissionStatus, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, getSubjectWeeklyStudyHistory, type Mission } from "./missions";
+import { addMissionProgress, calculateSubjectAverage, getMissionProgress, getMissionStatus, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, getSubjectWeeklyStudyHistory, type Mission } from "./missions";
 
 const workMission: Mission = {
   id: "work-1",
@@ -70,5 +70,11 @@ describe("accumulated work progress", () => {
     expect(history).toHaveLength(3);
     expect(history[0]).toMatchObject({ tracked: false, minutes: 0 });
     expect(history[2]).toMatchObject({ tracked: true, current: true, minutes: 120, percentage: 67 });
+  });
+
+  it("excluye los trabajos del promedio aunque conserven un impacto antiguo", () => {
+    const exam = { ...workMission, id: "exam", progressGoalMinutes: undefined, progressCompletedMinutes: undefined, grade: "4", weight: 50 };
+    const oldWork = { ...workMission, grade: "1", weight: 50 };
+    expect(calculateSubjectAverage([exam, oldWork])).toMatchObject({ average: 4, coverage: 50, gradedTasks: 1 });
   });
 });

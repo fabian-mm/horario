@@ -87,6 +87,7 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
       time: usesProgressGoal ? "23:59" : form.time,
       progressGoalMinutes,
       progressCompletedMinutes,
+      weight: usesProgressGoal ? undefined : form.weight,
       status: usesProgressGoal ? (progressComplete ? "completed" : "pending") : form.status,
       completed: usesProgressGoal ? progressComplete : form.status === "completed",
     });
@@ -159,7 +160,7 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
                 {(Object.keys(statusMeta) as MissionStatus[]).filter((status) => status !== "failed").map((status) => <option key={status} value={status}>{statusMeta[status].label}</option>)}
               </select>
             </label>}
-            <label>Impacto en la materia (%)<input type="number" min="0" max="100" value={form.weight ?? ""} onChange={(event) => setForm({ ...form, weight: event.target.value ? Number(event.target.value) : undefined })} placeholder="Ej. 20" /></label>
+            {!usesProgressGoal && <label>Impacto en la materia (%)<input type="number" min="0" max="100" value={form.weight ?? ""} onChange={(event) => setForm({ ...form, weight: event.target.value ? Number(event.target.value) : undefined })} placeholder="Ej. 20" /></label>}
             <label>Nota obtenida<input inputMode="decimal" value={form.grade ?? ""} onChange={(event) => setForm({ ...form, grade: event.target.value })} placeholder="Ej. 4.5" /></label>
           </div>
           <label>

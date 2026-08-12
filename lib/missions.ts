@@ -165,7 +165,7 @@ export type SubjectAverage = {
 };
 
 export const calculateSubjectAverage = (missions: Mission[]): SubjectAverage => {
-  const graded = missions.flatMap((mission) => {
+  const graded = missions.filter((mission) => !isProgressMission(mission)).flatMap((mission) => {
     const grade = Number((mission.grade ?? "").replace(",", "."));
     const weight = mission.weight ?? 0;
     return Number.isFinite(grade) && mission.grade?.trim() && weight > 0 ? [{ grade, weight }] : [];

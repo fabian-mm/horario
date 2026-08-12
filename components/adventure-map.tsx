@@ -224,7 +224,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
                 <dl className="objective-stats">
                   <div><dt>Fecha</dt><dd>{formatLongDate(selectedMission.date)}</dd></div>
                   <div><dt>{isProgressMission(selectedMission) ? "Meta" : "Hora"}</dt><dd><Clock3 size={12} /> {isProgressMission(selectedMission) ? formatProgressDuration(selectedMission.progressGoalMinutes ?? 0) : formatTime12Hour(selectedMission.time)}</dd></div>
-                  <div><dt>Impacto</dt><dd>{selectedMission.weight !== undefined ? `${selectedMission.weight}%` : "Sin definir"}</dd></div>
+                  {!isProgressMission(selectedMission) && <div><dt>Impacto</dt><dd>{selectedMission.weight !== undefined ? `${selectedMission.weight}%` : "Sin definir"}</dd></div>}
                   <div><dt>Nota</dt><dd>{selectedMission.grade?.trim() || "Pendiente"}</dd></div>
                 </dl>
                 {isProgressMission(selectedMission) && <MissionProgress mission={selectedMission} onAdd={(minutes) => onAddProgress(selectedMission.id, minutes)} />}

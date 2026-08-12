@@ -90,7 +90,7 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
         if (status === "pending") pending += 1;
         if (status === "completed") completed += 1;
         if (status === "failed") failed += 1;
-        impact += mission.weight ?? 0;
+        if (!isProgressMission(mission)) impact += mission.weight ?? 0;
       });
       summaries.set(subject, {
         tasks,
@@ -214,10 +214,10 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
                     <div className="task-topline"><span className={`status-pill ${status}`}><i />{statusMeta[status].label}</span><span className="task-reward">+{getMissionXp(mission)} XP</span><time><Clock3 size={12} />{taskDateFormatter.format(new Date(`${mission.date}T12:00:00`))}</time></div>
                     <button className="task-title" disabled={status === "failed"} onClick={() => onEdit(mission)} title={status === "failed" ? "Este trabajo venció y está bloqueado" : "Abrir misión"}><h3>{mission.title} · {mission.subject}</h3>{status !== "failed" && <ChevronRight size={16} />}</button>
                     {isProgressMission(mission) && <MissionProgress mission={mission} onAdd={(minutes) => onAddProgress(mission.id, minutes)} />}
-                    {(mission.notes || mission.grade || mission.weight) && (
+                    {(mission.notes || mission.grade || (!isProgressMission(mission) && mission.weight)) && (
                       <div className="task-details">
                         {mission.notes && <p>{mission.notes}</p>}
-                        <div>{mission.grade && <span><strong>{mission.grade}</strong> Nota</span>}{mission.weight !== undefined && <span><strong>{mission.weight}%</strong> Impacto</span>}</div>
+                        <div>{mission.grade && <span><strong>{mission.grade}</strong> Nota</span>}{!isProgressMission(mission) && mission.weight !== undefined && <span><strong>{mission.weight}%</strong> Impacto</span>}</div>
                       </div>
                     )}
                     {!isProgressMission(mission) && <div className="task-status-actions" aria-label={`Cambiar estado de ${mission.title}`}>
