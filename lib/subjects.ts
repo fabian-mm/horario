@@ -1,6 +1,8 @@
 export type Subject = {
   id: string;
   name: string;
+  weeklyStudyGoalMinutes?: number;
+  weeklyStudyTrackingStartDate?: string;
   aliases?: string[];
   createdAt?: string;
   updatedAt?: string;

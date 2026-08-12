@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMissionProgress, getMissionProgress, getMissionStatus, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, type Mission } from "./missions";
+import { addMissionProgress, getMissionProgress, getMissionStatus, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, getSubjectWeeklyStudyHistory, type Mission } from "./missions";
 
 const workMission: Mission = {
   id: "work-1",
@@ -62,5 +62,13 @@ describe("accumulated work progress", () => {
     }];
     expect(getSubjectStudyMinutesForWeek(missions, new Date("2026-08-20T12:00:00"))).toBe(90);
     expect(getSubjectStudyMinutes(missions)).toBe(180);
+  });
+
+  it("crea el historial semanal desde el inicio del semestre y compara la meta", () => {
+    const missions = [{ ...workMission, progressEntries: [{ date: "2026-08-18", minutes: 120 }] }];
+    const history = getSubjectWeeklyStudyHistory(missions, "2026-08-03", 180, new Date("2026-08-20T12:00:00"), "2026-08-17");
+    expect(history).toHaveLength(3);
+    expect(history[0]).toMatchObject({ tracked: false, minutes: 0 });
+    expect(history[2]).toMatchObject({ tracked: true, current: true, minutes: 120, percentage: 67 });
   });
 });

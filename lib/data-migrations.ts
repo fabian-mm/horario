@@ -78,6 +78,16 @@ export async function ensureSubjectCatalogMigration(db: Db, userId: string) {
   });
 }
 
+export async function ensureSubjectStudyTrackingMigration(db: Db, userId: string) {
+  await runOnce(db, userId, "subject-study-tracking-v1", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    await db.collection("subjects").updateMany(
+      { userId, weeklyStudyTrackingStartDate: { $exists: false } },
+      { $set: { weeklyStudyTrackingStartDate: today, weeklyStudyGoalMinutes: 300 } },
+    );
+  });
+}
+
 export async function ensureActivityTypeLinksMigration(
   db: Db,
   userId: string,

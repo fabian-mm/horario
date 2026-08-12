@@ -107,6 +107,57 @@ export const getSubjectStudyMinutesForWeek = (missions: Mission[], referenceDate
     .reduce((missionTotal, entry) => missionTotal + Math.max(0, entry.minutes), 0), 0);
 };
 
+export type WeeklyStudyHistoryItem = {
+  start: string;
+  end: string;
+  minutes: number;
+  goalMinutes: number;
+  percentage: number;
+  tracked: boolean;
+  current: boolean;
+};
+
+export const getSubjectWeeklyStudyHistory = (
+  missions: Mission[],
+  semesterStart: string,
+  goalMinutes: number,
+  referenceDate = new Date(),
+  trackingStartDate?: string,
+): WeeklyStudyHistoryItem[] => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(semesterStart)) return [];
+  const referenceIso = toISODate(referenceDate);
+  const firstEntry = missions.flatMap((mission) => mission.progressEntries ?? []).map((entry) => entry.date).sort()[0];
+  const firstTrackedDate = trackingStartDate ?? firstEntry;
+  const semesterDate = new Date(`${semesterStart}T12:00:00`);
+  const firstMonday = new Date(semesterDate);
+  firstMonday.setDate(firstMonday.getDate() - ((firstMonday.getDay() + 6) % 7));
+  const currentMonday = new Date(referenceDate);
+  currentMonday.setHours(12, 0, 0, 0);
+  currentMonday.setDate(currentMonday.getDate() - ((currentMonday.getDay() + 6) % 7));
+  if (firstMonday > currentMonday) return [];
+
+  const entries = missions.flatMap((mission) => mission.progressEntries ?? []);
+  const history: WeeklyStudyHistoryItem[] = [];
+  for (const weekStart = new Date(firstMonday); weekStart <= currentMonday; weekStart.setDate(weekStart.getDate() + 7)) {
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    const start = toISODate(weekStart);
+    const end = toISODate(weekEnd);
+    const minutes = entries.filter((entry) => entry.date >= start && entry.date <= end).reduce((sum, entry) => sum + Math.max(0, entry.minutes), 0);
+    const tracked = Boolean(firstTrackedDate && end >= firstTrackedDate);
+    history.push({
+      start,
+      end,
+      minutes,
+      goalMinutes,
+      percentage: goalMinutes ? Math.min(100, Math.round((minutes / goalMinutes) * 100)) : 0,
+      tracked,
+      current: referenceIso >= start && referenceIso <= end,
+    });
+  }
+  return history;
+};
+
 export type SubjectAverage = {
   average: number | null;
   coverage: number;

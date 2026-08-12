@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
-import { ensureSubjectCatalogMigration } from "@/lib/data-migrations";
+import { ensureSubjectCatalogMigration, ensureSubjectStudyTrackingMigration } from "@/lib/data-migrations";
 import { getDb } from "@/lib/mongodb";
 import { normalizeSubjectName, Subject } from "@/lib/subjects";
 import { subjectSchema } from "@/lib/validation";
@@ -14,6 +14,7 @@ export async function GET() {
   if (!userId) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
   const db = await getDb();
   await ensureSubjectCatalogMigration(db, userId);
+  await ensureSubjectStudyTrackingMigration(db, userId);
   const subjects = await db.collection<SubjectDocument>("subjects").find({ userId }).sort({ name: 1 }).toArray();
   return NextResponse.json(subjects.map(safeSubject));
 }
@@ -31,10 +32,11 @@ export async function POST(request: Request) {
 
   const existing = await db.collection<SubjectDocument>("subjects").findOne({ userId, id: parsed.data.id });
   const now = new Date().toISOString();
+  const today = now.slice(0, 10);
   const aliases = existing && existing.name !== parsed.data.name ? Array.from(new Set([...(existing.aliases ?? []), existing.name])) : existing?.aliases ?? [];
   await db.collection<SubjectDocument>("subjects").updateOne(
     { userId, id: parsed.data.id },
-    { $set: { name: parsed.data.name, normalizedName, aliases, updatedAt: now }, $setOnInsert: { userId, id: parsed.data.id, createdAt: now } },
+    { $set: { name: parsed.data.name, weeklyStudyGoalMinutes: parsed.data.weeklyStudyGoalMinutes ?? existing?.weeklyStudyGoalMinutes ?? 300, normalizedName, aliases, updatedAt: now }, $setOnInsert: { userId, id: parsed.data.id, weeklyStudyTrackingStartDate: today, createdAt: now } },
     { upsert: true },
   );
 

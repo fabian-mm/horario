@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { BookOpen, Check, ChevronRight, CircleDot, Clock3, FileCheck2, Flag, GraduationCap, NotebookPen, Pencil, Plus, ScrollText, Trash2, X } from "lucide-react";
-import { calculateSubjectAverage, formatProgressDuration, getMissionStatus, getMissionXp, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, Mission, MissionStatus, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
+import { calculateSubjectAverage, formatProgressDuration, getMissionStatus, getMissionXp, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, getSubjectWeeklyStudyHistory, Mission, MissionStatus, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
 import { isProgressMission } from "@/lib/missions";
 import { MissionProgress } from "@/components/mission-progress";
 import type { Subject } from "@/lib/subjects";
@@ -29,8 +29,9 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [subjectName, setSubjectName] = useState("");
-  const openSubject = (subject?: Subject) => { setEditingSubject(subject ?? null); setSubjectName(subject?.name ?? ""); setModalOpen(true); };
-  const saveSubject = (event: FormEvent) => { event.preventDefault(); onSaveSubject({ ...editingSubject, id: editingSubject?.id ?? crypto.randomUUID(), name: subjectName.trim() }); setModalOpen(false); };
+  const [weeklyGoalHours, setWeeklyGoalHours] = useState(5);
+  const openSubject = (subject?: Subject) => { setEditingSubject(subject ?? null); setSubjectName(subject?.name ?? ""); setWeeklyGoalHours((subject?.weeklyStudyGoalMinutes ?? 300) / 60); setModalOpen(true); };
+  const saveSubject = (event: FormEvent) => { event.preventDefault(); onSaveSubject({ ...editingSubject, id: editingSubject?.id ?? crypto.randomUUID(), name: subjectName.trim(), weeklyStudyGoalMinutes: Math.round(weeklyGoalHours * 60) }); setModalOpen(false); };
   const usageBySubjectId = useMemo(() => {
     const usage = new Map(subjects.map((subject) => [subject.id, 0]));
     const idByName = new Map<string, string>();
@@ -106,6 +107,20 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
   const selectedProgress = selectedSummary?.progress ?? 0;
   const selectedStudyMinutes = selectedSummary?.studyMinutes ?? 0;
   const selectedFailed = selectedSummary?.failed ?? 0;
+  const semesterStart = useMemo(() => {
+    const scheduleStart = weeklyQuests.map((quest) => quest.startDate).sort()[0];
+    const missionStart = missions.map((mission) => mission.date).sort()[0];
+    return scheduleStart ?? missionStart ?? new Date().toISOString().slice(0, 10);
+  }, [missions, weeklyQuests]);
+  const selectedWeeklyGoalMinutes = selectedSubjectRecord?.weeklyStudyGoalMinutes ?? 300;
+  const selectedTrackingStartDate = selectedSubjectRecord?.weeklyStudyTrackingStartDate ?? new Date().toISOString().slice(0, 10);
+  const selectedStudyHistory = getSubjectWeeklyStudyHistory(
+    subjectTasks,
+    semesterStart,
+    selectedWeeklyGoalMinutes,
+    new Date(),
+    selectedTrackingStartDate,
+  );
   return (
     <div className="world-layout">
       <section className="world-main">
@@ -157,6 +172,20 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
               <div className="drawer-title-actions"><h2>{selectedSubject}</h2>{selectedSubjectRecord && <span><button className="icon-button" onClick={() => openSubject(selectedSubjectRecord)} title="Editar materia"><Pencil size={15} /></button><button className="icon-button" disabled={usageFor(selectedSubjectRecord) > 0} onClick={() => onDeleteSubject(selectedSubjectRecord.id)} title={usageFor(selectedSubjectRecord) > 0 ? "La materia está en uso" : "Eliminar materia"}><Trash2 size={15} /></button></span>}</div>
               <div className="drawer-stats"><span><Flag size={14} /> {pendingCount} pendientes</span><span><CircleDot size={14} /> {impact}% registrado</span>{selectedFailed > 0 && <span className="failed"><X size={14} /> {selectedFailed} fallidas</span>}</div>
               <div className="subject-time-summary"><Clock3 size={18} /><div><small>TOTAL DE TRABAJO EN EL SEMESTRE</small><strong>{formatProgressDuration(selectedStudyMinutes)}</strong></div></div>
+              <section className="weekly-study-history" aria-labelledby="weekly-study-history-title">
+                <div className="weekly-study-history-heading"><div><small>RITMO DEL SEMESTRE</small><strong id="weekly-study-history-title">Historial por semana</strong></div><span>Meta: {formatProgressDuration(selectedWeeklyGoalMinutes)}</span></div>
+                <div className="weekly-study-history-list">
+                  {[...selectedStudyHistory].reverse().map((week, index) => {
+                    const reached = week.tracked && week.minutes >= week.goalMinutes;
+                    const below = week.tracked && !week.current && !reached;
+                    return <article key={week.start} className={`${reached ? "reached" : below ? "below" : week.current ? "current" : "untracked"}`}>
+                      <div><strong>{week.current ? "Esta semana" : `Semana ${selectedStudyHistory.length - index}`}</strong><small>{new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short" }).format(new Date(`${week.start}T12:00:00`))} – {new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short" }).format(new Date(`${week.end}T12:00:00`))}</small></div>
+                      <div className="weekly-study-bar"><i style={{ width: `${week.percentage}%` }} /></div>
+                      <span><strong>{week.tracked ? formatProgressDuration(week.minutes) : "Sin registro"}</strong><small>{week.tracked ? reached ? "Meta cumplida" : week.current ? `${week.percentage}% de la meta` : "Por debajo de la meta" : "Historial no disponible"}</small></span>
+                    </article>;
+                  })}
+                </div>
+              </section>
               <div className="territory-rank"><span><small>PROGRESO DEL TERRITORIO</small><b>{selectedProgress}%</b></span><div><i style={{ width: `${selectedProgress}%` }} /></div></div>
               <div className={`average-summary ${selectedAverage.average === null ? "empty" : ""}`}>
                 <div><small>Promedio ponderado</small><strong>{selectedAverage.average === null ? "Sin notas" : selectedAverage.average.toFixed(2)}</strong></div>
@@ -193,7 +222,7 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
           <div className="drawer-placeholder"><BookOpen size={34} /><h2>Selecciona una materia</h2><p>Su lista de tareas aparecerá aquí, ordenada de la más reciente a la más antigua.</p></div>
         )}
       </aside>
-      {modalOpen && <div className="modal-backdrop" onMouseDown={() => setModalOpen(false)}><section className="mission-modal subject-modal" role="dialog" aria-modal="true" aria-labelledby="world-subject-title" onMouseDown={(event) => event.stopPropagation()}><div className="modal-heading"><div className="modal-icon"><ScrollText size={20} /></div><div><span className="eyebrow">CATÁLOGO GLOBAL</span><h2 id="world-subject-title">{editingSubject ? "Editar materia" : "Nueva materia"}</h2></div><button className="icon-button" type="button" onClick={() => setModalOpen(false)} aria-label="Cerrar"><X size={20} /></button></div><form onSubmit={saveSubject}><label>Nombre de la materia<input required autoFocus value={subjectName} onChange={(event) => setSubjectName(event.target.value)} placeholder="Ej. Cálculo diferencial" /></label><p className="subject-form-help">Esta materia quedará disponible en todas las clases y misiones.</p><div className="modal-actions"><span /><div><button type="button" className="secondary-button" onClick={() => setModalOpen(false)}>Cancelar</button><button type="submit" className="primary-button">Guardar materia</button></div></div></form></section></div>}
+      {modalOpen && <div className="modal-backdrop" onMouseDown={() => setModalOpen(false)}><section className="mission-modal subject-modal" role="dialog" aria-modal="true" aria-labelledby="world-subject-title" onMouseDown={(event) => event.stopPropagation()}><div className="modal-heading"><div className="modal-icon"><ScrollText size={20} /></div><div><span className="eyebrow">CATÁLOGO GLOBAL</span><h2 id="world-subject-title">{editingSubject ? "Editar materia" : "Nueva materia"}</h2></div><button className="icon-button" type="button" onClick={() => setModalOpen(false)} aria-label="Cerrar"><X size={20} /></button></div><form onSubmit={saveSubject}><label>Nombre de la materia<input required autoFocus value={subjectName} onChange={(event) => setSubjectName(event.target.value)} placeholder="Ej. Cálculo diferencial" /></label><label>Meta de estudio semanal (horas)<input required type="number" inputMode="decimal" min="0.5" max="168" step="0.5" value={weeklyGoalHours} onChange={(event) => setWeeklyGoalHours(Number(event.target.value))} /></label><p className="subject-form-help">Esta materia quedará disponible en todas las clases y misiones. La meta permite comparar tu trabajo real cada semana.</p><div className="modal-actions"><span /><div><button type="button" className="secondary-button" onClick={() => setModalOpen(false)}>Cancelar</button><button type="submit" className="primary-button">Guardar materia</button></div></div></form></section></div>}
     </div>
   );
 }
