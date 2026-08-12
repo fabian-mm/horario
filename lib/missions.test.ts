@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMissionProgress, getMissionProgress, getMissionStatus, getSubjectStudyMinutes, type Mission } from "./missions";
+import { addMissionProgress, getMissionProgress, getMissionStatus, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, type Mission } from "./missions";
 
 const workMission: Mission = {
   id: "work-1",
@@ -43,5 +43,24 @@ describe("accumulated work progress", () => {
 
   it("suma el tiempo realizado en trabajos de una materia", () => {
     expect(getSubjectStudyMinutes([workMission, { ...workMission, id: "work-2", progressCompletedMinutes: 90 }])).toBe(90);
+  });
+
+  it("registra cada avance en la fecha en que se realizó", () => {
+    const updated = addMissionProgress(workMission, 60, new Date("2026-08-18T16:00:00"));
+    expect(updated.progressEntries).toEqual([{ date: "2026-08-18", minutes: 60 }]);
+  });
+
+  it("calcula solo el trabajo realizado durante la semana presente", () => {
+    const missions = [{
+      ...workMission,
+      progressCompletedMinutes: 180,
+      progressEntries: [
+        { date: "2026-08-18", minutes: 60 },
+        { date: "2026-08-20", minutes: 30 },
+        { date: "2026-08-10", minutes: 90 },
+      ],
+    }];
+    expect(getSubjectStudyMinutesForWeek(missions, new Date("2026-08-20T12:00:00"))).toBe(90);
+    expect(getSubjectStudyMinutes(missions)).toBe(180);
   });
 });

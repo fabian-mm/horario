@@ -40,6 +40,10 @@ export const missionSchema = z.object({
   durationMinutes: z.union([z.literal(60), z.literal(120)]).optional(),
   progressGoalMinutes: z.number().int().min(30).max(60_000).optional(),
   progressCompletedMinutes: z.number().int().min(0).max(60_000).optional(),
+  progressEntries: z.array(z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    minutes: z.number().int().min(1).max(60_000),
+  })).max(2000).optional(),
   priority: z.enum(["normal", "important", "boss"]),
   status: z.enum(["pending", "submitted", "completed"]).optional(),
   completed: z.boolean(),

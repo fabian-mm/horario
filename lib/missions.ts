@@ -15,6 +15,7 @@ export type Mission = {
   durationMinutes?: 60 | 120;
   progressGoalMinutes?: number;
   progressCompletedMinutes?: number;
+  progressEntries?: Array<{ date: string; minutes: number }>;
   priority: Priority;
   completed: boolean;
   status?: MissionStatus;
@@ -75,9 +76,13 @@ export const addMissionProgress = (mission: Mission, minutes: number, referenceD
     Math.max(0, progress.completedMinutes + minutes),
   );
   const complete = progressCompletedMinutes >= progress.goalMinutes;
+  const addedMinutes = progressCompletedMinutes - progress.completedMinutes;
   return {
     ...mission,
     progressCompletedMinutes,
+    progressEntries: addedMinutes > 0
+      ? [...(mission.progressEntries ?? []), { date: toISODate(referenceDate), minutes: addedMinutes }]
+      : mission.progressEntries,
     completed: complete,
     status: complete ? "completed" : "pending",
   };
@@ -85,6 +90,22 @@ export const addMissionProgress = (mission: Mission, minutes: number, referenceD
 
 export const getSubjectStudyMinutes = (missions: Mission[]) =>
   missions.reduce((total, mission) => total + (isProgressMission(mission) ? getMissionProgress(mission).completedMinutes : 0), 0);
+
+export const getWeekBounds = (referenceDate = new Date()) => {
+  const monday = new Date(referenceDate);
+  monday.setHours(12, 0, 0, 0);
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return { start: toISODate(monday), end: toISODate(sunday) };
+};
+
+export const getSubjectStudyMinutesForWeek = (missions: Mission[], referenceDate = new Date()) => {
+  const { start, end } = getWeekBounds(referenceDate);
+  return missions.reduce((total, mission) => total + (mission.progressEntries ?? [])
+    .filter((entry) => entry.date >= start && entry.date <= end)
+    .reduce((missionTotal, entry) => missionTotal + Math.max(0, entry.minutes), 0), 0);
+};
 
 export type SubjectAverage = {
   average: number | null;

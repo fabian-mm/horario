@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { BookOpen, Check, ChevronRight, CircleDot, Clock3, FileCheck2, Flag, GraduationCap, NotebookPen, Pencil, Plus, ScrollText, Trash2, X } from "lucide-react";
-import { calculateSubjectAverage, formatProgressDuration, getMissionStatus, getMissionXp, getSubjectStudyMinutes, Mission, MissionStatus, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
+import { calculateSubjectAverage, formatProgressDuration, getMissionStatus, getMissionXp, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, Mission, MissionStatus, sortMissionsByDateTime, statusMeta } from "@/lib/missions";
 import { isProgressMission } from "@/lib/missions";
 import { MissionProgress } from "@/components/mission-progress";
 import type { Subject } from "@/lib/subjects";
@@ -67,6 +67,7 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
       completed: number;
       failed: number;
       studyMinutes: number;
+      weeklyStudyMinutes: number;
       progress: number;
       average: ReturnType<typeof calculateSubjectAverage>;
     }>();
@@ -89,6 +90,7 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
         completed,
         failed,
         studyMinutes: getSubjectStudyMinutes(tasks),
+        weeklyStudyMinutes: getSubjectStudyMinutesForWeek(tasks),
         progress: tasks.length ? Math.round((completed / tasks.length) * 100) : 0,
         average: calculateSubjectAverage(tasks),
       });
@@ -120,11 +122,11 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
             const pending = summary?.pending ?? 0;
             const territoryProgress = summary?.progress ?? 0;
             const result = summary?.average ?? calculateSubjectAverage([]);
-            const studyMinutes = summary?.studyMinutes ?? 0;
+            const weeklyStudyMinutes = summary?.weeklyStudyMinutes ?? 0;
             return (
               <button key={subject} className={selectedSubject === subject ? "active" : ""} onClick={() => onSelectSubject(subject)}>
                 <span className="subject-icon"><Icon size={18} /><i>{index + 1}</i></span>
-                <span><strong>{subject}</strong><small>{tasks.length} misiones · {pending} pendientes</small><small className="subject-study-time"><Clock3 size={11} /> {formatProgressDuration(studyMinutes)} de trabajo</small><span className="territory-progress"><i style={{ width: `${territoryProgress}%` }} /></span></span>
+                <span><strong>{subject}</strong><small>{tasks.length} misiones · {pending} pendientes</small><small className="subject-study-time"><Clock3 size={11} /> {formatProgressDuration(weeklyStudyMinutes)} esta semana</small><span className="territory-progress"><i style={{ width: `${territoryProgress}%` }} /></span></span>
                 <span className={`subject-average ${result.average === null ? "empty" : ""}`}>
                   <strong>{result.average === null ? "—" : result.average.toFixed(2)}</strong>
                   <small>{result.average === null ? "Sin notas" : `${result.coverage}% evaluado`}</small>
@@ -154,7 +156,7 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
               <span className="eyebrow">DIARIO DE MISIONES</span>
               <div className="drawer-title-actions"><h2>{selectedSubject}</h2>{selectedSubjectRecord && <span><button className="icon-button" onClick={() => openSubject(selectedSubjectRecord)} title="Editar materia"><Pencil size={15} /></button><button className="icon-button" disabled={usageFor(selectedSubjectRecord) > 0} onClick={() => onDeleteSubject(selectedSubjectRecord.id)} title={usageFor(selectedSubjectRecord) > 0 ? "La materia está en uso" : "Eliminar materia"}><Trash2 size={15} /></button></span>}</div>
               <div className="drawer-stats"><span><Flag size={14} /> {pendingCount} pendientes</span><span><CircleDot size={14} /> {impact}% registrado</span>{selectedFailed > 0 && <span className="failed"><X size={14} /> {selectedFailed} fallidas</span>}</div>
-              <div className="subject-time-summary"><Clock3 size={18} /><div><small>TIEMPO DE TRABAJO REGISTRADO</small><strong>{formatProgressDuration(selectedStudyMinutes)}</strong></div></div>
+              <div className="subject-time-summary"><Clock3 size={18} /><div><small>TOTAL DE TRABAJO EN EL SEMESTRE</small><strong>{formatProgressDuration(selectedStudyMinutes)}</strong></div></div>
               <div className="territory-rank"><span><small>PROGRESO DEL TERRITORIO</small><b>{selectedProgress}%</b></span><div><i style={{ width: `${selectedProgress}%` }} /></div></div>
               <div className={`average-summary ${selectedAverage.average === null ? "empty" : ""}`}>
                 <div><small>Promedio ponderado</small><strong>{selectedAverage.average === null ? "Sin notas" : selectedAverage.average.toFixed(2)}</strong></div>
