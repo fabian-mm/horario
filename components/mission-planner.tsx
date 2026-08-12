@@ -18,6 +18,7 @@ import { resolveActivityType } from "@/lib/activity-types";
 import { applyDailyLoginReward, buildUpcomingActivityReminders, getNotificationPermission, requestNotificationPermission, showBrowserNotification } from "@/lib/notifications";
 import { findMissionType, isTimedMissionType } from "@/lib/mission-types";
 import { resolveSubjectName } from "@/lib/subjects";
+import { playCompletionSound, prepareCompletionSound } from "@/lib/completion-sound";
 import { getUserInitials } from "@/lib/users";
 import { AccountPanel } from "./account-panel";
 import { AuthScreen } from "./auth-screen";
@@ -400,19 +401,24 @@ export function MissionPlanner() {
     if (mission && status === "completed" && getMissionStatus(mission) !== "completed") showReward(mission);
     setStatus(id, status);
   };
-  const addProgressWithFeedback = (id: string, minutes: 30 | 60) => {
+  const addProgressWithFeedback = (id: string, minutes: number) => {
     let wasComplete = false;
     const updated = updateMission(id, (mission) => {
       wasComplete = getMissionProgress(mission).complete;
       return isProgressMission(mission) ? addMissionProgress(mission, minutes) : mission;
     });
     if (!updated || !isProgressMission(updated)) return;
-    if (!wasComplete && getMissionProgress(updated).complete) showReward(updated);
+    if (!wasComplete && getMissionProgress(updated).complete) {
+      if (studyTimer.session?.missionId === id) studyTimer.discard();
+      playCompletionSound();
+      showReward(updated);
+    }
   };
   const startStudyTimer = (mission: Mission) => {
+    prepareCompletionSound();
     if (!studyTimer.start(mission)) setNotificationFeedback("Ya hay una sesión de estudio activa. Finalízala o descártala antes de iniciar otra.");
   };
-  const finishStudyTimer = () => {
+  const finishStudyTimer = (automatic = false) => {
     const result = studyTimer.finish();
     if (!result) return;
     const mission = missions.find((item) => item.id === result.missionId);
@@ -425,8 +431,14 @@ export function MissionPlanner() {
       wasComplete = getMissionProgress(current).complete;
       return addMissionProgress(current, result.minutes);
     });
-    if (updated && !wasComplete && getMissionProgress(updated).complete) showReward(updated);
-    setNotificationFeedback(`Sesión finalizada: ${formatProgressDuration(result.minutes)} sumados a ${mission.title}.`);
+    const completedNow = Boolean(updated && !wasComplete && getMissionProgress(updated).complete);
+    if (completedNow) {
+      playCompletionSound();
+      showReward(updated!);
+    }
+    setNotificationFeedback(completedNow || automatic
+      ? `¡Objetivo de tiempo completado! ${formatProgressDuration(result.minutes)} sumados a ${mission.title}.`
+      : `Sesión finalizada: ${formatProgressDuration(result.minutes)} sumados a ${mission.title}.`);
   };
   const toggleScheduledActivity = (occurrence: ScheduledOccurrence) => {
     const weeklyQuest = weeklyQuests.find((item) => item.id === occurrence.weeklyQuestId);
@@ -725,7 +737,7 @@ export function MissionPlanner() {
         }}
       />
       <GameFeedback reward={reward} onDismiss={() => setReward(null)} />
-      {studyTimer.session && <StudyTimer session={studyTimer.session} onPause={studyTimer.pause} onResume={studyTimer.resume} onFinish={finishStudyTimer} onDiscard={studyTimer.discard} />}
+      {studyTimer.session && <StudyTimer session={studyTimer.session} onPause={studyTimer.pause} onResume={studyTimer.resume} onFinish={() => finishStudyTimer(false)} onLimitReached={() => finishStudyTimer(true)} onDiscard={studyTimer.discard} />}
     </main>
   );
 }

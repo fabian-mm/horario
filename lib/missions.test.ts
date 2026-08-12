@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMissionProgress, calculateSubjectAverage, getMissionProgress, getMissionStatus, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, getSubjectWeeklyStudyHistory, type Mission } from "./missions";
+import { addMissionProgress, calculateSubjectAverage, getMissionProgress, getMissionStatus, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, getSubjectWeeklyStudyHistory, validateProgressUpdate, type Mission } from "./missions";
 
 const workMission: Mission = {
   id: "work-1",
@@ -76,5 +76,25 @@ describe("accumulated work progress", () => {
     const exam = { ...workMission, id: "exam", progressGoalMinutes: undefined, progressCompletedMinutes: undefined, grade: "4", weight: 50 };
     const oldWork = { ...workMission, grade: "1", weight: 50 };
     expect(calculateSubjectAverage([exam, oldWork])).toMatchObject({ average: 4, coverage: 50, gradedTasks: 1 });
+  });
+
+  it("acepta cualquier cantidad entera positiva y la limita a la meta", () => {
+    expect(addMissionProgress({ ...workMission, progressCompletedMinutes: 400 }, 37, new Date("2026-08-19T12:00:00"))).toMatchObject({ progressCompletedMinutes: 420 });
+    expect(addMissionProgress(workMission, Number.NaN, new Date("2026-08-19T12:00:00"))).toEqual(workMission);
+  });
+
+  it("rechaza reducir, exceder o reescribir el historial de progreso", () => {
+    const referenceDate = new Date("2026-08-19T12:00:00");
+    const existing = { ...workMission, progressCompletedMinutes: 60, progressEntries: [{ date: "2026-08-18", minutes: 60 }] };
+    expect(validateProgressUpdate(existing, { ...existing, progressCompletedMinutes: 30 }, referenceDate).valid).toBe(false);
+    expect(validateProgressUpdate(existing, { ...existing, progressCompletedMinutes: 90, progressEntries: [...existing.progressEntries, { date: "2026-08-19", minutes: 30 }] }, referenceDate)).toEqual({ valid: true });
+    expect(validateProgressUpdate(existing, { ...existing, progressCompletedMinutes: 90, progressEntries: [{ date: "2026-08-18", minutes: 30 }, { date: "2026-08-19", minutes: 60 }] }, referenceDate).valid).toBe(false);
+  });
+
+  it("impide crear trabajos con tiempo precargado o reabrir uno completado", () => {
+    const referenceDate = new Date("2026-08-19T12:00:00");
+    expect(validateProgressUpdate(null, { ...workMission, progressCompletedMinutes: 30 }, referenceDate).valid).toBe(false);
+    const completed = { ...workMission, progressCompletedMinutes: 420, completed: true, status: "completed" as const };
+    expect(validateProgressUpdate(completed, { ...completed, progressGoalMinutes: 480 }, referenceDate).valid).toBe(false);
   });
 });

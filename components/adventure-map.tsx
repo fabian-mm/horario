@@ -12,7 +12,7 @@ type Props = {
   onAdd: () => void;
   onEdit: (mission: Mission) => void;
   onStatusChange: (id: string, status: MissionStatus) => void;
-  onAddProgress: (id: string, minutes: 30 | 60) => void;
+  onAddProgress: (id: string, minutes: number) => void;
   onStartTimer: (mission: Mission) => void;
   activeTimerMissionId?: string;
 };

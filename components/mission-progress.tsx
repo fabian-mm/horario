@@ -1,11 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { Check, Clock3, LockKeyhole, Play, Plus } from "lucide-react";
 import { formatProgressDuration, getMissionProgress, isFailedProgressMission, type Mission } from "@/lib/missions";
 
 type Props = {
   mission: Mission;
-  onAdd?: (minutes: 30 | 60) => void;
+  onAdd?: (minutes: number) => void;
   onStartTimer?: () => void;
   timerActive?: boolean;
   compact?: boolean;
@@ -14,6 +15,7 @@ type Props = {
 export function MissionProgress({ mission, onAdd, onStartTimer, timerActive = false, compact = false }: Props) {
   const progress = getMissionProgress(mission);
   const failed = isFailedProgressMission(mission);
+  const [customMinutes, setCustomMinutes] = useState(15);
   if (!progress.goalMinutes) return null;
 
   return <div className={`mission-progress ${compact ? "compact" : ""} ${progress.complete ? "complete" : ""} ${failed ? "failed" : ""}`}>
@@ -25,6 +27,10 @@ export function MissionProgress({ mission, onAdd, onStartTimer, timerActive = fa
     {onAdd && !progress.complete && !failed && <div className="mission-progress-actions">
       <button type="button" onClick={(event) => { event.stopPropagation(); onAdd(30); }}><Plus size={11} />30 min</button>
       <button type="button" onClick={(event) => { event.stopPropagation(); onAdd(60); }}><Plus size={11} />1 hora</button>
+      <form className="mission-custom-time" onSubmit={(event) => { event.preventDefault(); event.stopPropagation(); if (customMinutes > 0) onAdd(customMinutes); }}>
+        <label><span>Minutos</span><input aria-label="Minutos personalizados" type="number" inputMode="numeric" min="1" max={Math.max(1, progress.goalMinutes - progress.completedMinutes)} step="1" value={customMinutes} onChange={(event) => setCustomMinutes(Number(event.target.value))} /></label>
+        <button type="submit"><Plus size={11} />Sumar</button>
+      </form>
     </div>}
     {onStartTimer && !progress.complete && !failed && <button className={`mission-timer-start ${timerActive ? "active" : ""}`} type="button" disabled={timerActive} onClick={(event) => { event.stopPropagation(); onStartTimer(); }}><Play size={11} />{timerActive ? "Cronómetro activo" : "Iniciar cronómetro"}</button>}
     {progress.complete && <small>Objetivo de horas cumplido</small>}

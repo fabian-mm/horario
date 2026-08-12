@@ -18,7 +18,7 @@ type Props = {
   onEdit: (mission: Mission) => void;
   onAdd: (subject?: string) => void;
   onStatusChange: (id: string, status: MissionStatus) => void;
-  onAddProgress: (id: string, minutes: 30 | 60) => void;
+  onAddProgress: (id: string, minutes: number) => void;
   onStartTimer: (mission: Mission) => void;
   activeTimerMissionId?: string;
   onSaveSubject: (subject: Subject) => void;

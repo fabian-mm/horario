@@ -16,7 +16,7 @@ type Props = {
   activityTypes: ActivityType[];
   onEditMission: (mission: Mission) => void;
   onToggleMission: (id: string) => void;
-  onAddProgress: (id: string, minutes: 30 | 60) => void;
+  onAddProgress: (id: string, minutes: number) => void;
   onStartTimer: (mission: Mission) => void;
   activeTimerMissionId?: string;
   onOpenActivity: (activity: ScheduledOccurrence) => void;

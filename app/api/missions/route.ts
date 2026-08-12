@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
 import { getDb } from "@/lib/mongodb";
-import { getMissionStatus, isFailedProgressMission, sortMissionsByDateTime, type Mission } from "@/lib/missions";
+import { getMissionStatus, isFailedProgressMission, sortMissionsByDateTime, validateProgressUpdate, type Mission } from "@/lib/missions";
 import { missionSchema } from "@/lib/validation";
 
 type MissionDocument = Mission & { userId: string; createdAt: string; updatedAt: string };
@@ -36,6 +36,8 @@ export async function POST(request: Request) {
   if (existing && isFailedProgressMission(existing)) {
     return NextResponse.json({ error: "Este trabajo venció incompleto y ya no se puede modificar." }, { status: 409 });
   }
+  const progressValidation = validateProgressUpdate(existing, parsed.data as Mission);
+  if (!progressValidation.valid) return NextResponse.json({ error: progressValidation.error }, { status: 409 });
   const now = new Date().toISOString();
   const progressComplete = Boolean(
     parsed.data.progressGoalMinutes &&

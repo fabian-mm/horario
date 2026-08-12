@@ -71,9 +71,11 @@ export const addMissionProgress = (mission: Mission, minutes: number, referenceD
   if (isFailedProgressMission(mission, referenceDate)) return mission;
   const progress = getMissionProgress(mission);
   if (!progress.goalMinutes) return mission;
+  const requestedMinutes = Number.isFinite(minutes) ? Math.max(0, Math.round(minutes)) : 0;
+  if (!requestedMinutes || progress.complete) return mission;
   const progressCompletedMinutes = Math.min(
     progress.goalMinutes,
-    Math.max(0, progress.completedMinutes + minutes),
+    progress.completedMinutes + requestedMinutes,
   );
   const complete = progressCompletedMinutes >= progress.goalMinutes;
   const addedMinutes = progressCompletedMinutes - progress.completedMinutes;
@@ -86,6 +88,42 @@ export const addMissionProgress = (mission: Mission, minutes: number, referenceD
     completed: complete,
     status: complete ? "completed" : "pending",
   };
+};
+
+export type ProgressUpdateValidation = { valid: true } | { valid: false; error: string };
+
+export const validateProgressUpdate = (existing: Mission | null, incoming: Mission, referenceDate = new Date()): ProgressUpdateValidation => {
+  if (!existing) {
+    if (isProgressMission(incoming) && (getMissionProgress(incoming).completedMinutes > 0 || (incoming.progressEntries?.length ?? 0) > 0)) {
+      return { valid: false, error: "Un trabajo nuevo debe comenzar sin tiempo registrado." };
+    }
+    return { valid: true };
+  }
+  if (!isProgressMission(existing)) return { valid: true };
+  const previous = getMissionProgress(existing);
+  const next = getMissionProgress(incoming);
+  if (previous.complete && (next.completedMinutes !== previous.completedMinutes || next.goalMinutes !== previous.goalMinutes)) {
+    return { valid: false, error: "Un trabajo completado no puede reabrirse ni acumular más tiempo." };
+  }
+  if (next.completedMinutes < previous.completedMinutes) return { valid: false, error: "El tiempo registrado no se puede reducir." };
+  if (next.completedMinutes > next.goalMinutes) return { valid: false, error: "El tiempo no puede superar la meta." };
+
+  const previousEntries = existing.progressEntries ?? [];
+  const nextEntries = incoming.progressEntries ?? [];
+  if (nextEntries.length < previousEntries.length || previousEntries.some((entry, index) => {
+    const nextEntry = nextEntries[index];
+    return !nextEntry || nextEntry.date !== entry.date || nextEntry.minutes !== entry.minutes;
+  })) return { valid: false, error: "El historial de estudio no se puede alterar." };
+
+  const appended = nextEntries.slice(previousEntries.length);
+  const delta = next.completedMinutes - previous.completedMinutes;
+  if (!delta && appended.length) return { valid: false, error: "El historial no coincide con el progreso." };
+  if (delta > 0) {
+    if (appended.length !== 1 || appended[0].minutes !== delta || appended[0].date !== toISODate(referenceDate)) {
+      return { valid: false, error: "El incremento de tiempo no es válido." };
+    }
+  }
+  return { valid: true };
 };
 
 export const getSubjectStudyMinutes = (missions: Mission[]) =>
