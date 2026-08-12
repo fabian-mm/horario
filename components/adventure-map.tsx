@@ -13,11 +13,13 @@ type Props = {
   onEdit: (mission: Mission) => void;
   onStatusChange: (id: string, status: MissionStatus) => void;
   onAddProgress: (id: string, minutes: 30 | 60) => void;
+  onStartTimer: (mission: Mission) => void;
+  activeTimerMissionId?: string;
 };
 
 const START_POINT = { x: 11, y: 48 };
 
-export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddProgress }: Props) {
+export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddProgress, onStartTimer, activeTimerMissionId }: Props) {
   const orderedMissions = useMemo(() => sortMissionsByDateTime(missions), [missions]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedMission = orderedMissions.find((mission) => mission.id === selectedId) ?? orderedMissions[0] ?? null;
@@ -227,7 +229,7 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
                   {!isProgressMission(selectedMission) && <div><dt>Impacto</dt><dd>{selectedMission.weight !== undefined ? `${selectedMission.weight}%` : "Sin definir"}</dd></div>}
                   <div><dt>Nota</dt><dd>{selectedMission.grade?.trim() || "Pendiente"}</dd></div>
                 </dl>
-                {isProgressMission(selectedMission) && <MissionProgress mission={selectedMission} onAdd={(minutes) => onAddProgress(selectedMission.id, minutes)} />}
+                {isProgressMission(selectedMission) && <MissionProgress mission={selectedMission} onAdd={(minutes) => onAddProgress(selectedMission.id, minutes)} onStartTimer={() => onStartTimer(selectedMission)} timerActive={activeTimerMissionId === selectedMission.id} />}
                 {selectedMission.notes && <div className="objective-clue"><small>PISTA EN EL PERGAMINO</small><p>{selectedMission.notes}</p></div>}
                 {!isProgressMission(selectedMission) && (
                   <div className="sheet-status-actions" aria-label={`Cambiar estado de ${selectedMission.title}`}>

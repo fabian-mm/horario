@@ -1,15 +1,17 @@
 "use client";
 
-import { Check, Clock3, LockKeyhole, Plus } from "lucide-react";
+import { Check, Clock3, LockKeyhole, Play, Plus } from "lucide-react";
 import { formatProgressDuration, getMissionProgress, isFailedProgressMission, type Mission } from "@/lib/missions";
 
 type Props = {
   mission: Mission;
   onAdd?: (minutes: 30 | 60) => void;
+  onStartTimer?: () => void;
+  timerActive?: boolean;
   compact?: boolean;
 };
 
-export function MissionProgress({ mission, onAdd, compact = false }: Props) {
+export function MissionProgress({ mission, onAdd, onStartTimer, timerActive = false, compact = false }: Props) {
   const progress = getMissionProgress(mission);
   const failed = isFailedProgressMission(mission);
   if (!progress.goalMinutes) return null;
@@ -24,6 +26,7 @@ export function MissionProgress({ mission, onAdd, compact = false }: Props) {
       <button type="button" onClick={(event) => { event.stopPropagation(); onAdd(30); }}><Plus size={11} />30 min</button>
       <button type="button" onClick={(event) => { event.stopPropagation(); onAdd(60); }}><Plus size={11} />1 hora</button>
     </div>}
+    {onStartTimer && !progress.complete && !failed && <button className={`mission-timer-start ${timerActive ? "active" : ""}`} type="button" disabled={timerActive} onClick={(event) => { event.stopPropagation(); onStartTimer(); }}><Play size={11} />{timerActive ? "Cronómetro activo" : "Iniciar cronómetro"}</button>}
     {progress.complete && <small>Objetivo de horas cumplido</small>}
     {failed && <small>Meta vencida · progreso bloqueado</small>}
   </div>;

@@ -17,6 +17,8 @@ type Props = {
   onEditMission: (mission: Mission) => void;
   onToggleMission: (id: string) => void;
   onAddProgress: (id: string, minutes: 30 | 60) => void;
+  onStartTimer: (mission: Mission) => void;
+  activeTimerMissionId?: string;
   onOpenActivity: (activity: ScheduledOccurrence) => void;
   onToggleActivity: (activity: ScheduledOccurrence) => void;
 };
@@ -25,7 +27,7 @@ const DEFAULT_DAY_START = 7 * 60;
 const DEFAULT_DAY_END = 22 * 60;
 const HOUR_HEIGHT = 68;
 
-export function DayAgenda({ missions, activities, activityTypes, onEditMission, onToggleMission, onAddProgress, onOpenActivity, onToggleActivity }: Props) {
+export function DayAgenda({ missions, activities, activityTypes, onEditMission, onToggleMission, onAddProgress, onStartTimer, activeTimerMissionId, onOpenActivity, onToggleActivity }: Props) {
   const progressMissions = missions.filter(isProgressMission);
   const rawEvents = [
     ...activities.map((activity) => ({
@@ -47,7 +49,7 @@ export function DayAgenda({ missions, activities, activityTypes, onEditMission, 
   return <div className="day-agenda" aria-label="Agenda del día por horas">
     {!!progressMissions.length && <section className="day-progress-objectives" aria-label="Objetivos acumulables con fecha límite este día">
       <header><Hourglass size={15} /><div><strong>Trabajos con fecha límite</strong><small>No ocupan una franja horaria</small></div></header>
-      <div>{progressMissions.map((mission) => <article key={mission.id} onClick={() => onEditMission(mission)}><strong>{mission.title} · {mission.subject}</strong><MissionProgress mission={mission} onAdd={(minutes) => onAddProgress(mission.id, minutes)} compact /></article>)}</div>
+      <div>{progressMissions.map((mission) => <article key={mission.id} onClick={() => onEditMission(mission)}><strong>{mission.title} · {mission.subject}</strong><MissionProgress mission={mission} onAdd={(minutes) => onAddProgress(mission.id, minutes)} onStartTimer={() => onStartTimer(mission)} timerActive={activeTimerMissionId === mission.id} compact /></article>)}</div>
     </section>}
     <div className="day-agenda-hours" aria-hidden="true">
       {hours.map((minute) => <div key={minute} style={{ top: `${((minute - dayStart) / 60) * HOUR_HEIGHT}px` }}><time>{minute === 24 * 60 ? "12:00 AM" : formatTime12Hour(minutesToTime(minute))}</time><span /></div>)}

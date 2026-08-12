@@ -9,6 +9,7 @@ import { useMissionTypes } from "@/hooks/use-mission-types";
 import { useMissions } from "@/hooks/use-missions";
 import { useSubjects } from "@/hooks/use-subjects";
 import { useTheme } from "@/hooks/use-theme";
+import { useStudyTimer } from "@/hooks/use-study-timer";
 import { useWeeklyQuests } from "@/hooks/use-weekly-quests";
 import { addMissionProgress, calculatePlayerProgress, calculateStreak, formatLongDate, formatProgressDuration, getCrossedXpMilestone, getMissionProgress, getMissionStatus, getMissionXp, getNextXpMilestone, isFailedProgressMission, isProgressMission, Mission, Priority, priorityMeta, sortMissionsByDateTime, toISODate } from "@/lib/missions";
 import { getScheduledActivityLabel, getScheduledActivityXp, getScheduledOccurrences, getWeekDates, getWeeklyFreeSlots, ScheduledOccurrence, sortDailyMissionsByTime, weekdayMeta } from "@/lib/schedule";
@@ -25,6 +26,7 @@ import { GameFeedback, RewardEvent } from "./game-feedback";
 import { MissionForm } from "./mission-form";
 import { MissionProgress } from "./mission-progress";
 import { MissionTypesManager } from "./mission-types-manager";
+import { StudyTimer } from "./study-timer";
 
 const WEEK_DAYS = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
 type Filter = "all" | "pending" | "completed" | Priority;
@@ -68,6 +70,7 @@ function calendarDays(month: Date) {
 export function MissionPlanner() {
   const auth = useAuth();
   const { theme, setTheme } = useTheme(auth.user?.id, auth.user?.theme);
+  const studyTimer = useStudyTimer(auth.user?.id);
   const { missions, loading: missionsLoading, error: missionsError, upsert, updateMission, toggle, setStatus, remove } = useMissions(Boolean(auth.user));
   const { weeklyQuests, loading: scheduleLoading, error: scheduleError, upsert: upsertWeeklyQuest, remove: removeWeeklyQuest } = useWeeklyQuests(Boolean(auth.user));
   const { subjects, loading: subjectsLoading, error: subjectsError, upsert: upsertSubject, remove: removeSubject } = useSubjects(Boolean(auth.user));
@@ -406,6 +409,25 @@ export function MissionPlanner() {
     if (!updated || !isProgressMission(updated)) return;
     if (!wasComplete && getMissionProgress(updated).complete) showReward(updated);
   };
+  const startStudyTimer = (mission: Mission) => {
+    if (!studyTimer.start(mission)) setNotificationFeedback("Ya hay una sesión de estudio activa. Finalízala o descártala antes de iniciar otra.");
+  };
+  const finishStudyTimer = () => {
+    const result = studyTimer.finish();
+    if (!result) return;
+    const mission = missions.find((item) => item.id === result.missionId);
+    if (!mission || !isProgressMission(mission) || isFailedProgressMission(mission)) {
+      setNotificationFeedback("La sesión terminó, pero el trabajo ya no admite progreso.");
+      return;
+    }
+    let wasComplete = false;
+    const updated = updateMission(result.missionId, (current) => {
+      wasComplete = getMissionProgress(current).complete;
+      return addMissionProgress(current, result.minutes);
+    });
+    if (updated && !wasComplete && getMissionProgress(updated).complete) showReward(updated);
+    setNotificationFeedback(`Sesión finalizada: ${formatProgressDuration(result.minutes)} sumados a ${mission.title}.`);
+  };
   const toggleScheduledActivity = (occurrence: ScheduledOccurrence) => {
     const weeklyQuest = weeklyQuests.find((item) => item.id === occurrence.weeklyQuestId);
     if (!weeklyQuest) return;
@@ -518,13 +540,15 @@ export function MissionPlanner() {
               onAdd={(subject) => openNew(selectedDate, subject)}
               onStatusChange={setStatusWithFeedback}
               onAddProgress={addProgressWithFeedback}
+              onStartTimer={startStudyTimer}
+              activeTimerMissionId={studyTimer.session?.missionId}
               onSaveSubject={upsertSubject}
               onDeleteSubject={removeSubject}
             />
           </div>
         ) : view === "map" ? (
           <div className="workspace adventure-map-workspace">
-            <AdventureMap missions={filtered} onAdd={() => openNew(selectedDate)} onEdit={openEdit} onStatusChange={setStatusWithFeedback} onAddProgress={addProgressWithFeedback} />
+            <AdventureMap missions={filtered} onAdd={() => openNew(selectedDate)} onEdit={openEdit} onStatusChange={setStatusWithFeedback} onAddProgress={addProgressWithFeedback} onStartTimer={startStudyTimer} activeTimerMissionId={studyTimer.session?.missionId} />
           </div>
         ) : view === "weekly" ? (
           <div className="workspace weekly-workspace">
@@ -612,7 +636,7 @@ export function MissionPlanner() {
             <div className="quest-board-ribbon"><span><Compass size={14} /> TABLERO DE CAMPAÑA</span><small>VISTA · {calendarMode === "month" ? "MES" : calendarMode === "week" ? "SEMANA" : "DÍA"}</small></div>
             <div className="map-ornament compass-rose">✣</div>
             <div className="map-ornament ship">♜</div>
-            {calendarMode === "day" ? <DayAgenda missions={selectedMissions} activities={selectedClasses} activityTypes={activityTypes} onEditMission={openEdit} onToggleMission={toggleWithFeedback} onAddProgress={addProgressWithFeedback} onOpenActivity={(activity) => { setFocusedWeeklyQuestId(activity.weeklyQuestId); setView("weekly"); }} onToggleActivity={toggleScheduledActivity} /> : <><div className="week-row">{WEEK_DAYS.map((day) => <span key={day}>{day}</span>)}</div>
+            {calendarMode === "day" ? <DayAgenda missions={selectedMissions} activities={selectedClasses} activityTypes={activityTypes} onEditMission={openEdit} onToggleMission={toggleWithFeedback} onAddProgress={addProgressWithFeedback} onStartTimer={startStudyTimer} activeTimerMissionId={studyTimer.session?.missionId} onOpenActivity={(activity) => { setFocusedWeeklyQuestId(activity.weeklyQuestId); setView("weekly"); }} onToggleActivity={toggleScheduledActivity} /> : <><div className="week-row">{WEEK_DAYS.map((day) => <span key={day}>{day}</span>)}</div>
             <div className="calendar-grid">
               {days.map((date) => {
                 const iso = toISODate(date);
@@ -664,7 +688,7 @@ export function MissionPlanner() {
                   {isProgressMission(mission) ? <span className="progress-mission-icon"><Hourglass size={16} /></span> : <button className="check-button" onClick={() => toggleWithFeedback(mission.id)} aria-label={mission.completed ? "Marcar pendiente" : "Completar misión"}>{mission.completed && <Check size={16} />}</button>}
                   <div className="mission-badge">{priorityMeta[mission.priority].icon}</div>
                   <div className="mission-copy" onClick={() => openEdit(mission)}><span>{isProgressMission(mission) ? "TRABAJO · META ACUMULABLE" : priorityMeta[mission.priority].label}</span><h3>{mission.title} · {mission.subject}</h3><small>{isProgressMission(mission) ? `Meta ${formatProgressDuration(mission.progressGoalMinutes ?? 0)}` : formatTime12Hour(mission.time)} <b className="xp-reward">+{getMissionXp(mission)} XP</b></small></div>
-                  {isProgressMission(mission) && <MissionProgress mission={mission} onAdd={(minutes) => addProgressWithFeedback(mission.id, minutes)} compact />}
+                  {isProgressMission(mission) && <MissionProgress mission={mission} onAdd={(minutes) => addProgressWithFeedback(mission.id, minutes)} onStartTimer={() => startStudyTimer(mission)} timerActive={studyTimer.session?.missionId === mission.id} compact />}
                   <div className="reward-box" aria-label={`Recompensa ${getMissionXp(mission)} puntos de experiencia`}><small>RECOMPENSA</small><strong>+{getMissionXp(mission)} XP</strong></div>
                   <button className="edit-button" onClick={() => openEdit(mission)}>Ver misión</button>
                 </article>
@@ -701,6 +725,7 @@ export function MissionPlanner() {
         }}
       />
       <GameFeedback reward={reward} onDismiss={() => setReward(null)} />
+      {studyTimer.session && <StudyTimer session={studyTimer.session} onPause={studyTimer.pause} onResume={studyTimer.resume} onFinish={finishStudyTimer} onDiscard={studyTimer.discard} />}
     </main>
   );
 }

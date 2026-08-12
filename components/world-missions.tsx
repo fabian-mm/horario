@@ -19,6 +19,8 @@ type Props = {
   onAdd: (subject?: string) => void;
   onStatusChange: (id: string, status: MissionStatus) => void;
   onAddProgress: (id: string, minutes: 30 | 60) => void;
+  onStartTimer: (mission: Mission) => void;
+  activeTimerMissionId?: string;
   onSaveSubject: (subject: Subject) => void;
   onDeleteSubject: (id: string) => void;
 };
@@ -26,7 +28,7 @@ type Props = {
 const subjectIcon = (index: number) => [BookOpen, GraduationCap, ScrollText, NotebookPen][index % 4];
 const taskDateFormatter = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", year: "numeric" });
 
-export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubject, onSelectSubject, onEdit, onAdd, onStatusChange, onAddProgress, onSaveSubject, onDeleteSubject }: Props) {
+export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubject, onSelectSubject, onEdit, onAdd, onStatusChange, onAddProgress, onStartTimer, activeTimerMissionId, onSaveSubject, onDeleteSubject }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [subjectName, setSubjectName] = useState("");
@@ -213,7 +215,7 @@ export function WorldMissions({ subjects, missions, weeklyQuests, selectedSubjec
                   <article key={mission.id} className={`world-task ${status}`}>
                     <div className="task-topline"><span className={`status-pill ${status}`}><i />{statusMeta[status].label}</span><span className="task-reward">+{getMissionXp(mission)} XP</span><time><Clock3 size={12} />{taskDateFormatter.format(new Date(`${mission.date}T12:00:00`))}</time></div>
                     <button className="task-title" disabled={status === "failed"} onClick={() => onEdit(mission)} title={status === "failed" ? "Este trabajo venció y está bloqueado" : "Abrir misión"}><h3>{mission.title} · {mission.subject}</h3>{status !== "failed" && <ChevronRight size={16} />}</button>
-                    {isProgressMission(mission) && <MissionProgress mission={mission} onAdd={(minutes) => onAddProgress(mission.id, minutes)} />}
+                    {isProgressMission(mission) && <MissionProgress mission={mission} onAdd={(minutes) => onAddProgress(mission.id, minutes)} onStartTimer={() => onStartTimer(mission)} timerActive={activeTimerMissionId === mission.id} />}
                     {(mission.notes || mission.grade || (!isProgressMission(mission) && mission.weight)) && (
                       <div className="task-details">
                         {mission.notes && <p>{mission.notes}</p>}
