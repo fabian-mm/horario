@@ -20,14 +20,10 @@ import { findMissionType, isTimedMissionType } from "@/lib/mission-types";
 import { resolveSubjectName } from "@/lib/subjects";
 import { playCompletionSound, prepareCompletionSound } from "@/lib/completion-sound";
 import { getUserInitials } from "@/lib/users";
-import { AccountPanel } from "./account-panel";
 import { AuthScreen } from "./auth-screen";
 import { DayAgenda } from "./day-agenda";
-import { GameFeedback, RewardEvent } from "./game-feedback";
-import { MissionForm } from "./mission-form";
+import type { RewardEvent } from "./game-feedback";
 import { MissionProgress } from "./mission-progress";
-import { MissionTypesManager } from "./mission-types-manager";
-import { StudyTimer } from "./study-timer";
 
 const WEEK_DAYS = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
 type Filter = "all" | "pending" | "completed" | Priority;
@@ -50,6 +46,11 @@ const WeeklySchedule = dynamic(
   () => import("./weekly-schedule").then((module) => module.WeeklySchedule),
   { loading: FeatureLoading },
 );
+const MissionForm = dynamic(() => import("./mission-form").then((module) => module.MissionForm));
+const MissionTypesManager = dynamic(() => import("./mission-types-manager").then((module) => module.MissionTypesManager));
+const AccountPanel = dynamic(() => import("./account-panel").then((module) => module.AccountPanel));
+const GameFeedback = dynamic(() => import("./game-feedback").then((module) => module.GameFeedback));
+const StudyTimer = dynamic(() => import("./study-timer").then((module) => module.StudyTimer));
 
 function preloadView(view: Exclude<View, "calendar">) {
   if (view === "world") void import("./world-missions");
@@ -117,15 +118,6 @@ export function MissionPlanner() {
     } catch {
       // Algunos navegadores bloquean el almacenamiento en modos privados estrictos.
     }
-  }, []);
-
-  useEffect(() => {
-    const preloadTimer = window.setTimeout(() => {
-      preloadView("world");
-      preloadView("map");
-      preloadView("weekly");
-    }, 900);
-    return () => window.clearTimeout(preloadTimer);
   }, []);
 
   useEffect(() => {
@@ -228,7 +220,9 @@ export function MissionPlanner() {
   const selectedIso = toISODate(selectedDate);
   const selectedMissions = missionsByDate.get(selectedIso) ?? [];
   const selectedClasses = scheduleByDate.get(selectedIso) ?? [];
-  const freeTimeSlots = useMemo(() => getWeeklyFreeSlots(selectedDate, catalogWeeklyQuests, catalogMissions.filter((mission) => !isProgressMission(mission))), [selectedDate, catalogWeeklyQuests, catalogMissions]);
+  const freeTimeSlots = useMemo(() => freeTimeOpen
+    ? getWeeklyFreeSlots(selectedDate, catalogWeeklyQuests, catalogMissions.filter((mission) => !isProgressMission(mission)))
+    : [], [freeTimeOpen, selectedDate, catalogWeeklyQuests, catalogMissions]);
 
   useEffect(() => {
     if (!reward) return;
@@ -722,9 +716,9 @@ export function MissionPlanner() {
         <button type="button" onClick={() => setMobileNav(true)} aria-controls="main-sidebar" aria-expanded={mobileNav}><Menu size={21} /><span>Más</span></button>
       </nav>
 
-      <MissionForm open={modalOpen} initialDate={selectedDate} initialSubject={draftSubject} mission={editing} onClose={() => setModalOpen(false)} onSave={upsert} onDelete={remove} subjects={subjects} missionTypes={missionTypes} onManageSubjects={() => setView("world")} onManageMissionTypes={() => setMissionTypesOpen(true)} />
-      <MissionTypesManager open={missionTypesOpen} missionTypes={missionTypes} missions={missions} onClose={() => { setMissionTypesOpen(false); setModalOpen(true); }} onSave={upsertMissionType} onDelete={removeMissionType} />
-      <AccountPanel
+      {modalOpen && <MissionForm open initialDate={selectedDate} initialSubject={draftSubject} mission={editing} onClose={() => setModalOpen(false)} onSave={upsert} onDelete={remove} subjects={subjects} missionTypes={missionTypes} onManageSubjects={() => setView("world")} onManageMissionTypes={() => setMissionTypesOpen(true)} />}
+      {missionTypesOpen && <MissionTypesManager open missionTypes={missionTypes} missions={missions} onClose={() => { setMissionTypesOpen(false); setModalOpen(true); }} onSave={upsertMissionType} onDelete={removeMissionType} />}
+      {accountOpen && <AccountPanel
         open={accountOpen}
         user={auth.user}
         onClose={() => setAccountOpen(false)}
@@ -735,8 +729,8 @@ export function MissionPlanner() {
           setTheme(nextTheme);
           return auth.updateAccount({ theme: nextTheme });
         }}
-      />
-      <GameFeedback reward={reward} onDismiss={() => setReward(null)} />
+      />}
+      {reward && <GameFeedback reward={reward} onDismiss={() => setReward(null)} />}
       {studyTimer.session && <StudyTimer session={studyTimer.session} onPause={studyTimer.pause} onResume={studyTimer.resume} onFinish={() => finishStudyTimer(false)} onLimitReached={() => finishStudyTimer(true)} onDiscard={studyTimer.discard} />}
     </main>
   );

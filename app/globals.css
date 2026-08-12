@@ -1658,3 +1658,27 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .bubble-actions button { height: 42px; padding-inline: 10px; font-size: 12px; }
   .bubble-actions button:first-child { justify-content: flex-start; }
 }
+
+/* En pantallas táctiles, prioriza desplazamiento y respuesta sobre efectos costosos. */
+@media (max-width: 920px) and (pointer: coarse) {
+  .map-card,
+  .quest-focus,
+  .mission-row,
+  .world-task,
+  .daily-class-card,
+  .subject-library-card,
+  .schedule-day,
+  .free-time-panel { box-shadow: none; }
+
+  .mission-row,
+  .world-task,
+  .daily-class-card,
+  .subject-library-card,
+  .schedule-day,
+  .calendar-day,
+  .mission-chip { transition: none; }
+
+  .map-ornament,
+  .treasure-path-active,
+  .study-timer-orb { filter: none; }
+}
