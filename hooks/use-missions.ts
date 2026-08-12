@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutationCoordinator } from "@/hooks/use-mutation-coordinator";
 import { getRequestError, isAbortError, readApiResponse } from "@/lib/http";
-import { getMissionStatus, Mission, MissionStatus, sortMissionsByDateTime } from "@/lib/missions";
+import { getMissionStatus, Mission, MissionStatus, sortMissionsByDateTime, toISODate } from "@/lib/missions";
 import { removeById, restoreById, upsertById } from "@/lib/optimistic";
 
 export function useMissions(enabled: boolean) {
@@ -24,7 +24,10 @@ export function useMissions(enabled: boolean) {
     let canceled = false;
     const controller = new AbortController();
     setLoading(true);
-    fetch("/api/missions", { signal: controller.signal })
+    fetch("/api/missions", {
+      signal: controller.signal,
+      headers: { "X-Client-Date": toISODate(new Date()) },
+    })
       .then(async (response) => {
         return readApiResponse<Mission[]>(response, "No se pudieron cargar las misiones.");
       })
@@ -46,7 +49,10 @@ export function useMissions(enabled: boolean) {
   const saveRemote = async (mission: Mission) => {
     const response = await fetch("/api/missions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Client-Date": toISODate(new Date()),
+      },
       body: JSON.stringify(mission),
     });
     return readApiResponse<Mission>(response, "No se pudo guardar la misión.");
@@ -104,7 +110,10 @@ export function useMissions(enabled: boolean) {
     setError(null);
     try {
       await mutations.enqueue(async () => {
-        const response = await fetch(`/api/missions/${encodeURIComponent(id)}`, { method: "DELETE" });
+        const response = await fetch(`/api/missions/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          headers: { "X-Client-Date": toISODate(new Date()) },
+        });
         await readApiResponse(response, "No se pudo eliminar la misión.");
       });
       return true;

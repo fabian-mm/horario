@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
 import { getDb } from "@/lib/mongodb";
-import { getMissionStatus, isFailedProgressMission, sortMissionsByDateTime, validateProgressUpdate, type Mission } from "@/lib/missions";
+import { getMissionStatus, getSafeClientReferenceDate, isFailedProgressMission, sortMissionsByDateTime, validateProgressUpdate, type Mission } from "@/lib/missions";
 import { missionSchema } from "@/lib/validation";
 
 type MissionDocument = Mission & { userId: string; createdAt: string; updatedAt: string };
 
-export async function GET() {
+export async function GET(request: Request) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
 
@@ -16,11 +16,11 @@ export async function GET() {
     .project({ _id: 0, userId: 0 })
     .sort({ date: 1, time: 1 })
     .toArray();
-  return NextResponse.json(sortMissionsByDateTime((missions as unknown as Mission[]).map((mission) => ({
-    ...mission,
-    status: getMissionStatus(mission),
-    completed: getMissionStatus(mission) === "completed",
-  }))));
+  const referenceDate = getSafeClientReferenceDate(request.headers.get("x-client-date"));
+  return NextResponse.json(sortMissionsByDateTime((missions as unknown as Mission[]).map((mission) => {
+    const status = getMissionStatus(mission, referenceDate);
+    return { ...mission, status, completed: status === "completed" };
+  })));
 }
 
 export async function POST(request: Request) {
@@ -33,17 +33,19 @@ export async function POST(request: Request) {
 
   const db = await getDb();
   const existing = await db.collection<MissionDocument>("missions").findOne({ userId, id: parsed.data.id });
-  if (existing && isFailedProgressMission(existing)) {
+  const serverDate = new Date();
+  const referenceDate = getSafeClientReferenceDate(request.headers.get("x-client-date"), serverDate);
+  const progressValidation = validateProgressUpdate(existing, parsed.data as Mission, serverDate);
+  if (!progressValidation.valid) return NextResponse.json({ error: progressValidation.error }, { status: 409 });
+  if (existing && isFailedProgressMission(existing, referenceDate)) {
     return NextResponse.json({ error: "Este trabajo venció incompleto y ya no se puede modificar." }, { status: 409 });
   }
-  const progressValidation = validateProgressUpdate(existing, parsed.data as Mission);
-  if (!progressValidation.valid) return NextResponse.json({ error: progressValidation.error }, { status: 409 });
   const now = new Date().toISOString();
   const progressComplete = Boolean(
     parsed.data.progressGoalMinutes &&
     (parsed.data.progressCompletedMinutes ?? 0) >= parsed.data.progressGoalMinutes,
   );
-  const derivedStatus = getMissionStatus(parsed.data as Mission);
+  const derivedStatus = getMissionStatus(parsed.data as Mission, referenceDate);
   const mission = {
     ...parsed.data,
     weight: parsed.data.progressGoalMinutes ? undefined : parsed.data.weight,

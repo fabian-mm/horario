@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMissionProgress, calculateSubjectAverage, getMissionProgress, getMissionStatus, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, getSubjectWeeklyStudyHistory, validateProgressUpdate, type Mission } from "./missions";
+import { addMissionProgress, calculateSubjectAverage, getMissionProgress, getMissionStatus, getSafeClientReferenceDate, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, getSubjectWeeklyStudyHistory, toISODate, validateProgressUpdate, type Mission } from "./missions";
 
 const workMission: Mission = {
   id: "work-1",
@@ -105,5 +105,19 @@ describe("accumulated work progress", () => {
     const arbitraryDate = { ...existing, progressCompletedMinutes: 77, progressEntries: [...existing.progressEntries, { date: "2026-08-10", minutes: 17 }] };
     expect(validateProgressUpdate(existing, localPreviousDay, serverDate)).toEqual({ valid: true });
     expect(validateProgressUpdate(existing, arbitraryDate, serverDate).valid).toBe(false);
+  });
+
+  it("respeta el día límite local aunque Vercel ya esté en el día siguiente UTC", () => {
+    const serverDate = new Date("2026-08-21T01:00:00Z");
+    const localReference = getSafeClientReferenceDate("2026-08-20", serverDate);
+    expect(toISODate(localReference)).toBe("2026-08-20");
+    expect(getMissionStatus(workMission, localReference)).toBe("pending");
+  });
+
+  it("ignora una fecha del cliente que intente extender el plazo", () => {
+    const serverDate = new Date("2026-08-21T12:00:00Z");
+    const reference = getSafeClientReferenceDate("2026-08-10", serverDate);
+    expect(reference).toBe(serverDate);
+    expect(getMissionStatus(workMission, reference)).toBe("failed");
   });
 });

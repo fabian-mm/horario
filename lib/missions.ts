@@ -98,6 +98,13 @@ const getIsoDayDistance = (left: string, right: string) => {
   return Number.isFinite(leftTime) && Number.isFinite(rightTime) ? Math.abs(Math.round((leftTime - rightTime) / 86_400_000)) : Number.POSITIVE_INFINITY;
 };
 
+export const getSafeClientReferenceDate = (clientDate: string | null, referenceDate = new Date()) => {
+  if (!clientDate || !/^\d{4}-\d{2}-\d{2}$/.test(clientDate)) return referenceDate;
+  if (getIsoDayDistance(clientDate, toISODate(referenceDate)) > 1) return referenceDate;
+  const parsed = new Date(`${clientDate}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? referenceDate : parsed;
+};
+
 export const validateProgressUpdate = (existing: Mission | null, incoming: Mission, referenceDate = new Date()): ProgressUpdateValidation => {
   if (!existing) {
     if (isProgressMission(incoming) && (getMissionProgress(incoming).completedMinutes > 0 || (incoming.progressEntries?.length ?? 0) > 0)) {
