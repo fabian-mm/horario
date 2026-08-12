@@ -156,7 +156,7 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
             {!usesProgressGoal && <label>
               Estado
               <select value={form.status ?? "pending"} onChange={(event) => setForm({ ...form, status: event.target.value as MissionStatus })}>
-                {(Object.keys(statusMeta) as MissionStatus[]).map((status) => <option key={status} value={status}>{statusMeta[status].label}</option>)}
+                {(Object.keys(statusMeta) as MissionStatus[]).filter((status) => status !== "failed").map((status) => <option key={status} value={status}>{statusMeta[status].label}</option>)}
               </select>
             </label>}
             <label>Impacto en la materia (%)<input type="number" min="0" max="100" value={form.weight ?? ""} onChange={(event) => setForm({ ...form, weight: event.target.value ? Number(event.target.value) : undefined })} placeholder="Ej. 20" /></label>

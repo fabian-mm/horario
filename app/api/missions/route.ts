@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
 import { getDb } from "@/lib/mongodb";
-import { sortMissionsByDateTime, type Mission } from "@/lib/missions";
+import { getMissionStatus, isFailedProgressMission, sortMissionsByDateTime, type Mission } from "@/lib/missions";
 import { missionSchema } from "@/lib/validation";
 
 type MissionDocument = Mission & { userId: string; createdAt: string; updatedAt: string };
@@ -16,7 +16,11 @@ export async function GET() {
     .project({ _id: 0, userId: 0 })
     .sort({ date: 1, time: 1 })
     .toArray();
-  return NextResponse.json(sortMissionsByDateTime(missions as unknown as Mission[]));
+  return NextResponse.json(sortMissionsByDateTime((missions as unknown as Mission[]).map((mission) => ({
+    ...mission,
+    status: getMissionStatus(mission),
+    completed: getMissionStatus(mission) === "completed",
+  }))));
 }
 
 export async function POST(request: Request) {
@@ -27,23 +31,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "La misión contiene datos inválidos." }, { status: 400 });
   }
 
+  const db = await getDb();
+  const existing = await db.collection<MissionDocument>("missions").findOne({ userId, id: parsed.data.id });
+  if (existing && isFailedProgressMission(existing)) {
+    return NextResponse.json({ error: "Este trabajo venció incompleto y ya no se puede modificar." }, { status: 409 });
+  }
   const now = new Date().toISOString();
   const progressComplete = Boolean(
     parsed.data.progressGoalMinutes &&
     (parsed.data.progressCompletedMinutes ?? 0) >= parsed.data.progressGoalMinutes,
   );
+  const derivedStatus = getMissionStatus(parsed.data as Mission);
   const mission = {
     ...parsed.data,
     completed: parsed.data.progressGoalMinutes
       ? progressComplete
       : parsed.data.status === "completed" || parsed.data.completed,
     status: parsed.data.progressGoalMinutes
-      ? progressComplete ? "completed" as const : "pending" as const
+      ? progressComplete ? "completed" as const : derivedStatus
       : parsed.data.status,
     userId,
     updatedAt: now,
   };
-  const db = await getDb();
   await db.collection<MissionDocument>("missions").updateOne(
     { userId, id: mission.id },
     { $set: mission, $setOnInsert: { createdAt: now } },

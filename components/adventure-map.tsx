@@ -236,8 +236,8 @@ export function AdventureMap({ missions, onAdd, onEdit, onStatusChange, onAddPro
                     <button type="button" className={getMissionStatus(selectedMission) === "completed" ? "active" : ""} onClick={() => onStatusChange(selectedMission.id, "completed")}><Check size={14} /> Cumplida</button>
                   </div>
                 )}
-                <button className="open-objective-button" type="button" onClick={() => onEdit(selectedMission)}>
-                  Abrir ficha completa <ChevronRight size={15} />
+                <button className="open-objective-button" type="button" disabled={getMissionStatus(selectedMission) === "failed"} onClick={() => onEdit(selectedMission)}>
+                  {getMissionStatus(selectedMission) === "failed" ? "Trabajo vencido y bloqueado" : <>Abrir ficha completa <ChevronRight size={15} /></>}
                 </button>
               </div>
             </>

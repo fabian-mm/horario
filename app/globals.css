@@ -489,6 +489,9 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .mission-progress-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }.mission-progress-actions button { display: flex; align-items: center; justify-content: center; gap: 3px; padding: 5px 6px; border: 1px solid color-mix(in srgb, var(--mission-violet) 34%, transparent); border-radius: 5px; color: color-mix(in srgb, var(--mission-violet) 78%, var(--ink)); background: color-mix(in srgb, var(--mission-violet) 10%, var(--paper)); cursor: pointer; font-size: 7px; font-weight: 800; }.mission-progress-actions button:hover { background: color-mix(in srgb, var(--mission-violet) 18%, var(--paper)); }
 .mission-progress.complete { border-color: color-mix(in srgb, var(--mission-sage) 42%, transparent); background: color-mix(in srgb, var(--mission-sage) 10%, var(--paper)); }.mission-progress.complete .mission-progress-track > i { background: var(--mission-sage); }.mission-progress.complete > small { color: var(--mission-sage); font-size: 7px; font-weight: 900; text-align: center; }
 .mission-progress.compact { min-width: 200px; padding: 7px 8px; }
+.mission-progress.failed { border-color: color-mix(in srgb, #b94a42 42%, transparent); background: color-mix(in srgb, #b94a42 8%, var(--paper)); }
+.mission-progress.failed .mission-progress-track > i { background: #b94a42; }
+.mission-progress.failed > small { color: #9f3e38; font-size: 8px; font-weight: 900; text-align: center; }
 .progress-mission-icon { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--mission-violet) 38%, transparent); border-radius: 50%; color: var(--mission-violet); background: color-mix(in srgb, var(--mission-violet) 13%, var(--paper)); }
 .day-progress-objectives { margin: 12px 14px 3px 88px; padding: 10px; border: 1px solid color-mix(in srgb, var(--mission-violet) 30%, transparent); border-radius: 9px; background: color-mix(in srgb, var(--mission-violet) 7%, var(--paper)); }.day-progress-objectives > header { display: flex; align-items: center; gap: 7px; color: var(--mission-violet); }.day-progress-objectives > header div strong, .day-progress-objectives > header div small { display: block; }.day-progress-objectives > header div strong { font-size: 10px; }.day-progress-objectives > header div small { margin-top: 2px; color: var(--ink-soft); font-size: 7px; }.day-progress-objectives > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 7px; margin-top: 8px; }.day-progress-objectives article { min-width: 0; padding: 8px; border: 1px solid var(--line); border-left: 4px solid var(--mission-violet); border-radius: 7px; background: var(--paper); cursor: pointer; }.day-progress-objectives article > strong { display: block; overflow: hidden; margin-bottom: 7px; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .auth-submit { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 2px; }
@@ -580,6 +583,7 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .status-guide i, .status-pill i { width: 7px; height: 7px; border-radius: 50%; background: #bb5645; }
 .status-guide .submitted i, .status-pill.submitted i { background: #c39235; }
 .status-guide .completed i, .status-pill.completed i { background: #4f8a67; }
+.status-guide .failed i, .status-pill.failed i { background: #9f3e38; }
 
 .task-drawer { min-width: 0; align-self: stretch; overflow: hidden; border: 1px solid rgba(126,93,39,.25); border-radius: 11px; background: rgba(255,253,247,.9); box-shadow: 0 14px 40px rgba(34,52,45,.1), inset 0 0 0 3px rgba(189,151,74,.04); }
 .drawer-heading { padding: 23px 22px 17px; border-bottom: 1px solid #e7dfcc; background: linear-gradient(145deg, rgba(242,231,202,.72), rgba(255,253,247,.8)); }
@@ -599,11 +603,21 @@ fieldset { margin: 0; padding: 0; border: 0; }
 .world-task:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(40,56,50,.07); }
 .world-task.submitted { border-left-color: #c39235; }
 .world-task.completed { border-left-color: #4f8a67; background: #f6fbf6; }
+.world-task.failed { border-left-color: #9f3e38; background: color-mix(in srgb, #b94a42 5%, var(--paper)); }
 .task-topline { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .task-reward { margin-left: auto; padding: 2px 5px; border: 1px solid rgba(181,132,46,.16); border-radius: 9px; color: #a37427; background: #fbf3df; font-size: 7px; font-weight: 800; letter-spacing: .05em; white-space: nowrap; }
 .status-pill { display: flex; align-items: center; gap: 5px; color: #a44839; font-size: 8px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
 .status-pill.submitted { color: #9b7028; }
 .status-pill.completed { color: #397552; }
+.status-pill.failed { color: #9f3e38; }
+.world-task.failed .task-title { cursor: not-allowed; opacity: .72; }
+.world-task.failed .task-title h3 { text-decoration: line-through; text-decoration-color: color-mix(in srgb, #9f3e38 55%, transparent); }
+.subject-study-time { display: flex !important; align-items: center; gap: 4px; color: color-mix(in srgb, var(--mission-violet) 78%, var(--ink)) !important; font-weight: 800; }
+.subject-time-summary { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--mission-violet) 24%, transparent); border-radius: 8px; color: var(--mission-violet); background: color-mix(in srgb, var(--mission-violet) 7%, var(--paper)); }
+.subject-time-summary small, .subject-time-summary strong { display: block; }
+.subject-time-summary small { color: var(--ink-soft); font-size: 8px; font-weight: 800; letter-spacing: .08em; }
+.subject-time-summary strong { margin-top: 2px; font-family: "Fraunces Variable", serif; font-size: 17px; }
+.drawer-stats .failed { color: #9f3e38; }
 .task-topline time { display: flex; align-items: center; gap: 4px; color: #8b938e; font-size: 8px; }
 .task-title { width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 0 5px; border: 0; background: transparent; cursor: pointer; text-align: left; }
 .task-title h3 { flex: 1; margin: 0; font-family: "Fraunces Variable", serif; font-size: 15px; }

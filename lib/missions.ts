@@ -2,7 +2,7 @@ import type { WeeklyQuest } from "@/lib/schedule";
 import { getCompletedScheduleCount, getCompletedScheduleXp } from "@/lib/schedule";
 
 export type Priority = "normal" | "important" | "boss";
-export type MissionStatus = "pending" | "submitted" | "completed";
+export type MissionStatus = "pending" | "submitted" | "completed" | "failed";
 
 export type Mission = {
   id: string;
@@ -29,15 +29,22 @@ export const statusMeta: Record<MissionStatus, { label: string; description: str
   pending: { label: "Pendiente", description: "Aún por conquistar" },
   submitted: { label: "Entregada", description: "Esperando resultado" },
   completed: { label: "Cumplida", description: "Misión terminada" },
+  failed: { label: "Fallida", description: "La meta venció incompleta" },
 };
 
-export const getMissionStatus = (mission: Mission): MissionStatus => {
-  if (mission.progressGoalMinutes) return (mission.progressCompletedMinutes ?? 0) >= mission.progressGoalMinutes ? "completed" : "pending";
+export const getMissionStatus = (mission: Mission, referenceDate = new Date()): MissionStatus => {
+  if (mission.progressGoalMinutes) {
+    if ((mission.progressCompletedMinutes ?? 0) >= mission.progressGoalMinutes) return "completed";
+    return mission.date < toISODate(referenceDate) ? "failed" : "pending";
+  }
   return mission.status ?? (mission.completed ? "completed" : "pending");
 };
 
 export const isProgressMission = (mission: Mission) =>
   typeof mission.progressGoalMinutes === "number" && mission.progressGoalMinutes > 0;
+
+export const isFailedProgressMission = (mission: Mission, referenceDate = new Date()) =>
+  isProgressMission(mission) && getMissionStatus(mission, referenceDate) === "failed";
 
 export const getMissionProgress = (mission: Mission) => {
   const goalMinutes = Math.max(0, mission.progressGoalMinutes ?? 0);
@@ -59,7 +66,8 @@ export const formatProgressDuration = (minutes: number) => {
   return `${hours} h ${remainder} min`;
 };
 
-export const addMissionProgress = (mission: Mission, minutes: number): Mission => {
+export const addMissionProgress = (mission: Mission, minutes: number, referenceDate = new Date()): Mission => {
+  if (isFailedProgressMission(mission, referenceDate)) return mission;
   const progress = getMissionProgress(mission);
   if (!progress.goalMinutes) return mission;
   const progressCompletedMinutes = Math.min(
@@ -74,6 +82,9 @@ export const addMissionProgress = (mission: Mission, minutes: number): Mission =
     status: complete ? "completed" : "pending",
   };
 };
+
+export const getSubjectStudyMinutes = (missions: Mission[]) =>
+  missions.reduce((total, mission) => total + (isProgressMission(mission) ? getMissionProgress(mission).completedMinutes : 0), 0);
 
 export type SubjectAverage = {
   average: number | null;

@@ -10,7 +10,7 @@ import { useMissions } from "@/hooks/use-missions";
 import { useSubjects } from "@/hooks/use-subjects";
 import { useTheme } from "@/hooks/use-theme";
 import { useWeeklyQuests } from "@/hooks/use-weekly-quests";
-import { addMissionProgress, calculatePlayerProgress, calculateStreak, formatLongDate, formatProgressDuration, getCrossedXpMilestone, getMissionProgress, getMissionStatus, getMissionXp, getNextXpMilestone, isProgressMission, Mission, Priority, priorityMeta, sortMissionsByDateTime, toISODate } from "@/lib/missions";
+import { addMissionProgress, calculatePlayerProgress, calculateStreak, formatLongDate, formatProgressDuration, getCrossedXpMilestone, getMissionProgress, getMissionStatus, getMissionXp, getNextXpMilestone, isFailedProgressMission, isProgressMission, Mission, Priority, priorityMeta, sortMissionsByDateTime, toISODate } from "@/lib/missions";
 import { getScheduledActivityLabel, getScheduledActivityXp, getScheduledOccurrences, getWeekDates, getWeeklyFreeSlots, ScheduledOccurrence, sortDailyMissionsByTime, weekdayMeta } from "@/lib/schedule";
 import { formatTime12Hour, formatTimeRange12Hour } from "@/lib/time";
 import { resolveActivityType } from "@/lib/activity-types";
@@ -326,7 +326,10 @@ export function MissionPlanner() {
   }, []);
 
   const openNew = (date = selectedDate, subject?: string) => { selectDate(date, { switchToDayView: false }); setDraftSubject(subject); setEditing(null); setModalOpen(true); };
-  const openEdit = (mission: Mission) => { setDraftSubject(undefined); setEditing(mission); setModalOpen(true); };
+  const openEdit = (mission: Mission) => {
+    if (isFailedProgressMission(mission)) return;
+    setDraftSubject(undefined); setEditing(mission); setModalOpen(true);
+  };
   const movePeriod = (amount: number) => {
     if (calendarMode === "month") {
       const next = new Date(month.getFullYear(), month.getMonth() + amount, 1);
@@ -366,7 +369,7 @@ export function MissionPlanner() {
   const monthName = new Intl.DateTimeFormat("es-CO", { month: "long" }).format(month);
   const calendarTitle = calendarMode === "month" ? monthName : calendarMode === "week" ? `semana del ${formatLongDate(toISODate(getWeekDates(selectedDate)[0]))}` : formatLongDate(selectedIso);
   const campaignProgress = missions.length ? Math.round((gameStats.completed / missions.length) * 100) : 0;
-  const nextObjective = useMemo(() => sortMissionsByDateTime(catalogMissions.filter((mission) => getMissionStatus(mission) !== "completed"))[0] ?? null, [catalogMissions]);
+  const nextObjective = useMemo(() => sortMissionsByDateTime(catalogMissions.filter((mission) => getMissionStatus(mission) === "pending"))[0] ?? null, [catalogMissions]);
   const objectiveTiming = useMemo(() => {
     if (!nextObjective) return "Campaña completada";
     const today = new Date();
