@@ -9,10 +9,11 @@ type Props = {
   onAdd?: (minutes: number) => void;
   onStartTimer?: () => void;
   timerActive?: boolean;
+  timerBlocked?: boolean;
   compact?: boolean;
 };
 
-export function MissionProgress({ mission, onAdd, onStartTimer, timerActive = false, compact = false }: Props) {
+export function MissionProgress({ mission, onAdd, onStartTimer, timerActive = false, timerBlocked = false, compact = false }: Props) {
   const progress = getMissionProgress(mission);
   const failed = isFailedProgressMission(mission);
   const [customMinutes, setCustomMinutes] = useState(15);
@@ -32,7 +33,7 @@ export function MissionProgress({ mission, onAdd, onStartTimer, timerActive = fa
         <button type="submit"><Plus size={11} />Sumar</button>
       </form>
     </div>}
-    {onStartTimer && !progress.complete && !failed && <button className={`mission-timer-start ${timerActive ? "active" : ""}`} type="button" disabled={timerActive} onClick={(event) => { event.stopPropagation(); onStartTimer(); }}><Play size={11} />{timerActive ? "Cronómetro activo" : "Iniciar cronómetro"}</button>}
+    {onStartTimer && !progress.complete && !failed && <button className={`mission-timer-start ${timerActive ? "active" : ""}`} type="button" disabled={timerActive || timerBlocked} onClick={(event) => { event.stopPropagation(); onStartTimer(); }}><Play size={11} />{timerActive ? "Cronómetro activo" : timerBlocked ? "Finaliza la sesión actual" : "Iniciar cronómetro"}</button>}
     {progress.complete && <small>Objetivo de horas cumplido</small>}
     {failed && <small>Meta vencida · progreso bloqueado</small>}
   </div>;
