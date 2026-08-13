@@ -29,7 +29,20 @@ const timeMinutes = (value: string) => {
   return hours * 60 + minutes;
 };
 
-export const missionSchema = z.object({
+export const missionOptionalFields = [
+  "missionTypeId",
+  "subjectId",
+  "durationMinutes",
+  "progressGoalMinutes",
+  "progressCompletedMinutes",
+  "progressEntries",
+  "status",
+  "notes",
+  "grade",
+  "weight",
+] as const;
+
+const missionObjectSchema = z.object({
   id: z.string().min(1).max(100),
   title: z.string().trim().min(1).max(180),
   missionTypeId: z.string().min(1).max(100).optional(),
@@ -66,6 +79,15 @@ export const missionSchema = z.object({
     });
   }
 });
+
+export const missionSchema = z.preprocess((input) => {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return input;
+  const mission = { ...input } as Record<string, unknown>;
+  missionOptionalFields.forEach((field) => {
+    if (mission[field] === null) delete mission[field];
+  });
+  return mission;
+}, missionObjectSchema);
 
 const dailyClassQuestSchema = z.object({
   id: z.string().min(1).max(100),

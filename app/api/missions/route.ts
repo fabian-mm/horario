@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
 import { getDb } from "@/lib/mongodb";
 import { getMissionStatus, getSafeClientReferenceDate, isFailedProgressMission, sortMissionsByDateTime, validateProgressUpdate, type Mission } from "@/lib/missions";
-import { missionSchema } from "@/lib/validation";
+import { missionOptionalFields, missionSchema } from "@/lib/validation";
 
 type MissionDocument = Mission & { userId: string; createdAt: string; updatedAt: string };
 
@@ -61,11 +61,21 @@ export async function POST(request: Request) {
     userId,
     updatedAt: now,
   };
+  const missionToStore = Object.fromEntries(
+    Object.entries(mission).filter(([, value]) => value !== undefined),
+  ) as Omit<MissionDocument, "createdAt">;
+  const fieldsToUnset = Object.fromEntries(
+    missionOptionalFields.filter((field) => mission[field] === undefined).map((field) => [field, "" as const]),
+  ) as Record<string, "">;
   await db.collection<MissionDocument>("missions").updateOne(
-    { userId, id: mission.id },
-    { $set: mission, $setOnInsert: { createdAt: now } },
+    { userId, id: missionToStore.id },
+    {
+      $set: missionToStore,
+      $setOnInsert: { createdAt: now },
+      ...(Object.keys(fieldsToUnset).length ? { $unset: fieldsToUnset } : {}),
+    },
     { upsert: true },
   );
-  const { userId: _, ...safeMission } = mission;
+  const { userId: _, ...safeMission } = missionToStore;
   return NextResponse.json(safeMission);
 }

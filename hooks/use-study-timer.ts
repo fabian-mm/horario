@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Mission } from "@/lib/missions";
 import { getMissionProgress } from "@/lib/missions";
 
@@ -21,6 +21,15 @@ export const getStudyTimerResult = (session: StudyTimerSession, endedAt = Date.n
     missionId: session.missionId,
     minutes: Math.max(1, Math.round(elapsedMs / 60_000)),
     trackedAt: endedAt,
+  };
+};
+
+export const pauseStudyTimerSession = (session: StudyTimerSession, pausedAt = Date.now()): StudyTimerSession => {
+  if (!session.startedAt) return session;
+  return {
+    ...session,
+    elapsedMs: Math.min(session.maxElapsedMs, session.elapsedMs + Math.max(0, pausedAt - session.startedAt)),
+    startedAt: null,
   };
 };
 
@@ -48,10 +57,15 @@ const readSession = (userId: string): StudyTimerSession | null => {
 
 export function useStudyTimer(userId?: string | null) {
   const [session, setSession] = useState<StudyTimerSession | null>(null);
+  const sessionRef = useRef<StudyTimerSession | null>(null);
+  const commitSession = useCallback((next: StudyTimerSession | null) => {
+    sessionRef.current = next;
+    setSession(next);
+  }, []);
 
   useEffect(() => {
-    setSession(userId ? readSession(userId) : null);
-  }, [userId]);
+    commitSession(userId ? readSession(userId) : null);
+  }, [commitSession, userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -63,28 +77,65 @@ export function useStudyTimer(userId?: string | null) {
     }
   }, [session, userId]);
 
+  useEffect(() => {
+    if (!userId) return;
+    const pauseBeforeExit = () => {
+      const current = sessionRef.current;
+      if (!current?.startedAt) return;
+      const paused = pauseStudyTimerSession(current);
+      sessionRef.current = paused;
+      try {
+        window.localStorage.setItem(storageKey(userId), JSON.stringify(paused));
+      } catch {
+        // El estado de React conserva la sesión mientras la página siga disponible.
+      }
+      setSession(paused);
+    };
+    const pauseWhenHidden = () => {
+      if (document.visibilityState === "hidden") pauseBeforeExit();
+    };
+    window.addEventListener("pagehide", pauseBeforeExit);
+    window.addEventListener("beforeunload", pauseBeforeExit);
+    document.addEventListener("visibilitychange", pauseWhenHidden);
+    return () => {
+      window.removeEventListener("pagehide", pauseBeforeExit);
+      window.removeEventListener("beforeunload", pauseBeforeExit);
+      document.removeEventListener("visibilitychange", pauseWhenHidden);
+    };
+  }, [userId]);
+
   const start = useCallback((mission: Mission) => {
-    if (session) return false;
+    if (sessionRef.current) return false;
     const progress = getMissionProgress(mission);
     const remainingMinutes = progress.goalMinutes - progress.completedMinutes;
     if (remainingMinutes <= 0) return false;
     const startedAt = Date.now();
-    setSession({ missionId: mission.id, title: mission.title, subject: mission.subject, trackedAt: startedAt, startedAt, elapsedMs: 0, maxElapsedMs: remainingMinutes * 60_000 });
+    commitSession({ missionId: mission.id, title: mission.title, subject: mission.subject, trackedAt: startedAt, startedAt, elapsedMs: 0, maxElapsedMs: remainingMinutes * 60_000 });
     return true;
-  }, [session]);
+  }, [commitSession]);
 
-  const pause = useCallback(() => setSession((current) => current ? {
-    ...current,
-    elapsedMs: Math.min(current.maxElapsedMs, current.elapsedMs + (current.startedAt ? Date.now() - current.startedAt : 0)),
-    startedAt: null,
-  } : null), []);
+  const pause = useCallback(() => {
+    const current = sessionRef.current;
+    if (current) commitSession(pauseStudyTimerSession(current));
+  }, [commitSession]);
 
-  const resume = useCallback(() => setSession((current) => current && !current.startedAt ? { ...current, startedAt: Date.now() } : current), []);
-  const discard = useCallback(() => setSession(null), []);
+  const resume = useCallback(() => {
+    const current = sessionRef.current;
+    if (current && !current.startedAt) commitSession({ ...current, startedAt: Date.now() });
+  }, [commitSession]);
+  const discard = useCallback(() => {
+    commitSession(null);
+    if (!userId) return;
+    try {
+      window.localStorage.removeItem(storageKey(userId));
+    } catch {
+      // El estado en memoria ya fue limpiado.
+    }
+  }, [commitSession, userId]);
   const finish = useCallback((endedAt = Date.now()) => {
-    if (!session) return null;
-    return getStudyTimerResult(session, endedAt);
-  }, [session]);
+    const current = sessionRef.current;
+    return current ? getStudyTimerResult(current, endedAt) : null;
+  }, []);
 
   return { session, start, pause, resume, discard, finish };
 }

@@ -125,4 +125,11 @@ describe("accumulated work progress", () => {
   it("acepta el estado fallido que la API devuelve para un trabajo vencido", () => {
     expect(missionSchema.safeParse({ ...workMission, status: "failed" }).success).toBe(true);
   });
+
+  it("normaliza el impacto nulo heredado sin aceptar otros valores inválidos", () => {
+    const legacy = missionSchema.safeParse({ ...workMission, weight: null });
+    expect(legacy.success).toBe(true);
+    if (legacy.success) expect(legacy.data.weight).toBeUndefined();
+    expect(missionSchema.safeParse({ ...workMission, weight: "alto" }).success).toBe(false);
+  });
 });
