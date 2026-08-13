@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Activity, BookOpen, CalendarRange, Check, ChevronLeft, ChevronRight, ClipboardPaste, Clock3, Copy, MapPin, MoreHorizontal, Pencil, Play, Plus, Power, ScrollText, Settings2, Sparkles, Target, Trash2, X } from "lucide-react";
+import { FormEvent, type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Activity, BookOpen, CalendarRange, Check, ChevronLeft, ChevronRight, ClipboardPaste, Clock3, Copy, GripVertical, LayoutGrid, List, MapPin, MoreHorizontal, Pencil, Play, Plus, Power, ScrollText, Settings2, Sparkles, Target, Trash2, X } from "lucide-react";
 import { ActivityTypesManager } from "@/components/activity-types-manager";
 import type { ActivityType } from "@/lib/activity-types";
 import { findActivityType, resolveActivityType } from "@/lib/activity-types";
@@ -32,6 +32,17 @@ type Props = {
 };
 
 type WeeklyDraft = { title: string; startDate: string; endDate: string };
+type WeeklyViewMode = "day" | "week";
+type TouchDragState = {
+  activityId: string;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  active: boolean;
+  targetDay: Weekday | null;
+  timer: number;
+  card: HTMLElement;
+};
 
 const studyDateFormatter = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short" });
 const getTodayWeekday = () => (((new Date().getDay() + 6) % 7) + 1) as Weekday;
@@ -71,6 +82,13 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
   const [copiedDailyMission, setCopiedDailyMission] = useState<DailyClassQuest | null>(null);
   const [openBubbleActionsId, setOpenBubbleActionsId] = useState<string | null>(null);
   const [weeklyActionFeedback, setWeeklyActionFeedback] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<WeeklyViewMode>("day");
+  const [openWeekDayActions, setOpenWeekDayActions] = useState<Weekday | null>(null);
+  const [draggedDailyMissionId, setDraggedDailyMissionId] = useState<string | null>(null);
+  const [dragOverDay, setDragOverDay] = useState<Weekday | null>(null);
+  const touchDragRef = useRef<TouchDragState | null>(null);
+  const suppressCardClickRef = useRef(false);
+  const weekCardPointerTypeRef = useRef("mouse");
   const normalizedQuery = query.trim().toLocaleLowerCase("es");
   const todayWeekday = getTodayWeekday();
   const selectedWeeklyQuest = weeklyQuests.find((weeklyQuest) => weeklyQuest.id === selectedId) ?? weeklyQuests.find((weeklyQuest) => weeklyQuest.id === focusedWeeklyQuestId) ?? weeklyQuests[0] ?? null;
@@ -176,6 +194,73 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
     onSave({ ...selectedWeeklyQuest, dailyMissions: moveScheduledActivity(selectedWeeklyQuest.dailyMissions, activityId, dayOfWeek) });
     setWeeklyActionFeedback(`${getScheduledActivityLabel(activity)} movida a ${weekdayMeta[dayOfWeek].label}.`);
   };
+  const finishDragging = () => {
+    const touchDrag = touchDragRef.current;
+    if (touchDrag) window.clearTimeout(touchDrag.timer);
+    touchDragRef.current = null;
+    setDraggedDailyMissionId(null);
+    setDragOverDay(null);
+  };
+  const startTouchDrag = (event: ReactPointerEvent<HTMLElement>, activityId: string) => {
+    if (event.pointerType === "mouse") return;
+    const card = event.currentTarget;
+    const touchDrag: TouchDragState = {
+      activityId,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false,
+      targetDay: null,
+      timer: 0,
+      card,
+    };
+    touchDrag.timer = window.setTimeout(() => {
+      if (touchDragRef.current !== touchDrag) return;
+      touchDrag.active = true;
+      suppressCardClickRef.current = true;
+      touchDrag.card.setPointerCapture(touchDrag.pointerId);
+      setDraggedDailyMissionId(activityId);
+      setDragOverDay((selectedWeeklyQuest?.dailyMissions.find((item) => item.id === activityId)?.dayOfWeek) ?? null);
+    }, 280);
+    touchDragRef.current = touchDrag;
+  };
+  const continueTouchDrag = (event: ReactPointerEvent<HTMLElement>) => {
+    const touchDrag = touchDragRef.current;
+    if (!touchDrag || touchDrag.pointerId !== event.pointerId) return;
+    if (!touchDrag.active) {
+      if (Math.hypot(event.clientX - touchDrag.startX, event.clientY - touchDrag.startY) > 12) finishDragging();
+      return;
+    }
+    event.preventDefault();
+    const scrollContainer = touchDrag.card.closest<HTMLElement>(".weekly-week-scroll");
+    if (scrollContainer) {
+      const scrollBounds = scrollContainer.getBoundingClientRect();
+      if (event.clientX < scrollBounds.left + 44) scrollContainer.scrollLeft -= 18;
+      if (event.clientX > scrollBounds.right - 44) scrollContainer.scrollLeft += 18;
+    }
+    const dayColumn = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-weekday]");
+    const targetDay = Number(dayColumn?.dataset.weekday) as Weekday;
+    touchDrag.targetDay = targetDay >= 1 && targetDay <= 7 ? targetDay : null;
+    setDragOverDay(touchDrag.targetDay);
+  };
+  const endTouchDrag = (event: ReactPointerEvent<HTMLElement>) => {
+    const touchDrag = touchDragRef.current;
+    if (!touchDrag || touchDrag.pointerId !== event.pointerId) return;
+    if (touchDrag.active) {
+      event.preventDefault();
+      if (touchDrag.targetDay) moveDaily(touchDrag.activityId, touchDrag.targetDay);
+      window.setTimeout(() => { suppressCardClickRef.current = false; }, 320);
+    }
+    finishDragging();
+  };
+  const openWeekCard = (dailyMission: DailyClassQuest, fromKeyboard: boolean) => {
+    if (suppressCardClickRef.current) return;
+    if (!fromKeyboard && (weekCardPointerTypeRef.current !== "mouse" || window.matchMedia("(hover: none)").matches)) {
+      setOpenBubbleActionsId((current) => current === dailyMission.id ? null : dailyMission.id);
+      return;
+    }
+    openEditDaily(dailyMission);
+  };
 
   useEffect(() => {
     if (!weeklyActionFeedback) return;
@@ -280,9 +365,15 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
         <>
           <section className="weekly-command-bar">
             <div><span className={`weekly-status ${selectedWeeklyQuest.active ? "active" : "paused"}`}><i />{selectedWeeklyQuest.active ? "PROYECTANDO EN EL CALENDARIO" : "RUTINA EN PAUSA"}</span><h2>{selectedWeeklyQuest.title}</h2><p>Desde {selectedWeeklyQuest.startDate}{selectedWeeklyQuest.endDate ? ` hasta ${selectedWeeklyQuest.endDate}` : " · sin fecha final"}</p></div>
-            <div className="weekly-command-actions">
-              <button type="button" onClick={() => onSave({ ...selectedWeeklyQuest, active: !selectedWeeklyQuest.active })}><Power size={15} /> {selectedWeeklyQuest.active ? "Pausar" : "Activar"}</button>
-              <button type="button" onClick={() => openEditWeekly(selectedWeeklyQuest)}><Pencil size={15} /> Editar</button>
+            <div className="weekly-command-tools">
+              <div className="weekly-view-switch" role="group" aria-label="Vista del horario">
+                <button type="button" className={viewMode === "day" ? "active" : ""} aria-pressed={viewMode === "day"} onClick={() => setViewMode("day")}><List size={15} /> Agenda</button>
+                <button type="button" className={viewMode === "week" ? "active" : ""} aria-pressed={viewMode === "week"} onClick={() => setViewMode("week")}><LayoutGrid size={15} /> Semana completa</button>
+              </div>
+              <div className="weekly-command-actions">
+                <button type="button" onClick={() => onSave({ ...selectedWeeklyQuest, active: !selectedWeeklyQuest.active })}><Power size={15} /> {selectedWeeklyQuest.active ? "Pausar" : "Activar"}</button>
+                <button type="button" onClick={() => openEditWeekly(selectedWeeklyQuest)}><Pencil size={15} /> Editar</button>
+              </div>
             </div>
           </section>
 
@@ -297,7 +388,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
             </div>
           )}
 
-          <section className="weekly-planner" aria-label={`Horario de ${selectedWeeklyQuest.title}`}>
+          {viewMode === "day" ? <section className="weekly-planner" aria-label={`Agenda de ${selectedWeeklyQuest.title}`}>
             <nav className="weekly-day-picker" aria-label="Elegir día de la semana">
               {([1, 2, 3, 4, 5, 6, 7] as Weekday[]).map((day) => {
                 const dayClasses = classesByDay.get(day) ?? [];
@@ -351,7 +442,91 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
                 {!selectedDayClasses.length && <div className="weekly-agenda-empty"><CalendarRange size={30} /><h4>{normalizedQuery ? "No hay coincidencias en este día" : `${weekdayMeta[selectedDay].label} está libre`}</h4><p>{normalizedQuery ? "Prueba otra búsqueda o elige otro día." : "Puedes descansar o reservar un bloque para una actividad."}</p>{!normalizedQuery && <button type="button" onClick={() => openNewDaily(selectedDay)}><Plus size={15} /> Agregar actividad</button>}</div>}
               </div>
             </div>
-          </section>
+          </section> : (
+            <section className="weekly-week-view" aria-label={`Semana completa de ${selectedWeeklyQuest.title}`}>
+              <header className="weekly-week-guide">
+                <span><GripVertical size={17} /></span>
+                <div><strong>Mueve actividades sin abrir formularios</strong><small>Mantén pulsada una tarjeta o arrástrala hacia otro día. Tócala para revelar editar y copiar.</small></div>
+              </header>
+              <div className="weekly-week-scroll">
+                <div className="weekly-week-grid">
+                  {([1, 2, 3, 4, 5, 6, 7] as Weekday[]).map((day) => {
+                    const dayClasses = classesByDay.get(day) ?? [];
+                    const isDropTarget = dragOverDay === day && Boolean(draggedDailyMissionId);
+                    return <section
+                      key={day}
+                      className={`weekly-week-day ${todayWeekday === day ? "today" : ""} ${openWeekDayActions === day ? "actions-open" : ""} ${isDropTarget ? "drag-over" : ""}`}
+                      data-weekday={day}
+                      onDragEnter={(event) => { if (draggedDailyMissionId) { event.preventDefault(); setDragOverDay(day); } }}
+                      onDragOver={(event) => { if (draggedDailyMissionId) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } }}
+                      onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverDay((current) => current === day ? null : current); }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        const activityId = event.dataTransfer.getData("text/plain") || draggedDailyMissionId;
+                        if (activityId) moveDaily(activityId, day);
+                        setSelectedDay(day);
+                        finishDragging();
+                      }}
+                    >
+                      <header className="weekly-week-day-heading">
+                        <button type="button" className="weekly-week-day-title" onClick={() => {
+                          setSelectedDay(day);
+                          if (window.matchMedia("(hover: none)").matches) setOpenWeekDayActions((current) => current === day ? null : day);
+                          else setViewMode("day");
+                        }}>
+                          <span>{weekdayMeta[day].short}</span>
+                          <span><strong>{weekdayMeta[day].label}</strong><small>{dayClasses.length ? `${dayClasses.length} ${dayClasses.length === 1 ? "actividad" : "actividades"}` : normalizedQuery ? "Sin coincidencias" : "Día libre"}</small></span>
+                          {todayWeekday === day && <i>HOY</i>}
+                        </button>
+                        <div className="weekly-week-day-actions">
+                          {copiedDailyMission && <button type="button" title={`Pegar en ${weekdayMeta[day].label}`} aria-label={`Pegar actividad en ${weekdayMeta[day].label}`} onClick={() => pasteDaily(day)}><ClipboardPaste size={14} /></button>}
+                          <button type="button" title={`Agregar en ${weekdayMeta[day].label}`} aria-label={`Agregar actividad en ${weekdayMeta[day].label}`} onClick={() => openNewDaily(day)}><Plus size={14} /></button>
+                          <button type="button" title={`Abrir agenda del ${weekdayMeta[day].label.toLocaleLowerCase("es")}`} aria-label={`Abrir agenda del ${weekdayMeta[day].label.toLocaleLowerCase("es")}`} onClick={() => { setSelectedDay(day); setViewMode("day"); }}><List size={14} /></button>
+                        </div>
+                      </header>
+                      <div className="weekly-week-day-body">
+                        {dayClasses.map((dailyMission) => {
+                          const activityType = resolveActivityType(activityTypes, dailyMission.activityTypeId, dailyMission.activityTypeName);
+                          const timeRange = formatTimeRange12Hour(dailyMission.startTime, dailyMission.endTime);
+                          return <article
+                            key={dailyMission.id}
+                            className={`weekly-week-card activity-tone-${activityType.tone} ${openBubbleActionsId === dailyMission.id ? "actions-open" : ""} ${draggedDailyMissionId === dailyMission.id ? "dragging" : ""}`}
+                            draggable
+                            onDragStart={(event) => {
+                              event.dataTransfer.effectAllowed = "move";
+                              event.dataTransfer.setData("text/plain", dailyMission.id);
+                              setDraggedDailyMissionId(dailyMission.id);
+                              setDragOverDay(dailyMission.dayOfWeek);
+                              setOpenBubbleActionsId(null);
+                            }}
+                            onDragEnd={finishDragging}
+                            onPointerDown={(event) => { weekCardPointerTypeRef.current = event.pointerType; startTouchDrag(event, dailyMission.id); }}
+                            onPointerMove={continueTouchDrag}
+                            onPointerUp={endTouchDrag}
+                            onPointerCancel={finishDragging}
+                            onContextMenu={(event) => { if (draggedDailyMissionId === dailyMission.id) event.preventDefault(); }}
+                          >
+                            <button type="button" draggable={false} className="weekly-week-card-main" onClick={(event) => openWeekCard(dailyMission, event.detail === 0)}>
+                              <span className="weekly-week-card-icon">{dailyMission.activityCategory === "class" ? <BookOpen size={15} /> : <Activity size={15} />}</span>
+                              <time>{timeRange}</time>
+                              <strong>{getScheduledActivityLabel(dailyMission)}</strong>
+                              <small>{dailyMission.location || dailyMission.notes || `${dailyMission.activityPoints ?? 10} XP`}</small>
+                            </button>
+                            <div className="weekly-week-card-actions" onPointerDown={(event) => event.stopPropagation()}>
+                              <button type="button" draggable={false} title="Editar" aria-label={`Editar ${getScheduledActivityLabel(dailyMission)}`} onClick={() => openEditDaily(dailyMission)}><Pencil size={13} /></button>
+                              <button type="button" draggable={false} title="Copiar" aria-label={`Copiar ${getScheduledActivityLabel(dailyMission)}`} onClick={() => copyDaily(dailyMission)}><Copy size={13} /></button>
+                              <span title="Arrastra para mover" aria-hidden="true"><GripVertical size={14} /></span>
+                            </div>
+                          </article>;
+                        })}
+                        {!dayClasses.length && <button type="button" className="weekly-week-empty" onClick={() => openNewDaily(day)}><Plus size={15} /><span>{normalizedQuery ? "Sin coincidencias" : "Añadir actividad"}</span></button>}
+                      </div>
+                    </section>;
+                  })}
+                </div>
+              </div>
+            </section>
+          )}
         </>
       ) : (
         <div className="weekly-empty"><CalendarRange size={42} /><h2>{loading ? "Consultando tus rutinas..." : "Crea tu primera misión semanal"}</h2><p>Define desde cuándo se repite y añade las clases que corresponden a cada día.</p>{!loading && <button type="button" onClick={openNewWeekly}>Crear mi horario</button>}</div>

@@ -1852,6 +1852,76 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .weekly-agenda-more-actions button { justify-content: center; }
 }
 
+/* Vista semanal manipulable: conserva la agenda y revela acciones solo al interactuar. */
+.weekly-command-tools { display: flex; align-items: center; gap: 9px; }
+.weekly-view-switch { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: color-mix(in srgb, var(--forest) 5%, var(--paper)); }
+.weekly-view-switch button { min-height: 34px; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 9px; border: 0; border-radius: 6px; color: var(--ink-soft); background: transparent; cursor: pointer; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.weekly-view-switch button:hover { color: var(--forest); }
+.weekly-view-switch button.active { color: white; background: var(--forest); box-shadow: 0 4px 10px color-mix(in srgb, var(--forest) 17%, transparent); }
+
+.weekly-week-view { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--paper) 92%, transparent); box-shadow: 0 10px 26px rgba(42,57,51,.065); }
+.weekly-week-guide { min-height: 54px; display: flex; align-items: center; gap: 10px; padding: 9px 13px; border-bottom: 1px solid var(--line); background: linear-gradient(135deg, color-mix(in srgb, var(--parchment) 62%, var(--paper)), var(--paper)); }
+.weekly-week-guide > span { width: 33px; height: 33px; flex: none; display: grid; place-items: center; border-radius: 9px; color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, var(--paper)); }
+.weekly-week-guide strong, .weekly-week-guide small { display: block; }
+.weekly-week-guide strong { font-size: 12px; }
+.weekly-week-guide small { margin-top: 2px; color: var(--ink-soft); font-size: 10px; }
+.weekly-week-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--gold) 42%, transparent) transparent; }
+.weekly-week-grid { min-width: 840px; display: grid; grid-template-columns: repeat(7, minmax(120px, 1fr)); }
+.weekly-week-day { min-width: 0; min-height: 390px; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 93%, transparent); transition: background .16s ease, box-shadow .16s ease; }
+.weekly-week-day:last-child { border-right: 0; }
+.weekly-week-day.today { background: linear-gradient(180deg, color-mix(in srgb, var(--sage) 7%, var(--paper)), var(--paper) 48%); }
+.weekly-week-day.drag-over { background: color-mix(in srgb, var(--gold) 13%, var(--paper)); box-shadow: inset 0 0 0 2px var(--gold); }
+.weekly-week-day-heading { min-height: 68px; position: relative; display: grid; align-items: stretch; border-bottom: 1px solid var(--line); }
+.weekly-week-day-title { min-width: 0; display: grid; grid-template-columns: 31px minmax(0, 1fr); align-items: center; gap: 7px; padding: 9px 8px; border: 0; color: var(--ink); background: transparent; cursor: pointer; text-align: left; }
+.weekly-week-day-title > span:first-child { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 8px; color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, var(--paper)); font-size: 9px; font-weight: 900; }
+.weekly-week-day-title strong, .weekly-week-day-title small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.weekly-week-day-title strong { font: 700 12px "Fraunces Variable", serif; }
+.weekly-week-day-title small { margin-top: 2px; color: var(--ink-soft); font-size: 8px; }
+.weekly-week-day-title > i { position: absolute; top: 5px; right: 6px; color: var(--sage); font-size: 7px; font-style: normal; font-weight: 900; letter-spacing: .08em; }
+.weekly-week-day-actions { position: absolute; inset: auto 5px 5px auto; z-index: 3; display: flex; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--paper) 96%, transparent); box-shadow: 0 5px 14px rgba(42,57,51,.12); opacity: 0; pointer-events: none; transform: translateY(4px); transition: opacity .14s ease, transform .14s ease; }
+.weekly-week-day:hover .weekly-week-day-actions, .weekly-week-day:focus-within .weekly-week-day-actions, .weekly-week-day.actions-open .weekly-week-day-actions { opacity: 1; pointer-events: auto; transform: none; }
+.weekly-week-day-actions button { width: 29px; height: 29px; display: grid; place-items: center; border: 0; border-radius: 6px; color: var(--ink-soft); background: transparent; cursor: pointer; }
+.weekly-week-day-actions button:hover { color: var(--forest); background: color-mix(in srgb, var(--sage) 12%, var(--paper)); }
+.weekly-week-day-body { min-height: 321px; display: grid; align-content: start; gap: 7px; padding: 7px; }
+
+.weekly-week-card { --activity-accent: var(--mission-sage); min-width: 0; position: relative; border: 1px solid color-mix(in srgb, var(--activity-accent) 29%, var(--line)); border-left: 4px solid var(--activity-accent); border-radius: 9px; background: linear-gradient(125deg, color-mix(in srgb, var(--activity-accent) 11%, var(--paper)), var(--paper) 68%); cursor: grab; box-shadow: 0 3px 8px color-mix(in srgb, var(--activity-accent) 7%, transparent); touch-action: pan-y; transition: border-color .14s ease, box-shadow .14s ease, opacity .14s ease, transform .14s ease; }
+.weekly-week-card:hover, .weekly-week-card:focus-within { border-color: color-mix(in srgb, var(--activity-accent) 62%, var(--line)); box-shadow: 0 7px 17px color-mix(in srgb, var(--activity-accent) 16%, transparent); }
+.weekly-week-card.dragging { opacity: .48; cursor: grabbing; transform: scale(.98); }
+.weekly-week-card-main { width: 100%; min-width: 0; min-height: 91px; display: grid; grid-template-columns: 25px minmax(0, 1fr); grid-template-rows: auto auto auto; align-content: center; column-gap: 7px; padding: 9px 8px; border: 0; color: var(--ink); background: transparent; cursor: inherit; text-align: left; }
+.weekly-week-card-icon { width: 25px; height: 25px; grid-row: 1 / 3; display: grid; place-items: center; border-radius: 7px; color: var(--activity-accent); background: color-mix(in srgb, var(--activity-accent) 13%, var(--paper)); }
+.weekly-week-card time { align-self: end; color: var(--activity-accent); font-size: 8px; font-weight: 850; white-space: nowrap; }
+.weekly-week-card-main > strong { align-self: start; overflow: hidden; font: 700 11px/1.25 "Fraunces Variable", serif; text-overflow: ellipsis; white-space: nowrap; }
+.weekly-week-card-main > small { grid-column: 1 / -1; margin-top: 6px; overflow: hidden; color: var(--ink-soft); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.weekly-week-card-actions { position: absolute; top: 5px; right: 5px; z-index: 2; display: flex; gap: 2px; padding: 2px; border: 1px solid color-mix(in srgb, var(--activity-accent) 25%, var(--line)); border-radius: 7px; background: color-mix(in srgb, var(--paper) 96%, transparent); box-shadow: 0 4px 11px rgba(42,57,51,.13); opacity: 0; pointer-events: none; transform: translateY(-3px); transition: opacity .14s ease, transform .14s ease; }
+.weekly-week-card:hover .weekly-week-card-actions, .weekly-week-card:focus-within .weekly-week-card-actions, .weekly-week-card.actions-open .weekly-week-card-actions { opacity: 1; pointer-events: auto; transform: none; }
+.weekly-week-card-actions button, .weekly-week-card-actions span { width: 25px; height: 25px; display: grid; place-items: center; border: 0; border-radius: 5px; color: var(--ink-soft); background: transparent; }
+.weekly-week-card-actions button { cursor: pointer; }
+.weekly-week-card-actions button:hover { color: var(--activity-accent); background: color-mix(in srgb, var(--activity-accent) 12%, var(--paper)); }
+.weekly-week-card-actions > span { cursor: grab; }
+.weekly-week-empty { min-height: 72px; display: flex; align-items: center; justify-content: center; gap: 5px; border: 1px dashed transparent; border-radius: 8px; color: transparent; background: transparent; cursor: pointer; font-size: 9px; font-weight: 750; }
+.weekly-week-day:hover .weekly-week-empty, .weekly-week-empty:focus-visible, .weekly-week-day.actions-open .weekly-week-empty { border-color: color-mix(in srgb, var(--gold) 30%, transparent); color: var(--gold); background: color-mix(in srgb, var(--gold) 5%, var(--paper)); }
+
+@media (max-width: 980px) {
+  .weekly-command-tools { width: 100%; justify-content: space-between; }
+  .weekly-week-grid { min-width: 1190px; grid-template-columns: repeat(7, 170px); }
+}
+
+@media (max-width: 660px) {
+  .weekly-command-tools { align-items: stretch; flex-direction: column; }
+  .weekly-view-switch { display: grid; grid-template-columns: 1fr 1fr; }
+  .weekly-view-switch button { min-height: 42px; font-size: 11px; }
+  .weekly-week-guide { min-height: 62px; }
+  .weekly-week-guide small { line-height: 1.35; }
+  .weekly-week-grid { min-width: 1316px; grid-template-columns: repeat(7, 188px); }
+  .weekly-week-day { min-height: 420px; }
+  .weekly-week-day-heading { min-height: 72px; }
+  .weekly-week-day-body { min-height: 347px; }
+  .weekly-week-card-main { min-height: 98px; }
+  .weekly-week-card-actions { top: 6px; right: 6px; }
+  .weekly-week-card-actions button, .weekly-week-card-actions span { width: 33px; height: 33px; }
+  .weekly-week-day-actions button { width: 34px; height: 34px; }
+}
+
 /* Misiones de Mundo: materia estable, cola de tareas y una sola misión enfocada. */
 .world-layout.world-hub { min-height: 0; display: block; }
 .world-hub .world-heading { margin-bottom: 16px; }
