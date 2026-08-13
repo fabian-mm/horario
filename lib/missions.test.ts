@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMissionProgress, calculateSubjectAverage, getMissionProgress, getMissionStatus, getSafeClientReferenceDate, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, getSubjectWeeklyStudyHistory, toISODate, validateProgressUpdate, type Mission } from "./missions";
+import { addMissionProgress, calculateSubjectAverage, getAvailableStudyMissions, getMissionProgress, getMissionStatus, getSafeClientReferenceDate, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, getSubjectWeeklyStudyHistory, toISODate, validateProgressUpdate, type Mission } from "./missions";
 import { missionSchema } from "./validation";
 
 const workMission: Mission = {
@@ -17,6 +17,16 @@ const workMission: Mission = {
 };
 
 describe("accumulated work progress", () => {
+  it("muestra en el inicio rápido solo tareas de estudio pendientes y las ordena por vencimiento", () => {
+    const later = { ...workMission, id: "work-later", title: "Lectura guiada", date: "2026-08-22" };
+    const expired = { ...workMission, id: "work-expired", date: "2026-08-18" };
+    const completed = { ...workMission, id: "work-complete", progressCompletedMinutes: 420 };
+    const ordinary = { ...workMission, id: "exam", progressGoalMinutes: undefined };
+    const available = getAvailableStudyMissions([later, expired, completed, ordinary, workMission], "historia", new Date("2026-08-19T12:00:00"));
+    expect(available.map((mission) => mission.id)).toEqual(["work-1", "work-later"]);
+    expect(getAvailableStudyMissions([workMission], "física", new Date("2026-08-19T12:00:00"))).toEqual([]);
+  });
+
   it("suma medias horas y horas sin superar la meta", () => {
     const referenceDate = new Date("2026-08-19T12:00:00");
     const afterHalfHour = addMissionProgress(workMission, 30, referenceDate);

@@ -1692,3 +1692,162 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .treasure-path-active,
   .study-timer-orb { filter: none; }
 }
+
+/* Misiones semanales: iniciar una sesión primero, organizar la rutina después. */
+.weekly-focus-launcher {
+  margin-bottom: 18px;
+  padding: 18px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+  border-radius: 16px;
+  color: var(--paper);
+  background:
+    radial-gradient(circle at 92% 2%, color-mix(in srgb, var(--gold) 24%, transparent), transparent 28%),
+    linear-gradient(135deg, var(--forest-deep), var(--forest));
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--forest-deep) 20%, transparent);
+}
+.weekly-focus-intro { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 12px; margin-bottom: 14px; }
+.weekly-focus-intro > span { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--gold-light) 34%, transparent); border-radius: 12px; color: var(--gold-light); background: color-mix(in srgb, var(--paper) 9%, transparent); }
+.weekly-focus-intro small { color: var(--gold-light); font-size: 10px; font-weight: 900; letter-spacing: .14em; }
+.weekly-focus-intro h2 { margin: 2px 0 1px; color: var(--paper); font-family: "Fraunces Variable", serif; font-size: 22px; }
+.weekly-focus-intro p { margin: 0; color: color-mix(in srgb, var(--paper) 68%, transparent); font-size: 12px; }
+.weekly-focus-content { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(280px, .82fr); gap: 12px; }
+.weekly-focus-primary { min-width: 0; padding: 16px; border: 1px solid color-mix(in srgb, var(--paper) 16%, transparent); border-radius: 13px; color: var(--ink); background: color-mix(in srgb, var(--paper) 96%, white); box-shadow: inset 0 1px white; }
+.weekly-focus-primary-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.weekly-focus-primary-heading > div { min-width: 0; }
+.weekly-focus-primary-heading small { color: var(--gold); font-size: 10px; font-weight: 900; letter-spacing: .1em; }
+.weekly-focus-primary-heading h3 { margin: 4px 0 2px; overflow: hidden; font-family: "Fraunces Variable", serif; font-size: 20px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.weekly-focus-primary-heading p { margin: 0; color: var(--ink-soft); font-size: 12px; }
+.weekly-focus-edit { min-height: 38px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink-soft); background: transparent; cursor: pointer; font-size: 11px; font-weight: 750; }
+.weekly-focus-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 12px; margin: 15px 0 12px; color: var(--ink-soft); font-size: 11px; }
+.weekly-focus-progress span strong { color: var(--ink); font-size: 13px; }
+.weekly-focus-progress > b { color: var(--gold); font-size: 12px; }
+.weekly-focus-progress > div { height: 7px; grid-column: 1 / -1; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--ink-soft) 13%, transparent); }
+.weekly-focus-progress > div i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--sage), var(--gold)); }
+.weekly-start-timer { width: 100%; min-height: 56px; display: grid; grid-template-columns: 38px minmax(0, 1fr); align-items: center; gap: 11px; padding: 8px 13px; border: 0; border-radius: 11px; color: white; background: var(--forest); box-shadow: 0 8px 18px color-mix(in srgb, var(--forest) 20%, transparent); cursor: pointer; text-align: left; }
+.weekly-start-timer:hover:not(:disabled) { background: color-mix(in srgb, var(--forest) 87%, var(--gold)); transform: translateY(-1px); }
+.weekly-start-timer:disabled { cursor: default; opacity: .72; }
+.weekly-start-timer > span:first-child { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; color: var(--forest); background: var(--gold-light); }
+.weekly-start-timer strong, .weekly-start-timer small { display: block; }
+.weekly-start-timer strong { font-size: 14px; }
+.weekly-start-timer small { margin-top: 2px; color: color-mix(in srgb, white 68%, transparent); font-size: 10px; }
+.weekly-focus-queue { min-width: 0; padding: 13px; border: 1px solid color-mix(in srgb, var(--paper) 14%, transparent); border-radius: 13px; background: color-mix(in srgb, var(--paper) 8%, transparent); }
+.weekly-focus-queue > div:first-child { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.weekly-focus-queue > div:first-child strong { color: white; font-size: 13px; }
+.weekly-focus-queue > div:first-child small { color: color-mix(in srgb, var(--paper) 62%, transparent); font-size: 10px; }
+.weekly-focus-list { max-height: 204px; display: grid; gap: 6px; overflow-y: auto; padding-right: 2px; }
+.weekly-focus-list button { min-width: 0; min-height: 58px; position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 9px 10px; border: 1px solid transparent; border-radius: 9px; color: var(--paper); background: color-mix(in srgb, var(--paper) 7%, transparent); cursor: pointer; text-align: left; }
+.weekly-focus-list button:hover, .weekly-focus-list button.active { border-color: color-mix(in srgb, var(--gold-light) 62%, transparent); background: color-mix(in srgb, var(--paper) 14%, transparent); }
+.weekly-focus-list button span { min-width: 0; }
+.weekly-focus-list button strong, .weekly-focus-list button small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.weekly-focus-list button strong { font-size: 12px; }
+.weekly-focus-list button small { margin-top: 3px; color: color-mix(in srgb, var(--paper) 62%, transparent); font-size: 10px; }
+.weekly-focus-list button b { color: var(--gold-light); font-size: 11px; }
+.weekly-focus-list button > i { position: absolute; top: 4px; right: 6px; color: var(--gold-light); font-size: 7px; font-style: normal; font-weight: 900; letter-spacing: .08em; }
+.weekly-focus-empty { min-height: 88px; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 13px; border: 1px dashed color-mix(in srgb, var(--gold-light) 34%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--paper) 7%, transparent); }
+.weekly-focus-empty > svg { color: var(--gold-light); }
+.weekly-focus-empty strong, .weekly-focus-empty small { display: block; }
+.weekly-focus-empty strong { color: white; font-size: 14px; }
+.weekly-focus-empty small { margin-top: 4px; color: color-mix(in srgb, var(--paper) 65%, transparent); font-size: 11px; }
+.weekly-focus-empty button { min-height: 42px; display: flex; align-items: center; gap: 6px; padding: 0 13px; border: 1px solid color-mix(in srgb, var(--gold-light) 50%, transparent); border-radius: 9px; color: var(--forest-deep); background: var(--gold-light); cursor: pointer; font-size: 11px; font-weight: 800; }
+
+.weekly-planner { display: grid; grid-template-columns: minmax(190px, 230px) minmax(0, 1fr); gap: 12px; }
+.weekly-day-picker { display: grid; align-content: start; gap: 6px; }
+.weekly-day-picker button { min-width: 0; min-height: 62px; position: relative; display: grid; grid-template-columns: 31px minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; column-gap: 9px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: color-mix(in srgb, var(--paper) 90%, transparent); cursor: pointer; text-align: left; }
+.weekly-day-picker button > span { width: 31px; height: 31px; grid-row: 1 / 3; display: grid; place-items: center; border-radius: 8px; color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, var(--paper)); font-size: 10px; font-weight: 900; }
+.weekly-day-picker button strong { align-self: end; font-family: "Fraunces Variable", serif; font-size: 13px; }
+.weekly-day-picker button small { align-self: start; overflow: hidden; color: var(--ink-soft); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.weekly-day-picker button > i { position: absolute; top: 6px; right: 7px; color: var(--sage); font-size: 7px; font-style: normal; font-weight: 900; letter-spacing: .08em; }
+.weekly-day-picker button:hover { border-color: color-mix(in srgb, var(--gold) 45%, transparent); }
+.weekly-day-picker button.active { border-color: var(--gold); background: linear-gradient(135deg, color-mix(in srgb, var(--gold) 12%, var(--paper)), var(--paper)); box-shadow: inset 4px 0 var(--gold), 0 6px 18px color-mix(in srgb, var(--gold) 10%, transparent); }
+.weekly-day-picker button.today:not(.active) { border-color: color-mix(in srgb, var(--sage) 40%, transparent); }
+.weekly-day-agenda { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--paper) 92%, transparent); box-shadow: 0 10px 26px rgba(42,57,51,.065); }
+.weekly-day-agenda-heading { min-height: 84px; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: linear-gradient(135deg, color-mix(in srgb, var(--parchment) 62%, var(--paper)), var(--paper)); }
+.weekly-day-navigation { display: grid; grid-template-columns: 36px minmax(130px, 1fr) 36px; align-items: center; gap: 10px; }
+.weekly-day-navigation > button { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 9px; color: var(--ink-soft); background: color-mix(in srgb, var(--paper) 85%, transparent); cursor: pointer; }
+.weekly-day-navigation > button:disabled { opacity: .3; cursor: default; }
+.weekly-day-navigation span { color: var(--gold); font-size: 9px; font-weight: 900; letter-spacing: .12em; }
+.weekly-day-navigation h3 { margin: 1px 0; font-family: "Fraunces Variable", serif; font-size: 21px; }
+.weekly-day-navigation p { margin: 0; color: var(--ink-soft); font-size: 10px; }
+.weekly-day-heading-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.weekly-day-heading-actions button { min-height: 40px; display: flex; align-items: center; gap: 6px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink-soft); background: color-mix(in srgb, var(--paper) 88%, transparent); cursor: pointer; font-size: 11px; font-weight: 750; }
+.weekly-day-heading-actions .paste-day-button { color: var(--forest); border-color: color-mix(in srgb, var(--sage) 35%, transparent); background: color-mix(in srgb, var(--sage) 10%, var(--paper)); }
+.weekly-day-heading-actions .primary-day-action { color: white; border-color: var(--forest); background: var(--forest); }
+.weekly-agenda-list { min-height: 330px; display: grid; align-content: start; gap: 9px; padding: 13px; }
+.weekly-agenda-item { --activity-accent: var(--mission-sage); min-width: 0; position: relative; display: grid; grid-template-columns: 88px 42px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 12px 13px; border: 1px solid color-mix(in srgb, var(--activity-accent) 26%, var(--line)); border-left: 5px solid var(--activity-accent); border-radius: 11px; background: linear-gradient(105deg, color-mix(in srgb, var(--activity-accent) 9%, var(--paper)), var(--paper) 52%); }
+.weekly-agenda-item > time { min-width: 0; display: grid; grid-template-columns: 14px minmax(0, 1fr); color: var(--activity-accent); }
+.weekly-agenda-item > time svg { grid-row: 1 / 3; margin-top: 2px; }
+.weekly-agenda-item > time strong, .weekly-agenda-item > time small { display: block; }
+.weekly-agenda-item > time strong { font-size: 12px; }
+.weekly-agenda-item > time small { color: var(--ink-soft); font-size: 10px; }
+.weekly-agenda-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 10px; color: var(--activity-accent); background: color-mix(in srgb, var(--activity-accent) 13%, var(--paper)); }
+.weekly-agenda-copy { min-width: 0; }
+.weekly-agenda-copy > span { color: var(--activity-accent); font-size: 8px; font-weight: 900; letter-spacing: .1em; }
+.weekly-agenda-copy > strong { display: block; margin: 2px 0 3px; overflow: hidden; font-family: "Fraunces Variable", serif; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.weekly-agenda-copy > small { display: flex; align-items: center; gap: 4px; overflow: hidden; color: var(--ink-soft); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.weekly-agenda-xp { display: flex; align-items: center; gap: 3px; padding: 5px 7px; border-radius: 999px; color: var(--activity-accent); background: color-mix(in srgb, var(--activity-accent) 11%, var(--paper)); font-size: 10px; white-space: nowrap; }
+.weekly-agenda-actions { display: flex; gap: 5px; }
+.weekly-agenda-actions button { min-height: 38px; display: flex; align-items: center; gap: 5px; padding: 0 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink-soft); background: var(--paper); cursor: pointer; font-size: 10px; font-weight: 750; }
+.weekly-agenda-actions button.more { width: 38px; justify-content: center; padding: 0; }
+.weekly-agenda-more-actions { grid-column: 3 / -1; display: flex; justify-content: flex-end; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.weekly-agenda-more-actions button { min-height: 36px; display: flex; align-items: center; gap: 5px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink-soft); background: color-mix(in srgb, var(--paper) 90%, transparent); cursor: pointer; font-size: 10px; font-weight: 700; }
+.weekly-agenda-more-actions button:disabled { opacity: .35; cursor: default; }
+.weekly-agenda-empty { min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; color: var(--ink-soft); text-align: center; }
+.weekly-agenda-empty > svg { color: color-mix(in srgb, var(--gold) 70%, var(--ink-soft)); }
+.weekly-agenda-empty h4 { margin: 11px 0 3px; color: var(--ink); font: 700 19px "Fraunces Variable", serif; }
+.weekly-agenda-empty p { margin: 0; font-size: 11px; }
+.weekly-agenda-empty button { min-height: 40px; display: flex; align-items: center; gap: 5px; margin-top: 14px; padding: 0 13px; border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent); border-radius: 9px; color: var(--gold); background: color-mix(in srgb, var(--gold) 7%, var(--paper)); cursor: pointer; font-size: 11px; font-weight: 800; }
+
+@media (max-width: 980px) {
+  .weekly-focus-content { grid-template-columns: 1fr; }
+  .weekly-focus-list { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 150px; }
+  .weekly-planner { grid-template-columns: 1fr; }
+  .weekly-day-picker { display: flex; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+  .weekly-day-picker button { min-width: 155px; }
+  .weekly-day-agenda-heading { align-items: flex-start; flex-direction: column; }
+  .weekly-day-heading-actions { width: 100%; justify-content: flex-start; }
+  .weekly-agenda-item { grid-template-columns: 78px 38px minmax(0, 1fr) auto; }
+  .weekly-agenda-icon { width: 38px; height: 38px; }
+  .weekly-agenda-xp { grid-column: 3; width: fit-content; }
+  .weekly-agenda-actions { grid-column: 4; grid-row: 1 / 3; }
+  .weekly-agenda-more-actions { grid-column: 3 / -1; }
+}
+
+@media (max-width: 660px) {
+  .weekly-focus-launcher { margin-bottom: 14px; padding: 13px; border-radius: 14px; }
+  .weekly-focus-intro { grid-template-columns: 39px minmax(0, 1fr); margin-bottom: 11px; }
+  .weekly-focus-intro > span { width: 39px; height: 39px; }
+  .weekly-focus-intro h2 { font-size: 19px; }
+  .weekly-focus-intro p { display: none; }
+  .weekly-focus-primary { padding: 13px; }
+  .weekly-focus-primary-heading { display: block; }
+  .weekly-focus-primary-heading h3 { font-size: 18px; }
+  .weekly-focus-edit { min-height: 36px; margin-top: 10px; }
+  .weekly-start-timer { min-height: 60px; }
+  .weekly-focus-list { display: flex; max-height: none; overflow-x: auto; }
+  .weekly-focus-list button { min-width: 225px; }
+  .weekly-focus-empty { grid-template-columns: 35px minmax(0, 1fr); }
+  .weekly-focus-empty button { grid-column: 1 / -1; justify-content: center; }
+  .weekly-day-picker button { min-width: 138px; min-height: 66px; }
+  .weekly-day-agenda-heading { padding: 12px; }
+  .weekly-day-navigation { width: 100%; grid-template-columns: 40px minmax(0, 1fr) 40px; }
+  .weekly-day-navigation > button { width: 40px; height: 40px; }
+  .weekly-day-heading-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .weekly-day-heading-actions button { justify-content: center; }
+  .weekly-day-heading-actions button:first-child:last-child,
+  .weekly-day-heading-actions .primary-day-action:last-child { grid-column: 1 / -1; }
+  .weekly-agenda-list { min-height: 290px; padding: 10px; }
+  .weekly-agenda-item { grid-template-columns: 64px 36px minmax(0, 1fr) 40px; gap: 8px; padding: 11px 9px; }
+  .weekly-agenda-item > time { grid-template-columns: 1fr; }
+  .weekly-agenda-item > time svg { display: none; }
+  .weekly-agenda-icon { width: 36px; height: 36px; }
+  .weekly-agenda-copy > strong { font-size: 14px; }
+  .weekly-agenda-copy > small { font-size: 9px; }
+  .weekly-agenda-xp { grid-column: 2 / 4; margin-left: 44px; }
+  .weekly-agenda-actions { grid-column: 4; grid-row: 1 / 3; }
+  .weekly-agenda-actions button:first-child { display: none; }
+  .weekly-agenda-actions button.more { width: 40px; min-height: 42px; }
+  .weekly-agenda-more-actions { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; }
+  .weekly-agenda-more-actions button:first-child { grid-column: 1 / -1; justify-content: center; }
+  .weekly-agenda-more-actions button { justify-content: center; }
+}

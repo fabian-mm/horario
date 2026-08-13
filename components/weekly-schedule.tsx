@@ -1,7 +1,7 @@
 "use client";
 
-import { DragEvent, FormEvent, PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Activity, BookOpen, CalendarRange, Check, ChevronLeft, ChevronRight, ClipboardPaste, Clock3, Copy, GripVertical, MapPin, Pencil, Plus, Power, ScrollText, Settings2, Sparkles, Trash2, X } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Activity, BookOpen, CalendarRange, Check, ChevronLeft, ChevronRight, ClipboardPaste, Clock3, Copy, MapPin, MoreHorizontal, Pencil, Play, Plus, Power, ScrollText, Settings2, Sparkles, Target, Trash2, X } from "lucide-react";
 import { ActivityTypesManager } from "@/components/activity-types-manager";
 import type { ActivityType } from "@/lib/activity-types";
 import { findActivityType, resolveActivityType } from "@/lib/activity-types";
@@ -10,6 +10,7 @@ import { findSubject, Subject } from "@/lib/subjects";
 import { TimeField } from "@/components/time-field";
 import { formatTimeRange12Hour, isTimeBlockWithinDay, shiftTime, timeToMinutes } from "@/lib/time";
 import { QuestTypeCards } from "@/components/quest-type-cards";
+import { formatProgressDuration, getAvailableStudyMissions, getMissionProgress, type Mission } from "@/lib/missions";
 
 type Props = {
   weeklyQuests: WeeklyQuest[];
@@ -17,7 +18,13 @@ type Props = {
   focusedWeeklyQuestId?: string | null;
   subjects: Subject[];
   activityTypes: ActivityType[];
+  missions: Mission[];
+  query?: string;
+  activeTimerMissionId?: string;
   onManageSubjects: () => void;
+  onOpenMission: (mission: Mission) => void;
+  onCreateMission: () => void;
+  onStartTimer: (mission: Mission) => void;
   onSave: (weeklyQuest: WeeklyQuest) => void;
   onDelete: (id: string) => void;
   onSaveActivityType: (activityType: ActivityType) => Promise<ActivityType | null>;
@@ -25,6 +32,9 @@ type Props = {
 };
 
 type WeeklyDraft = { title: string; startDate: string; endDate: string };
+
+const studyDateFormatter = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short" });
+const getTodayWeekday = () => (((new Date().getDay() + 6) % 7) + 1) as Weekday;
 
 const emptyDailyQuest = (dayOfWeek: Weekday = 1, subjects: Subject[] = [], activityTypes: ActivityType[] = []): DailyClassQuest => {
   const type = activityTypes[0];
@@ -47,8 +57,10 @@ const emptyDailyQuest = (dayOfWeek: Weekday = 1, subjects: Subject[] = [], activ
   });
 };
 
-export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, subjects, activityTypes, onManageSubjects, onSave, onDelete, onSaveActivityType, onDeleteActivityType }: Props) {
+export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, subjects, activityTypes, missions, query = "", activeTimerMissionId, onManageSubjects, onOpenMission, onCreateMission, onStartTimer, onSave, onDelete, onSaveActivityType, onDeleteActivityType }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<Weekday>(getTodayWeekday);
+  const [selectedFocusMissionId, setSelectedFocusMissionId] = useState<string | null>(null);
   const [weeklyModalOpen, setWeeklyModalOpen] = useState(false);
   const [weeklyEditing, setWeeklyEditing] = useState<WeeklyQuest | null>(null);
   const [weeklyDraft, setWeeklyDraft] = useState<WeeklyDraft>({ title: "Mi horario semanal", startDate: getMondayIso(), endDate: "" });
@@ -57,23 +69,27 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
   const [typesModalOpen, setTypesModalOpen] = useState(false);
   const [dailyFormError, setDailyFormError] = useState<string | null>(null);
   const [copiedDailyMission, setCopiedDailyMission] = useState<DailyClassQuest | null>(null);
-  const [draggedDailyMissionId, setDraggedDailyMissionId] = useState<string | null>(null);
-  const [dragOverDay, setDragOverDay] = useState<Weekday | null>(null);
   const [openBubbleActionsId, setOpenBubbleActionsId] = useState<string | null>(null);
   const [weeklyActionFeedback, setWeeklyActionFeedback] = useState<string | null>(null);
-  const pointerDragIdRef = useRef<string | null>(null);
-  const pointerDragTargetRef = useRef<Weekday | null>(null);
-  const pointerDragStartRef = useRef<{ x: number; y: number } | null>(null);
-  const pointerDragMovedRef = useRef(false);
+  const normalizedQuery = query.trim().toLocaleLowerCase("es");
+  const todayWeekday = getTodayWeekday();
   const selectedWeeklyQuest = weeklyQuests.find((weeklyQuest) => weeklyQuest.id === selectedId) ?? weeklyQuests.find((weeklyQuest) => weeklyQuest.id === focusedWeeklyQuestId) ?? weeklyQuests[0] ?? null;
   const classesByDay = useMemo(() => {
     const grouped = new Map<Weekday, DailyClassQuest[]>();
     ([1, 2, 3, 4, 5, 6, 7] as Weekday[]).forEach((day) => grouped.set(day, []));
-    const orderedDailyMissions = selectedWeeklyQuest ? sortDailyMissionsByTime(selectedWeeklyQuest.dailyMissions) : [];
+    const orderedDailyMissions = selectedWeeklyQuest ? sortDailyMissionsByTime(selectedWeeklyQuest.dailyMissions).filter((dailyMission) => !normalizedQuery || `${dailyMission.title} ${dailyMission.subject ?? ""} ${dailyMission.activityTypeName ?? ""} ${dailyMission.location ?? ""}`.toLocaleLowerCase("es").includes(normalizedQuery)) : [];
     orderedDailyMissions.forEach((dailyMission) => grouped.get(dailyMission.dayOfWeek)?.push(dailyMission));
     grouped.forEach((classes, day) => grouped.set(day, sortDailyMissionsByTime(classes)));
     return grouped;
-  }, [selectedWeeklyQuest]);
+  }, [normalizedQuery, selectedWeeklyQuest]);
+  const studyMissions = useMemo(() => getAvailableStudyMissions(missions, normalizedQuery), [missions, normalizedQuery]);
+  const selectedFocusMission = studyMissions.find((mission) => mission.id === selectedFocusMissionId)
+    ?? studyMissions.find((mission) => mission.id === activeTimerMissionId)
+    ?? studyMissions[0]
+    ?? null;
+  const selectedFocusProgress = selectedFocusMission ? getMissionProgress(selectedFocusMission) : null;
+  const selectedDayClasses = classesByDay.get(selectedDay) ?? [];
+  const selectedDayMinutes = selectedDayClasses.reduce((total, activity) => total + Math.max(0, (timeToMinutes(activity.endTime) ?? 0) - (timeToMinutes(activity.startTime) ?? 0)), 0);
 
   const openNewWeekly = () => {
     setWeeklyEditing(null);
@@ -160,66 +176,6 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
     onSave({ ...selectedWeeklyQuest, dailyMissions: moveScheduledActivity(selectedWeeklyQuest.dailyMissions, activityId, dayOfWeek) });
     setWeeklyActionFeedback(`${getScheduledActivityLabel(activity)} movida a ${weekdayMeta[dayOfWeek].label}.`);
   };
-  const startDraggingDaily = (event: DragEvent<HTMLElement>, dailyMission: DailyClassQuest) => {
-    setOpenBubbleActionsId(null);
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", dailyMission.id);
-    setDraggedDailyMissionId(dailyMission.id);
-    setDragOverDay(dailyMission.dayOfWeek);
-  };
-  const dropDaily = (event: DragEvent<HTMLElement>, dayOfWeek: Weekday) => {
-    event.preventDefault();
-    const activityId = event.dataTransfer.getData("text/plain") || draggedDailyMissionId;
-    if (activityId) moveDaily(activityId, dayOfWeek);
-    setDraggedDailyMissionId(null);
-    setDragOverDay(null);
-  };
-  const startPointerDragging = (event: ReactPointerEvent<HTMLButtonElement>, dailyMission: DailyClassQuest) => {
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    pointerDragIdRef.current = dailyMission.id;
-    pointerDragTargetRef.current = dailyMission.dayOfWeek;
-    pointerDragStartRef.current = { x: event.clientX, y: event.clientY };
-    pointerDragMovedRef.current = false;
-    setDraggedDailyMissionId(dailyMission.id);
-    setDragOverDay(dailyMission.dayOfWeek);
-  };
-  const updatePointerDragging = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (!pointerDragIdRef.current) return;
-    event.preventDefault();
-    const start = pointerDragStartRef.current;
-    if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) pointerDragMovedRef.current = true;
-    const dayElement = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-weekday]") as HTMLElement | null;
-    const day = Number(dayElement?.dataset.weekday) as Weekday;
-    if (day >= 1 && day <= 7) {
-      pointerDragTargetRef.current = day;
-      setDragOverDay(day);
-    }
-  };
-  const finishPointerDragging = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    const activityId = pointerDragIdRef.current;
-    if (activityId && pointerDragMovedRef.current && pointerDragTargetRef.current) moveDaily(activityId, pointerDragTargetRef.current);
-    if (activityId && !pointerDragMovedRef.current) setOpenBubbleActionsId((current) => current === activityId ? null : activityId);
-    pointerDragIdRef.current = null;
-    pointerDragTargetRef.current = null;
-    pointerDragStartRef.current = null;
-    pointerDragMovedRef.current = false;
-    setDraggedDailyMissionId(null);
-    setDragOverDay(null);
-  };
-  const cancelPointerDragging = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    pointerDragIdRef.current = null;
-    pointerDragTargetRef.current = null;
-    pointerDragStartRef.current = null;
-    pointerDragMovedRef.current = false;
-    setDraggedDailyMissionId(null);
-    setDragOverDay(null);
-  };
 
   useEffect(() => {
     if (!weeklyActionFeedback) return;
@@ -261,9 +217,54 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
   return (
     <div className="weekly-schedule-view">
       <header className="weekly-heading">
-        <div><span className="eyebrow">RUTINAS DEL GREMIO</span><h1>Misiones <i>Semanales</i></h1><p>Convierte clases, estudio, deporte y tus rutinas en una campaña recurrente.</p></div>
+        <div><span className="eyebrow">CENTRO DE ENFOQUE</span><h1>Misiones <i>Semanales</i></h1><p>Elige qué vas a trabajar, inicia el cronómetro y organiza tu rutina sin cambiar de pantalla.</p></div>
         <div className="weekly-heading-actions"><button className="secondary-button compact" type="button" onClick={() => setTypesModalOpen(true)}><Settings2 size={16} /> Tipos y XP</button><button className="primary-button compact" type="button" onClick={openNewWeekly}><Plus size={18} /> Nueva semana</button></div>
       </header>
+
+      <section className="weekly-focus-launcher" aria-labelledby="weekly-focus-title">
+        <div className="weekly-focus-intro">
+          <span><Target size={17} /></span>
+          <div><small>EMPIEZA SIN BUSCAR</small><h2 id="weekly-focus-title">Tu próxima sesión de estudio</h2><p>Selecciona una tarea y activa el cronómetro desde aquí.</p></div>
+        </div>
+        {selectedFocusMission && selectedFocusProgress ? (
+          <div className="weekly-focus-content">
+            <article className="weekly-focus-primary">
+              <div className="weekly-focus-primary-heading">
+                <div><small>{activeTimerMissionId === selectedFocusMission.id ? "SESIÓN EN CURSO" : "LISTA PARA CONTINUAR"}</small><h3>{selectedFocusMission.title}</h3><p>{selectedFocusMission.subject} · vence {studyDateFormatter.format(new Date(`${selectedFocusMission.date}T12:00:00`))}</p></div>
+                <button type="button" className="weekly-focus-edit" onClick={() => onOpenMission(selectedFocusMission)}><Pencil size={14} /> Ver tarea</button>
+              </div>
+              <div className="weekly-focus-progress">
+                <span><strong>{formatProgressDuration(selectedFocusProgress.completedMinutes)}</strong> de {formatProgressDuration(selectedFocusProgress.goalMinutes)}</span>
+                <b>{selectedFocusProgress.percentage}%</b>
+                <div><i style={{ width: `${selectedFocusProgress.percentage}%` }} /></div>
+              </div>
+              <button className="weekly-start-timer" type="button" disabled={Boolean(activeTimerMissionId)} onClick={() => onStartTimer(selectedFocusMission)}>
+                <span><Play size={18} /></span>
+                <span><strong>{activeTimerMissionId === selectedFocusMission.id ? "Cronómetro en curso" : activeTimerMissionId ? "Termina la sesión actual" : "Iniciar ahora"}</strong><small>El tiempo se guardará en esta tarea</small></span>
+              </button>
+            </article>
+            <div className="weekly-focus-queue" aria-label="Tareas de estudio disponibles">
+              <div><strong>Cola de estudio</strong><small>{studyMissions.length} {studyMissions.length === 1 ? "tarea disponible" : "tareas disponibles"}</small></div>
+              <div className="weekly-focus-list">
+                {studyMissions.slice(0, 6).map((mission) => {
+                  const progress = getMissionProgress(mission);
+                  return <button key={mission.id} type="button" className={selectedFocusMission.id === mission.id ? "active" : ""} onClick={() => setSelectedFocusMissionId(mission.id)}>
+                    <span><strong>{mission.title}</strong><small>{mission.subject} · {formatProgressDuration(progress.goalMinutes - progress.completedMinutes)} restantes</small></span>
+                    <b>{progress.percentage}%</b>
+                    {activeTimerMissionId === mission.id && <i>EN CURSO</i>}
+                  </button>;
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="weekly-focus-empty">
+            <Clock3 size={24} />
+            <div><strong>{normalizedQuery ? "No hay tareas de estudio que coincidan" : "No tienes tareas de estudio pendientes"}</strong><small>{normalizedQuery ? "Prueba otra búsqueda para iniciar una sesión." : "Crea una meta por horas y aparecerá aquí lista para iniciar."}</small></div>
+            {!normalizedQuery && <button type="button" onClick={onCreateMission}><Plus size={15} /> Crear tarea de estudio</button>}
+          </div>
+        )}
+      </section>
 
       <div className="weekly-quest-tabs" aria-label="Misiones semanales">
         {weeklyQuests.map((weeklyQuest) => (
@@ -296,71 +297,60 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
             </div>
           )}
 
-          <section className="weekly-board" aria-label={`Horario de ${selectedWeeklyQuest.title}`}>
-            {([1, 2, 3, 4, 5, 6, 7] as Weekday[]).map((day) => {
-              const dayClasses = sortDailyMissionsByTime(classesByDay.get(day) ?? []);
-              return (
-                <div
-                  className={`schedule-day ${day > 5 ? "weekend" : ""} ${dragOverDay === day ? "drag-over" : ""}`}
-                  key={day}
-                  data-weekday={day}
-                  onDragEnter={() => draggedDailyMissionId && setDragOverDay(day)}
-                  onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }}
-                  onDrop={(event) => dropDaily(event, day)}
-                >
-                  <header>
-                    <div><span>{weekdayMeta[day].short}</span><strong>{weekdayMeta[day].label}</strong></div>
-                    <div className="schedule-day-actions">
-                      {copiedDailyMission && <button className="paste-day-button" type="button" onClick={() => pasteDaily(day)} aria-label={`Pegar ${getScheduledActivityLabel(copiedDailyMission)} el ${weekdayMeta[day].label}`} title="Pegar actividad"><ClipboardPaste size={15} /><span>Pegar</span></button>}
-                      {!!dayClasses.length && <button type="button" onClick={() => openNewDaily(day)} aria-label={`Agregar actividad el ${weekdayMeta[day].label}`} title="Agregar actividad"><Plus size={15} /></button>}
-                    </div>
-                  </header>
-                  <div className="schedule-day-list chronological">
-                    {dayClasses.map((dailyMission) => (
-                      <article
-                        key={dailyMission.id}
-                        className={`weekly-activity-bubble ${draggedDailyMissionId === dailyMission.id ? "dragging" : ""} ${openBubbleActionsId === dailyMission.id ? "actions-open" : ""}`}
-                        draggable
-                        onDragStart={(event) => startDraggingDaily(event, dailyMission)}
-                        onDragEnd={() => { setDraggedDailyMissionId(null); setDragOverDay(null); }}
-                      >
-                        <button type="button" className={`daily-class-card activity-tone-${resolveActivityType(activityTypes, dailyMission.activityTypeId, dailyMission.activityTypeName).tone}`} onClick={() => openEditDaily(dailyMission)}>
-                          <span className="class-time"><Clock3 size={11} />{formatTimeRange12Hour(dailyMission.startTime, dailyMission.endTime)}</span>
-                          <strong className="scheduled-activity-name">{getScheduledActivityLabel(dailyMission)}</strong>
-                          <small className="scheduled-activity-caption">{dailyMission.activityCategory === "class" ? "ACTIVIDAD · MATERIA" : "ACTIVIDAD GENERAL"}</small>
-                          <b className="schedule-xp"><Sparkles size={10} />+{dailyMission.activityPoints ?? 10} XP</b>
-                          {dailyMission.location && <span className="class-location"><MapPin size={10} />{dailyMission.location}</span>}
-                        </button>
-                        <button
-                          type="button"
-                          className="bubble-drag-handle"
-                          draggable={false}
-                          onPointerDown={(event) => startPointerDragging(event, dailyMission)}
-                          onPointerMove={updatePointerDragging}
-                          onPointerUp={finishPointerDragging}
-                          onPointerCancel={cancelPointerDragging}
-                          onKeyDown={(event) => {
-                            if (event.key !== "Enter" && event.key !== " ") return;
-                            event.preventDefault();
-                            setOpenBubbleActionsId((current) => current === dailyMission.id ? null : dailyMission.id);
-                          }}
-                          aria-expanded={openBubbleActionsId === dailyMission.id}
-                          aria-controls={`bubble-actions-${dailyMission.id}`}
-                          aria-label={`Mover o mostrar opciones de ${getScheduledActivityLabel(dailyMission)}`}
-                          title="Arrastra para mover · pulsa para ver opciones"
-                        ><GripVertical size={17} /></button>
-                        <div id={`bubble-actions-${dailyMission.id}`} className="bubble-actions" aria-label={`Acciones para ${getScheduledActivityLabel(dailyMission)}`}>
-                          <button type="button" onClick={() => copyDaily(dailyMission)} aria-label={`Copiar ${getScheduledActivityLabel(dailyMission)}`} title="Copiar"><Copy size={14} /><span>Copiar</span></button>
-                          <button type="button" disabled={dailyMission.dayOfWeek === 1} onClick={() => moveDaily(dailyMission.id, (dailyMission.dayOfWeek - 1) as Weekday)} aria-label={`Mover ${getScheduledActivityLabel(dailyMission)} al día anterior`} title="Mover al día anterior"><ChevronLeft size={15} /></button>
-                          <button type="button" disabled={dailyMission.dayOfWeek === 7} onClick={() => moveDaily(dailyMission.id, (dailyMission.dayOfWeek + 1) as Weekday)} aria-label={`Mover ${getScheduledActivityLabel(dailyMission)} al día siguiente`} title="Mover al día siguiente"><ChevronRight size={15} /></button>
-                        </div>
-                      </article>
-                    ))}
-                    {!dayClasses.length && <button className="empty-class-slot" type="button" onClick={() => openNewDaily(day)}><Plus size={13} /> Agregar actividad</button>}
-                  </div>
+          <section className="weekly-planner" aria-label={`Horario de ${selectedWeeklyQuest.title}`}>
+            <nav className="weekly-day-picker" aria-label="Elegir día de la semana">
+              {([1, 2, 3, 4, 5, 6, 7] as Weekday[]).map((day) => {
+                const dayClasses = classesByDay.get(day) ?? [];
+                const firstActivity = dayClasses[0];
+                return <button key={day} type="button" className={`${selectedDay === day ? "active" : ""} ${todayWeekday === day ? "today" : ""}`} onClick={() => { setSelectedDay(day); setOpenBubbleActionsId(null); }}>
+                  <span>{weekdayMeta[day].short}</span>
+                  <strong>{weekdayMeta[day].label}</strong>
+                  <small>{dayClasses.length ? `${dayClasses.length} ${dayClasses.length === 1 ? "actividad" : "actividades"}${firstActivity ? ` · ${formatTimeRange12Hour(firstActivity.startTime, firstActivity.endTime).split(" – ")[0]}` : ""}` : normalizedQuery ? "Sin coincidencias" : "Día libre"}</small>
+                  {todayWeekday === day && <i>HOY</i>}
+                </button>;
+              })}
+            </nav>
+
+            <div className="weekly-day-agenda">
+              <header className="weekly-day-agenda-heading">
+                <div className="weekly-day-navigation">
+                  <button type="button" disabled={selectedDay === 1} onClick={() => setSelectedDay((selectedDay - 1) as Weekday)} aria-label="Día anterior"><ChevronLeft size={18} /></button>
+                  <div><span>PLAN DEL DÍA</span><h3>{weekdayMeta[selectedDay].label}</h3><p>{selectedDayClasses.length} {selectedDayClasses.length === 1 ? "actividad" : "actividades"} · {formatProgressDuration(selectedDayMinutes)} programados</p></div>
+                  <button type="button" disabled={selectedDay === 7} onClick={() => setSelectedDay((selectedDay + 1) as Weekday)} aria-label="Día siguiente"><ChevronRight size={18} /></button>
                 </div>
-              );
-            })}
+                <div className="weekly-day-heading-actions">
+                  {selectedDay !== todayWeekday && <button type="button" onClick={() => setSelectedDay(todayWeekday)}>Ir a hoy</button>}
+                  {copiedDailyMission && <button type="button" className="paste-day-button" onClick={() => pasteDaily(selectedDay)}><ClipboardPaste size={15} /> Pegar aquí</button>}
+                  <button type="button" className="primary-day-action" onClick={() => openNewDaily(selectedDay)}><Plus size={16} /> Agregar actividad</button>
+                </div>
+              </header>
+
+              <div className="weekly-agenda-list">
+                {selectedDayClasses.map((dailyMission) => {
+                  const activityType = resolveActivityType(activityTypes, dailyMission.activityTypeId, dailyMission.activityTypeName);
+                  return <article key={dailyMission.id} className={`weekly-agenda-item activity-tone-${activityType.tone} ${openBubbleActionsId === dailyMission.id ? "actions-open" : ""}`}>
+                    <time><Clock3 size={14} /><strong>{formatTimeRange12Hour(dailyMission.startTime, dailyMission.endTime).split(" – ")[0]}</strong><small>{formatTimeRange12Hour(dailyMission.startTime, dailyMission.endTime).split(" – ")[1]}</small></time>
+                    <span className="weekly-agenda-icon">{dailyMission.activityCategory === "class" ? <BookOpen size={18} /> : <Activity size={18} />}</span>
+                    <div className="weekly-agenda-copy">
+                      <span>{dailyMission.activityCategory === "class" ? "CLASE" : "RUTINA"}</span>
+                      <strong>{getScheduledActivityLabel(dailyMission)}</strong>
+                      <small>{dailyMission.location ? <><MapPin size={12} />{dailyMission.location}</> : dailyMission.notes || "Sin notas adicionales"}</small>
+                    </div>
+                    <b className="weekly-agenda-xp"><Sparkles size={12} />+{dailyMission.activityPoints ?? 10} XP</b>
+                    <div className="weekly-agenda-actions">
+                      <button type="button" onClick={() => openEditDaily(dailyMission)}><Pencil size={15} /><span>Editar</span></button>
+                      <button type="button" className="more" onClick={() => setOpenBubbleActionsId((current) => current === dailyMission.id ? null : dailyMission.id)} aria-expanded={openBubbleActionsId === dailyMission.id} aria-controls={`agenda-actions-${dailyMission.id}`} aria-label={`Más acciones para ${getScheduledActivityLabel(dailyMission)}`}><MoreHorizontal size={18} /></button>
+                    </div>
+                    {openBubbleActionsId === dailyMission.id && <div id={`agenda-actions-${dailyMission.id}`} className="weekly-agenda-more-actions">
+                      <button type="button" onClick={() => copyDaily(dailyMission)}><Copy size={14} /> Copiar</button>
+                      <button type="button" disabled={dailyMission.dayOfWeek === 1} onClick={() => { moveDaily(dailyMission.id, (dailyMission.dayOfWeek - 1) as Weekday); setSelectedDay((dailyMission.dayOfWeek - 1) as Weekday); }}><ChevronLeft size={14} /> Mover al día anterior</button>
+                      <button type="button" disabled={dailyMission.dayOfWeek === 7} onClick={() => { moveDaily(dailyMission.id, (dailyMission.dayOfWeek + 1) as Weekday); setSelectedDay((dailyMission.dayOfWeek + 1) as Weekday); }}>Mover al día siguiente <ChevronRight size={14} /></button>
+                    </div>}
+                  </article>;
+                })}
+                {!selectedDayClasses.length && <div className="weekly-agenda-empty"><CalendarRange size={30} /><h4>{normalizedQuery ? "No hay coincidencias en este día" : `${weekdayMeta[selectedDay].label} está libre`}</h4><p>{normalizedQuery ? "Prueba otra búsqueda o elige otro día." : "Puedes descansar o reservar un bloque para una actividad."}</p>{!normalizedQuery && <button type="button" onClick={() => openNewDaily(selectedDay)}><Plus size={15} /> Agregar actividad</button>}</div>}
+              </div>
+            </div>
           </section>
         </>
       ) : (

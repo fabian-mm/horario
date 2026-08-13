@@ -285,6 +285,14 @@ export const compareMissionsByDateTime = (a: Pick<Mission, "date" | "time" | "ti
 
 export const sortMissionsByDateTime = (missions: Mission[]) => [...missions].sort(compareMissionsByDateTime);
 
+export const getAvailableStudyMissions = (missions: Mission[], query = "", referenceDate = new Date()) => {
+  const normalizedQuery = query.trim().toLocaleLowerCase("es");
+  return sortMissionsByDateTime(missions.filter((mission) => {
+    if (!isProgressMission(mission) || isFailedProgressMission(mission, referenceDate) || getMissionProgress(mission).complete) return false;
+    return !normalizedQuery || `${mission.title} ${mission.subject} ${mission.notes ?? ""}`.toLocaleLowerCase("es").includes(normalizedQuery);
+  }));
+};
+
 export const getMissionXp = (mission: Mission) => priorityXp[mission.priority];
 
 export const calculatePlayerProgress = (missions: Mission[], weeklyQuests: WeeklyQuest[] = []) => {
