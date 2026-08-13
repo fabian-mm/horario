@@ -40,4 +40,21 @@ describe("persisted study timer", () => {
     expect(paused.startedAt).toBeNull();
     expect(getStudyTimerResult(paused, reopenedAt).minutes).toBe(37);
   });
+
+  it("sigue contando mientras la página permanece abierta", () => {
+    const startedAt = new Date("2026-08-13T10:00:00").getTime();
+    const checkedAt = new Date("2026-08-13T10:37:00").getTime();
+    const session: StudyTimerSession = {
+      missionId: "work-3",
+      title: "Lectura",
+      subject: "Física",
+      trackedAt: startedAt,
+      startedAt,
+      elapsedMs: 0,
+      maxElapsedMs: 5 * 60 * 60_000,
+    };
+
+    expect(getStudyTimerResult(session, checkedAt).minutes).toBe(37);
+    expect(session.startedAt).toBe(startedAt);
+  });
 });

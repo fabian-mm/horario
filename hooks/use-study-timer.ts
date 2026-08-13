@@ -91,16 +91,11 @@ export function useStudyTimer(userId?: string | null) {
       }
       setSession(paused);
     };
-    const pauseWhenHidden = () => {
-      if (document.visibilityState === "hidden") pauseBeforeExit();
-    };
     window.addEventListener("pagehide", pauseBeforeExit);
     window.addEventListener("beforeunload", pauseBeforeExit);
-    document.addEventListener("visibilitychange", pauseWhenHidden);
     return () => {
       window.removeEventListener("pagehide", pauseBeforeExit);
       window.removeEventListener("beforeunload", pauseBeforeExit);
-      document.removeEventListener("visibilitychange", pauseWhenHidden);
     };
   }, [userId]);
 
