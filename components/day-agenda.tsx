@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Activity, BookOpen, Check, Clock3, Flag, Hourglass, MapPin } from "lucide-react";
 import type { ActivityType } from "@/lib/activity-types";
 import { resolveActivityType } from "@/lib/activity-types";
@@ -21,13 +22,15 @@ type Props = {
   activeTimerMissionId?: string;
   onOpenActivity: (activity: ScheduledOccurrence) => void;
   onToggleActivity: (activity: ScheduledOccurrence) => void;
+  onCreateMission: () => void;
 };
 
 const DEFAULT_DAY_START = 7 * 60;
 const DEFAULT_DAY_END = 22 * 60;
 const HOUR_HEIGHT = 68;
 
-export function DayAgenda({ missions, activities, activityTypes, onEditMission, onToggleMission, onAddProgress, onStartTimer, activeTimerMissionId, onOpenActivity, onToggleActivity }: Props) {
+export function DayAgenda({ missions, activities, activityTypes, onEditMission, onToggleMission, onAddProgress, onStartTimer, activeTimerMissionId, onOpenActivity, onToggleActivity, onCreateMission }: Props) {
+  const agendaRef = useRef<HTMLDivElement>(null);
   const progressMissions = missions.filter(isProgressMission);
   const rawEvents = [
     ...activities.map((activity) => ({
@@ -45,12 +48,24 @@ export function DayAgenda({ missions, activities, activityTypes, onEditMission, 
   const { start: dayStart, end: dayEnd } = getAgendaBounds(rawEvents, DEFAULT_DAY_START, DEFAULT_DAY_END);
   const hours = Array.from({ length: (dayEnd - dayStart) / 60 + 1 }, (_, index) => dayStart + index * 60);
   const events = layoutAgendaEvents(rawEvents, 45);
+  const firstEventStart = events.length ? Math.min(...events.map((event) => event.start)) : dayStart;
+  useEffect(() => {
+    if (!agendaRef.current || !events.length) return;
+    agendaRef.current.scrollTop = Math.max(0, ((firstEventStart - dayStart) / 60 - 1) * HOUR_HEIGHT);
+  }, [dayStart, events.length, firstEventStart]);
 
-  return <div className="day-agenda" aria-label="Agenda del día por horas">
-    {!!progressMissions.length && <section className="day-progress-objectives" aria-label="Objetivos acumulables con fecha límite este día">
-      <header><Hourglass size={15} /><div><strong>Trabajos con fecha límite</strong><small>No ocupan una franja horaria</small></div></header>
-      <div>{progressMissions.map((mission) => <article key={mission.id} onClick={() => onEditMission(mission)}><strong>{mission.title} · {mission.subject}</strong><MissionProgress mission={mission} onAdd={(minutes) => onAddProgress(mission.id, minutes)} onStartTimer={() => onStartTimer(mission)} timerActive={activeTimerMissionId === mission.id} compact /></article>)}</div>
-    </section>}
+  const progressObjectives = !!progressMissions.length && <section className="day-progress-objectives" aria-label="Objetivos acumulables con fecha límite este día">
+    <header><Hourglass size={15} /><div><strong>Trabajos con fecha límite</strong><small>No ocupan una franja horaria</small></div></header>
+    <div>{progressMissions.map((mission) => <article key={mission.id} onClick={() => onEditMission(mission)}><strong>{mission.title} · {mission.subject}</strong><MissionProgress mission={mission} onAdd={(minutes) => onAddProgress(mission.id, minutes)} onStartTimer={() => onStartTimer(mission)} timerActive={activeTimerMissionId === mission.id} compact /></article>)}</div>
+  </section>;
+
+  if (!events.length) return <div className="day-agenda day-agenda-compact" aria-label="Resumen del día">
+    {progressObjectives}
+    {!progressMissions.length && <div className="day-agenda-empty"><Clock3 size={24} /><strong>Día completamente libre</strong><span>No hay actividades programadas para este día.</span><button type="button" onClick={onCreateMission}>Crear una misión</button></div>}
+  </div>;
+
+  return <div ref={agendaRef} className="day-agenda" aria-label="Agenda del día por horas">
+    {progressObjectives}
     <div className="day-agenda-hours" aria-hidden="true">
       {hours.map((minute) => <div key={minute} style={{ top: `${((minute - dayStart) / 60) * HOUR_HEIGHT}px` }}><time>{minute === 24 * 60 ? "12:00 AM" : formatTime12Hour(minutesToTime(minute))}</time><span /></div>)}
     </div>
@@ -82,7 +97,6 @@ export function DayAgenda({ missions, activities, activityTypes, onEditMission, 
           <div><time><Clock3 size={11} />{formatTimeRange12Hour(mission.time, endTime)}</time><strong>{mission.subject} · {mission.title}</strong><small>{priorityMeta[mission.priority].label}{mission.durationMinutes ? ` · ${mission.durationMinutes / 60} h` : ""}</small></div>
         </article>;
       })}
-      {!events.length && !progressMissions.length && <div className="day-agenda-empty"><Clock3 size={22} /><strong>Día completamente libre</strong><span>No hay actividades programadas para este día.</span></div>}
     </div>
   </div>;
 }

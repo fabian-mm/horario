@@ -177,6 +177,10 @@ export function MissionPlanner() {
     }
   }, [selectedSubject, subjects, view]);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
+
   const days = useMemo(() => calendarMode === "month" ? calendarDays(month) : calendarMode === "week" ? getWeekDates(selectedDate) : [selectedDate], [calendarMode, month, selectedDate]);
   const deferredQuery = useDeferredValue(query);
   const normalizedQuery = deferredQuery.trim().toLocaleLowerCase("es");
@@ -486,7 +490,7 @@ export function MissionPlanner() {
   }
 
   return (
-    <main className="app-shell" data-theme={theme}>
+    <main className={`app-shell ${studyTimer.session ? "timer-active" : ""}`} data-theme={theme}>
       <aside id="main-sidebar" className={`sidebar ${mobileNav ? "open" : ""} ${sidebarCollapsed ? "collapsed" : ""}`} aria-label="Navegación principal">
         <button type="button" className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Cerrar menú"><X /></button>
         <button type="button" className="sidebar-collapse" onClick={toggleSidebar} aria-label={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"} aria-expanded={!sidebarCollapsed} title={sidebarCollapsed ? "Mostrar menú" : "Ocultar menú"}>
@@ -658,7 +662,7 @@ export function MissionPlanner() {
             <div className="quest-board-ribbon"><span><Compass size={14} /> TABLERO DE CAMPAÑA</span><small>VISTA · {calendarMode === "month" ? "MES" : calendarMode === "week" ? "SEMANA" : "DÍA"}</small></div>
             <div className="map-ornament compass-rose">✣</div>
             <div className="map-ornament ship">♜</div>
-            {calendarMode === "day" ? <DayAgenda missions={selectedMissions} activities={selectedClasses} activityTypes={activityTypes} onEditMission={openEdit} onToggleMission={toggleWithFeedback} onAddProgress={addProgressWithFeedback} onStartTimer={startStudyTimer} activeTimerMissionId={studyTimer.session?.missionId} onOpenActivity={(activity) => { setFocusedWeeklyQuestId(activity.weeklyQuestId); setView("weekly"); }} onToggleActivity={toggleScheduledActivity} /> : <><div className="week-row">{WEEK_DAYS.map((day) => <span key={day}>{day}</span>)}</div>
+            {calendarMode === "day" ? <DayAgenda missions={selectedMissions} activities={selectedClasses} activityTypes={activityTypes} onEditMission={openEdit} onToggleMission={toggleWithFeedback} onAddProgress={addProgressWithFeedback} onStartTimer={startStudyTimer} activeTimerMissionId={studyTimer.session?.missionId} onOpenActivity={(activity) => { setFocusedWeeklyQuestId(activity.weeklyQuestId); setView("weekly"); }} onToggleActivity={toggleScheduledActivity} onCreateMission={() => openNew(selectedDate)} /> : <><div className="week-row">{WEEK_DAYS.map((day) => <span key={day}>{day}</span>)}</div>
             <div className="calendar-grid">
               {days.map((date) => {
                 const iso = toISODate(date);
@@ -692,7 +696,7 @@ export function MissionPlanner() {
             </div>
           </section>
 
-          <section className="mission-log">
+          <section className={`mission-log ${calendarMode === "day" ? "mobile-day-redundant" : ""}`}>
             <div className="section-heading">
               <div><span className="eyebrow">REGISTRO DE AVENTURA</span><h2>Misiones del {formatLongDate(toISODate(selectedDate))}</h2></div>
             </div>
@@ -726,9 +730,9 @@ export function MissionPlanner() {
 
       <nav className={`mobile-tabbar ${mobileNav ? "menu-open" : ""}`} aria-label="Navegación móvil">
         <button type="button" className={view === "calendar" ? "active" : ""} aria-current={view === "calendar" ? "page" : undefined} onClick={() => { setView("calendar"); setFilter("all"); setMobileNav(false); }}><Compass size={21} /><span>Agenda</span>{pending > 0 && <em>{pending}</em>}</button>
-        <button type="button" className={view === "world" ? "active" : ""} aria-current={view === "world" ? "page" : undefined} onClick={() => { setView("world"); setMobileNav(false); }}><Globe2 size={21} /><span>Materias</span></button>
-        <button type="button" className={view === "map" ? "active" : ""} aria-current={view === "map" ? "page" : undefined} onClick={() => { setView("map"); setFilter("all"); setMobileNav(false); }}><MapPinned size={21} /><span>Mapa</span></button>
-        <button type="button" className={view === "weekly" ? "active" : ""} aria-current={view === "weekly" ? "page" : undefined} onClick={() => { setFocusedWeeklyQuestId(null); setView("weekly"); setMobileNav(false); }}><CalendarRange size={21} /><span>Horario</span></button>
+        <button type="button" className={view === "world" ? "active" : ""} aria-current={view === "world" ? "page" : undefined} onPointerDown={() => preloadView("world")} onClick={() => { setView("world"); setMobileNav(false); }}><Globe2 size={21} /><span>Materias</span></button>
+        <button type="button" className={view === "map" ? "active" : ""} aria-current={view === "map" ? "page" : undefined} onPointerDown={() => preloadView("map")} onClick={() => { setView("map"); setFilter("all"); setMobileNav(false); }}><MapPinned size={21} /><span>Mapa</span></button>
+        <button type="button" className={view === "weekly" ? "active" : ""} aria-current={view === "weekly" ? "page" : undefined} onPointerDown={() => preloadView("weekly")} onClick={() => { setFocusedWeeklyQuestId(null); setView("weekly"); setMobileNav(false); }}><CalendarRange size={21} /><span>Horario</span></button>
         <button type="button" onClick={() => setMobileNav(true)} aria-controls="main-sidebar" aria-expanded={mobileNav}><Menu size={21} /><span>Más</span></button>
       </nav>
 
