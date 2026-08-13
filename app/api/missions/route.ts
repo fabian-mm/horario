@@ -37,7 +37,10 @@ export async function POST(request: Request) {
   const referenceDate = getSafeClientReferenceDate(request.headers.get("x-client-date"), serverDate);
   const progressValidation = validateProgressUpdate(existing, parsed.data as Mission, serverDate);
   if (!progressValidation.valid) return NextResponse.json({ error: progressValidation.error }, { status: 409 });
-  if (existing && isFailedProgressMission(existing, referenceDate)) {
+  const updateReferenceDate = progressValidation.progressDate
+    ? getSafeClientReferenceDate(progressValidation.progressDate, serverDate)
+    : referenceDate;
+  if (existing && isFailedProgressMission(existing, updateReferenceDate)) {
     return NextResponse.json({ error: "Este trabajo venció incompleto y ya no se puede modificar." }, { status: 409 });
   }
   const now = new Date().toISOString();

@@ -45,7 +45,7 @@ export const missionSchema = z.object({
     minutes: z.number().int().min(1).max(60_000),
   })).max(2000).optional(),
   priority: z.enum(["normal", "important", "boss"]),
-  status: z.enum(["pending", "submitted", "completed"]).optional(),
+  status: z.enum(["pending", "submitted", "completed", "failed"]).optional(),
   completed: z.boolean(),
   notes: z.string().max(2000).optional(),
   grade: z.string().max(20).optional(),

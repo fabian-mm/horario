@@ -90,7 +90,7 @@ export const addMissionProgress = (mission: Mission, minutes: number, referenceD
   };
 };
 
-export type ProgressUpdateValidation = { valid: true } | { valid: false; error: string };
+export type ProgressUpdateValidation = { valid: true; progressDate?: string } | { valid: false; error: string };
 
 const getIsoDayDistance = (left: string, right: string) => {
   const leftTime = Date.parse(`${left}T12:00:00Z`);
@@ -136,6 +136,7 @@ export const validateProgressUpdate = (existing: Mission | null, incoming: Missi
     if (appended.length !== 1 || appended[0].minutes !== delta || getIsoDayDistance(appended[0].date, serverDate) > 1) {
       return { valid: false, error: "El incremento de tiempo no es válido." };
     }
+    return { valid: true, progressDate: appended[0].date };
   }
   return { valid: true };
 };

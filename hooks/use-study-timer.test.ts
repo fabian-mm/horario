@@ -1,0 +1,24 @@
+import { describe, expect, it } from "vitest";
+import { getStudyTimerResult, type StudyTimerSession } from "./use-study-timer";
+
+describe("persisted study timer", () => {
+  it("cuenta solo hasta el cierre permitido cuando la app vuelve después del plazo", () => {
+    const startedAt = new Date("2026-08-12T22:30:00").getTime();
+    const deadline = new Date("2026-08-12T23:59:59.999").getTime();
+    const session: StudyTimerSession = {
+      missionId: "work-1",
+      title: "Informe",
+      subject: "Historia",
+      trackedAt: startedAt,
+      startedAt,
+      elapsedMs: 0,
+      maxElapsedMs: 7 * 60 * 60_000,
+    };
+
+    expect(getStudyTimerResult(session, deadline)).toMatchObject({
+      missionId: "work-1",
+      minutes: 90,
+      trackedAt: deadline,
+    });
+  });
+});

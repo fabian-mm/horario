@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addMissionProgress, calculateSubjectAverage, getMissionProgress, getMissionStatus, getSafeClientReferenceDate, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, getSubjectWeeklyStudyHistory, toISODate, validateProgressUpdate, type Mission } from "./missions";
+import { missionSchema } from "./validation";
 
 const workMission: Mission = {
   id: "work-1",
@@ -87,7 +88,7 @@ describe("accumulated work progress", () => {
     const referenceDate = new Date("2026-08-19T12:00:00");
     const existing = { ...workMission, progressCompletedMinutes: 60, progressEntries: [{ date: "2026-08-18", minutes: 60 }] };
     expect(validateProgressUpdate(existing, { ...existing, progressCompletedMinutes: 30 }, referenceDate).valid).toBe(false);
-    expect(validateProgressUpdate(existing, { ...existing, progressCompletedMinutes: 90, progressEntries: [...existing.progressEntries, { date: "2026-08-19", minutes: 30 }] }, referenceDate)).toEqual({ valid: true });
+    expect(validateProgressUpdate(existing, { ...existing, progressCompletedMinutes: 90, progressEntries: [...existing.progressEntries, { date: "2026-08-19", minutes: 30 }] }, referenceDate)).toEqual({ valid: true, progressDate: "2026-08-19" });
     expect(validateProgressUpdate(existing, { ...existing, progressCompletedMinutes: 90, progressEntries: [{ date: "2026-08-18", minutes: 30 }, { date: "2026-08-19", minutes: 60 }] }, referenceDate).valid).toBe(false);
   });
 
@@ -103,7 +104,7 @@ describe("accumulated work progress", () => {
     const serverDate = new Date("2026-08-20T01:00:00Z");
     const localPreviousDay = { ...existing, progressCompletedMinutes: 77, progressEntries: [...existing.progressEntries, { date: "2026-08-19", minutes: 17 }] };
     const arbitraryDate = { ...existing, progressCompletedMinutes: 77, progressEntries: [...existing.progressEntries, { date: "2026-08-10", minutes: 17 }] };
-    expect(validateProgressUpdate(existing, localPreviousDay, serverDate)).toEqual({ valid: true });
+    expect(validateProgressUpdate(existing, localPreviousDay, serverDate)).toEqual({ valid: true, progressDate: "2026-08-19" });
     expect(validateProgressUpdate(existing, arbitraryDate, serverDate).valid).toBe(false);
   });
 
@@ -119,5 +120,9 @@ describe("accumulated work progress", () => {
     const reference = getSafeClientReferenceDate("2026-08-10", serverDate);
     expect(reference).toBe(serverDate);
     expect(getMissionStatus(workMission, reference)).toBe("failed");
+  });
+
+  it("acepta el estado fallido que la API devuelve para un trabajo vencido", () => {
+    expect(missionSchema.safeParse({ ...workMission, status: "failed" }).success).toBe(true);
   });
 });

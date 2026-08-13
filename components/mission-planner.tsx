@@ -104,6 +104,7 @@ export function MissionPlanner() {
   }));
   const [notificationsPermission, setNotificationsPermission] = useState<"default" | "granted" | "denied" | "unsupported">("unsupported");
   const rewardSequence = useRef(0);
+  const timerSavingRef = useRef(false);
   const reminderTimersRef = useRef<number[]>([]);
   const deliveredReminderIdsRef = useRef(new Set<string>());
   const [notificationFeedback, setNotificationFeedback] = useState<string | null>(null);
@@ -412,23 +413,38 @@ export function MissionPlanner() {
     prepareCompletionSound();
     if (!studyTimer.start(mission)) setNotificationFeedback("Ya hay una sesión de estudio activa. Finalízala o descártala antes de iniciar otra.");
   };
-  const finishStudyTimer = (automatic = false) => {
-    const result = studyTimer.finish();
-    if (!result) return;
-    const mission = missions.find((item) => item.id === result.missionId);
-    if (!mission || !isProgressMission(mission) || isFailedProgressMission(mission)) {
+  const finishStudyTimer = async (automatic = false) => {
+    if (timerSavingRef.current) return;
+    const session = studyTimer.session;
+    if (!session) return;
+    const mission = missions.find((item) => item.id === session.missionId);
+    if (!mission || !isProgressMission(mission)) {
+      studyTimer.discard();
       setNotificationFeedback("La sesión terminó, pero el trabajo ya no admite progreso.");
       return;
     }
-    let wasComplete = false;
-    const updated = updateMission(result.missionId, (current) => {
-      wasComplete = getMissionProgress(current).complete;
-      return addMissionProgress(current, result.minutes);
-    });
-    const completedNow = Boolean(updated && !wasComplete && getMissionProgress(updated).complete);
+    const deadline = new Date(`${mission.date}T23:59:59.999`).getTime();
+    const expired = isFailedProgressMission(mission);
+    if (expired && session.trackedAt > deadline) {
+      studyTimer.discard();
+      setNotificationFeedback("La sesión comenzó después del vencimiento y no puede acreditarse.");
+      return;
+    }
+    const result = studyTimer.finish(expired ? deadline : undefined);
+    if (!result) return;
+    const wasComplete = getMissionProgress(mission).complete;
+    const updated = addMissionProgress(mission, result.minutes, new Date(result.trackedAt));
+    timerSavingRef.current = true;
+    const saved = await upsert(updated).finally(() => { timerSavingRef.current = false; });
+    if (!saved) {
+      setNotificationFeedback("No se pudo guardar el tiempo. El cronómetro se conservó para que puedas reintentarlo.");
+      return;
+    }
+    studyTimer.discard();
+    const completedNow = !wasComplete && getMissionProgress(saved).complete;
     if (completedNow) {
       playCompletionSound();
-      showReward(updated!);
+      showReward(saved);
     }
     setNotificationFeedback(completedNow || automatic
       ? `¡Objetivo de tiempo completado! ${formatProgressDuration(result.minutes)} sumados a ${mission.title}.`
