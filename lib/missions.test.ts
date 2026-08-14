@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMissionProgress, calculateSubjectAverage, getAvailableStudyMissions, getMissionProgress, getMissionStatus, getSafeClientReferenceDate, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, getSubjectWeeklyStudyHistory, toISODate, validateProgressUpdate, type Mission } from "./missions";
+import { addMissionProgress, applyStudyProgressOperation, calculateSubjectAverage, getAvailableStudyMissions, getMissionProgress, getMissionStatus, getSafeClientReferenceDate, getSubjectStudyMinutes, getSubjectStudyMinutesForWeek, getSubjectWeeklyStudyHistory, toISODate, validateProgressUpdate, type Mission } from "./missions";
 import { missionSchema } from "./validation";
 
 const workMission: Mission = {
@@ -59,6 +59,23 @@ describe("accumulated work progress", () => {
   it("registra cada avance en la fecha en que se realizó", () => {
     const updated = addMissionProgress(workMission, 60, new Date("2026-08-18T16:00:00"));
     expect(updated.progressEntries).toEqual([{ date: "2026-08-18", minutes: 60 }]);
+  });
+
+  it("combina una sesión de 90 minutos con avances concurrentes sin reescribir el historial", () => {
+    const first = addMissionProgress(workMission, 60, new Date("2026-08-18T10:00:00"));
+    const serverMission = addMissionProgress(first, 30, new Date("2026-08-18T11:00:00"));
+    const applied = applyStudyProgressOperation(serverMission, 90, "timer-90", new Date("2026-08-18T12:30:00"));
+    const retried = applyStudyProgressOperation(applied.mission, 90, "timer-90", new Date("2026-08-18T12:31:00"), applied.operations);
+
+    expect(applied.mission.progressCompletedMinutes).toBe(180);
+    expect(applied.mission.progressEntries).toEqual([
+      { date: "2026-08-18", minutes: 60 },
+      { date: "2026-08-18", minutes: 30 },
+      { date: "2026-08-18", minutes: 90 },
+    ]);
+    expect(retried.mission).toEqual(applied.mission);
+    expect(retried.addedMinutes).toBe(90);
+    expect(retried.operations).toHaveLength(1);
   });
 
   it("calcula solo el trabajo realizado durante la semana presente", () => {

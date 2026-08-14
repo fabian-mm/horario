@@ -73,7 +73,7 @@ export function MissionPlanner() {
   const auth = useAuth();
   const { theme, setTheme } = useTheme(auth.user?.id, auth.user?.theme);
   const studyTimer = useStudyTimer(auth.user?.id);
-  const { missions, loading: missionsLoading, error: missionsError, upsert, updateMission, toggle, setStatus, remove } = useMissions(Boolean(auth.user));
+  const { missions, loading: missionsLoading, error: missionsError, upsert, appendProgress, updateMission, toggle, setStatus, remove } = useMissions(Boolean(auth.user));
   const { weeklyQuests, loading: scheduleLoading, error: scheduleError, upsert: upsertWeeklyQuest, remove: removeWeeklyQuest } = useWeeklyQuests(Boolean(auth.user));
   const { subjects, loading: subjectsLoading, error: subjectsError, upsert: upsertSubject, remove: removeSubject } = useSubjects(Boolean(auth.user));
   const { activityTypes, loading: activityTypesLoading, error: activityTypesError, upsert: upsertActivityType, remove: removeActivityType } = useActivityTypes(Boolean(auth.user));
@@ -437,22 +437,26 @@ export function MissionPlanner() {
     const result = studyTimer.finish(expired ? deadline : undefined);
     if (!result) return;
     const wasComplete = getMissionProgress(mission).complete;
-    const updated = addMissionProgress(mission, result.minutes, new Date(result.trackedAt));
     timerSavingRef.current = true;
-    const saved = await upsert(updated).finally(() => { timerSavingRef.current = false; });
+    const saved = await appendProgress(
+      mission.id,
+      result.minutes,
+      toISODate(new Date(result.trackedAt)),
+      result.operationId,
+    ).finally(() => { timerSavingRef.current = false; });
     if (!saved) {
       setNotificationFeedback("No se pudo guardar el tiempo. El cronómetro se conservó para que puedas reintentarlo.");
       return;
     }
     studyTimer.discard();
-    const completedNow = !wasComplete && getMissionProgress(saved).complete;
+    const completedNow = !wasComplete && saved.addedMinutes > 0 && getMissionProgress(saved.mission).complete;
     if (completedNow) {
       playCompletionSound();
-      showReward(saved);
+      showReward(saved.mission);
     }
     setNotificationFeedback(completedNow || automatic
-      ? `¡Objetivo de tiempo completado! ${formatProgressDuration(result.minutes)} sumados a ${mission.title}.`
-      : `Sesión finalizada: ${formatProgressDuration(result.minutes)} sumados a ${mission.title}.`);
+      ? `¡Objetivo de tiempo completado! ${formatProgressDuration(saved.addedMinutes)} sumados a ${mission.title}.`
+      : `Sesión finalizada: ${formatProgressDuration(saved.addedMinutes)} sumados a ${mission.title}.`);
   };
   const toggleScheduledActivity = (occurrence: ScheduledOccurrence) => {
     const weeklyQuest = weeklyQuests.find((item) => item.id === occurrence.weeklyQuestId);

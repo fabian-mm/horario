@@ -5,6 +5,7 @@ import type { Mission } from "@/lib/missions";
 import { getMissionProgress } from "@/lib/missions";
 
 export type StudyTimerSession = {
+  operationId: string;
   missionId: string;
   title: string;
   subject: string;
@@ -18,6 +19,7 @@ export const getStudyTimerResult = (session: StudyTimerSession, endedAt = Date.n
   const activeElapsed = session.startedAt ? Math.max(0, endedAt - session.startedAt) : 0;
   const elapsedMs = Math.min(session.maxElapsedMs, session.elapsedMs + activeElapsed);
   return {
+    operationId: session.operationId,
     missionId: session.missionId,
     minutes: Math.max(1, Math.round(elapsedMs / 60_000)),
     trackedAt: endedAt,
@@ -41,11 +43,15 @@ const readSession = (userId: string): StudyTimerSession | null => {
     if (!parsed?.missionId || typeof parsed.elapsedMs !== "number" || typeof parsed.maxElapsedMs !== "number") return null;
     const maxElapsedMs = Math.max(60_000, parsed.maxElapsedMs);
     const startedAt = typeof parsed.startedAt === "number" && parsed.startedAt <= Date.now() ? parsed.startedAt : null;
+    const trackedAt = typeof parsed.trackedAt === "number" ? parsed.trackedAt : startedAt ?? Date.now();
     return {
+      operationId: typeof parsed.operationId === "string" && parsed.operationId.length > 0 && parsed.operationId.length <= 220
+        ? parsed.operationId
+        : `timer-${trackedAt}-${parsed.missionId}`,
       missionId: parsed.missionId,
       title: parsed.title ?? "Trabajo",
       subject: parsed.subject ?? "",
-      trackedAt: typeof parsed.trackedAt === "number" ? parsed.trackedAt : startedAt ?? Date.now(),
+      trackedAt,
       startedAt,
       elapsedMs: Math.min(maxElapsedMs, Math.max(0, parsed.elapsedMs)),
       maxElapsedMs,
@@ -105,7 +111,7 @@ export function useStudyTimer(userId?: string | null) {
     const remainingMinutes = progress.goalMinutes - progress.completedMinutes;
     if (remainingMinutes <= 0) return false;
     const startedAt = Date.now();
-    commitSession({ missionId: mission.id, title: mission.title, subject: mission.subject, trackedAt: startedAt, startedAt, elapsedMs: 0, maxElapsedMs: remainingMinutes * 60_000 });
+    commitSession({ operationId: crypto.randomUUID(), missionId: mission.id, title: mission.title, subject: mission.subject, trackedAt: startedAt, startedAt, elapsedMs: 0, maxElapsedMs: remainingMinutes * 60_000 });
     return true;
   }, [commitSession]);
 

@@ -6,6 +6,8 @@ import { getRequestError, isAbortError, readApiResponse } from "@/lib/http";
 import { getMissionStatus, Mission, MissionStatus, sortMissionsByDateTime, toISODate } from "@/lib/missions";
 import { removeById, restoreById, upsertById } from "@/lib/optimistic";
 
+type StudyProgressResponse = { mission: Mission; addedMinutes: number };
+
 export function useMissions(enabled: boolean) {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(false);
@@ -90,6 +92,29 @@ export function useMissions(enabled: boolean) {
     return updated;
   };
 
+  const appendProgress = async (id: string, minutes: number, date: string, operationId: string) => {
+    const version = mutations.begin(id);
+    setError(null);
+    try {
+      const saved = await mutations.enqueue(async () => {
+        const response = await fetch(`/api/missions/${encodeURIComponent(id)}/progress`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ minutes, date, operationId }),
+        });
+        return readApiResponse<StudyProgressResponse>(response, "No se pudo guardar el tiempo de estudio.");
+      });
+      if (mutations.isLatest(id, version)) {
+        missionsRef.current = sortMissionsByDateTime(upsertById(missionsRef.current, saved.mission));
+        setMissions(missionsRef.current);
+      }
+      return saved;
+    } catch (requestError) {
+      setError(getRequestError(requestError, "No se pudo guardar el tiempo de estudio."));
+      return null;
+    }
+  };
+
   const toggle = (id: string) => updateMission(id, (mission) => ({
     ...mission,
     completed: !mission.completed,
@@ -127,5 +152,5 @@ export function useMissions(enabled: boolean) {
     }
   };
 
-  return { missions, loading, error, upsert, updateMission, toggle, setStatus, remove };
+  return { missions, loading, error, upsert, appendProgress, updateMission, toggle, setStatus, remove };
 }

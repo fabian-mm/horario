@@ -89,6 +89,12 @@ export const missionSchema = z.preprocess((input) => {
   return mission;
 }, missionObjectSchema);
 
+export const studyProgressOperationSchema = z.object({
+  operationId: z.string().min(1).max(220),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  minutes: z.number().int().min(1).max(60_000),
+});
+
 const dailyClassQuestSchema = z.object({
   id: z.string().min(1).max(100),
   title: z.string().trim().min(1).max(140),

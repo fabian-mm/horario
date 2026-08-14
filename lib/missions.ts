@@ -90,6 +90,28 @@ export const addMissionProgress = (mission: Mission, minutes: number, referenceD
   };
 };
 
+export type StudyProgressOperation = { id: string; minutes: number };
+
+export const applyStudyProgressOperation = (
+  mission: Mission,
+  minutes: number,
+  operationId: string,
+  referenceDate = new Date(),
+  previousOperations: StudyProgressOperation[] = [],
+) => {
+  const previousOperation = previousOperations.find((operation) => operation.id === operationId);
+  if (previousOperation) {
+    return { mission, operations: previousOperations, addedMinutes: previousOperation.minutes };
+  }
+  const updated = addMissionProgress(mission, minutes, referenceDate);
+  const addedMinutes = getMissionProgress(updated).completedMinutes - getMissionProgress(mission).completedMinutes;
+  return {
+    mission: updated,
+    operations: [...previousOperations, { id: operationId, minutes: addedMinutes }],
+    addedMinutes,
+  };
+};
+
 export type ProgressUpdateValidation = { valid: true; progressDate?: string } | { valid: false; error: string };
 
 const getIsoDayDistance = (left: string, right: string) => {

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
 import { getDb } from "@/lib/mongodb";
-import { getMissionStatus, getSafeClientReferenceDate, isFailedProgressMission, sortMissionsByDateTime, validateProgressUpdate, type Mission } from "@/lib/missions";
+import { getMissionStatus, getSafeClientReferenceDate, isFailedProgressMission, sortMissionsByDateTime, validateProgressUpdate, type Mission, type StudyProgressOperation } from "@/lib/missions";
 import { missionOptionalFields, missionSchema } from "@/lib/validation";
 
-type MissionDocument = Mission & { userId: string; createdAt: string; updatedAt: string };
+type MissionDocument = Mission & { userId: string; createdAt: string; updatedAt: string; progressOperations?: StudyProgressOperation[] };
 
 export async function GET(request: Request) {
   const userId = await getSessionUserId();
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const db = await getDb();
   const missions = await db.collection<MissionDocument>("missions")
     .find({ userId })
-    .project({ _id: 0, userId: 0 })
+    .project({ _id: 0, userId: 0, progressOperations: 0 })
     .sort({ date: 1, time: 1 })
     .toArray();
   const referenceDate = getSafeClientReferenceDate(request.headers.get("x-client-date"));
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   };
   const missionToStore = Object.fromEntries(
     Object.entries(mission).filter(([, value]) => value !== undefined),
-  ) as Omit<MissionDocument, "createdAt">;
+  ) as unknown as Omit<MissionDocument, "createdAt">;
   const fieldsToUnset = Object.fromEntries(
     missionOptionalFields.filter((field) => mission[field] === undefined).map((field) => [field, "" as const]),
   ) as Record<string, "">;

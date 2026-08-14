@@ -6,6 +6,7 @@ describe("persisted study timer", () => {
     const startedAt = new Date("2026-08-12T22:30:00").getTime();
     const deadline = new Date("2026-08-12T23:59:59.999").getTime();
     const session: StudyTimerSession = {
+      operationId: "timer-1",
       missionId: "work-1",
       title: "Informe",
       subject: "Historia",
@@ -16,6 +17,7 @@ describe("persisted study timer", () => {
     };
 
     expect(getStudyTimerResult(session, deadline)).toMatchObject({
+      operationId: "timer-1",
       missionId: "work-1",
       minutes: 90,
       trackedAt: deadline,
@@ -27,6 +29,7 @@ describe("persisted study timer", () => {
     const closedAt = new Date("2026-08-13T10:37:00").getTime();
     const reopenedAt = new Date("2026-08-13T18:00:00").getTime();
     const session: StudyTimerSession = {
+      operationId: "timer-2",
       missionId: "work-2",
       title: "Proyecto",
       subject: "Cálculo",
@@ -45,6 +48,7 @@ describe("persisted study timer", () => {
     const startedAt = new Date("2026-08-13T10:00:00").getTime();
     const checkedAt = new Date("2026-08-13T10:37:00").getTime();
     const session: StudyTimerSession = {
+      operationId: "timer-3",
       missionId: "work-3",
       title: "Lectura",
       subject: "Física",
