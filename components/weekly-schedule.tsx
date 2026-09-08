@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { BookOpen, CalendarRange, Check, Clock3, MapPin, Pencil, Plus, Power, ScrollText, Trash2, X } from "lucide-react";
+import { BookOpen, CalendarRange, Check, Clock3, Copy, MapPin, Pencil, Plus, Power, ScrollText, Trash2, X } from "lucide-react";
 import { DailyClassQuest, getMondayIso, sortDailyMissionsByTime, Weekday, WeeklyQuest, weekdayMeta } from "@/lib/schedule";
 import { findSubject, Subject } from "@/lib/subjects";
 import { TimeField } from "@/components/time-field";
@@ -37,6 +37,8 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
   const [weeklyDraft, setWeeklyDraft] = useState<WeeklyDraft>({ title: "Mi horario semanal", startDate: getMondayIso(), endDate: "" });
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
   const [dailyDraft, setDailyDraft] = useState<DailyClassQuest>(emptyDailyQuest(1, subjects));
+  const [clipboard, setClipboard] = useState<DailyClassQuest | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
   const selectedWeeklyQuest = weeklyQuests.find((weeklyQuest) => weeklyQuest.id === selectedId) ?? weeklyQuests.find((weeklyQuest) => weeklyQuest.id === focusedWeeklyQuestId) ?? weeklyQuests[0] ?? null;
   const orderedDailyMissions = selectedWeeklyQuest ? sortDailyMissionsByTime(selectedWeeklyQuest.dailyMissions) : [];
 
@@ -104,15 +106,19 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
     setDailyModalOpen(false);
   };
   const selectedDailySubject = findSubject(subjects, dailyDraft.subject, dailyDraft.subjectId);
+  const pasteClass = (day: Weekday) => {
+    if (!clipboard || !selectedWeeklyQuest) return;
+    onSave({ ...selectedWeeklyQuest, dailyMissions: sortDailyMissionsByTime([...selectedWeeklyQuest.dailyMissions, { ...clipboard, id: crypto.randomUUID(), dayOfWeek: day }]) });
+  };
 
   return (
     <div className="weekly-schedule-view">
       <header className="weekly-heading">
-        <div><span className="eyebrow">RUTINAS DEL GREMIO</span><h1>Misiones <i>Semanales</i></h1><p>Convierte tu horario en una campaña recurrente de clases diarias.</p></div>
-        <button className="primary-button compact" type="button" onClick={openNewWeekly}><Plus size={18} /> Nueva semana</button>
+        <div><h1>Horario recurrente</h1><p>Organiza tus clases una vez. Aparecerán cada semana en tu agenda.</p></div>
+        <button className="primary-button compact" type="button" onClick={openNewWeekly}><Plus size={18} /> Nuevo horario</button>
       </header>
 
-      <div className="weekly-quest-tabs" aria-label="Misiones semanales">
+      <div className="weekly-quest-tabs" aria-label="Horarios recurrentes">
         {weeklyQuests.map((weeklyQuest) => (
           <button key={weeklyQuest.id} type="button" className={selectedWeeklyQuest?.id === weeklyQuest.id ? "active" : ""} onClick={() => setSelectedId(weeklyQuest.id)}>
             <span><CalendarRange size={17} /></span>
@@ -120,13 +126,12 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
             {selectedWeeklyQuest?.id === weeklyQuest.id && <Check size={14} />}
           </button>
         ))}
-        <button className="add-week-tab" type="button" onClick={openNewWeekly}><Plus size={17} /><span>Crear misión semanal</span></button>
       </div>
 
       {selectedWeeklyQuest ? (
         <>
           <section className="weekly-command-bar">
-            <div><span className={`weekly-status ${selectedWeeklyQuest.active ? "active" : "paused"}`}><i />{selectedWeeklyQuest.active ? "PROYECTANDO EN EL CALENDARIO" : "RUTINA EN PAUSA"}</span><h2>{selectedWeeklyQuest.title}</h2><p>Desde {selectedWeeklyQuest.startDate}{selectedWeeklyQuest.endDate ? ` hasta ${selectedWeeklyQuest.endDate}` : " · sin fecha final"}</p></div>
+            <div><span className={`weekly-status ${selectedWeeklyQuest.active ? "active" : "paused"}`}><i />{selectedWeeklyQuest.active ? "HORARIO ACTIVO" : "EN PAUSA"}</span><p>Desde {selectedWeeklyQuest.startDate}{selectedWeeklyQuest.endDate ? ` hasta ${selectedWeeklyQuest.endDate}` : " · sin fecha final"}</p></div>
             <div className="weekly-command-actions">
               <button type="button" onClick={() => onSave({ ...selectedWeeklyQuest, active: !selectedWeeklyQuest.active })}><Power size={15} /> {selectedWeeklyQuest.active ? "Pausar" : "Activar"}</button>
               <button type="button" onClick={() => openEditWeekly(selectedWeeklyQuest)}><Pencil size={15} /> Editar</button>
@@ -137,11 +142,17 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
             {([1, 2, 3, 4, 5, 6, 7] as Weekday[]).map((day) => {
               const dayClasses = classesByDay.get(day) ?? [];
               return (
-                <div className={`schedule-day ${day > 5 ? "weekend" : ""}`} key={day}>
+                <div className={`schedule-day ${day > 5 ? "weekend" : ""}`} key={day} tabIndex={0} aria-label={weekdayMeta[day].label}
+                  onDragOver={event => { if (dragging) event.preventDefault(); }}
+                  onDrop={event => { event.preventDefault(); const item = selectedWeeklyQuest.dailyMissions.find(value => value.id === dragging); setDragging(null); if (!item) return; const copy = event.ctrlKey || event.metaKey; onSave({ ...selectedWeeklyQuest, dailyMissions: sortDailyMissionsByTime(copy ? [...selectedWeeklyQuest.dailyMissions, { ...item, id: crypto.randomUUID(), dayOfWeek: day }] : selectedWeeklyQuest.dailyMissions.map(value => value.id === item.id ? { ...value, dayOfWeek: day } : value)) }); }}
+                  onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v" && clipboard) { event.preventDefault(); pasteClass(day); } }}>
                   <header><div><span>{weekdayMeta[day].short}</span><strong>{weekdayMeta[day].label}</strong></div><button type="button" onClick={() => openNewDaily(day)} aria-label={`Agregar clase el ${weekdayMeta[day].label}`}><Plus size={15} /></button></header>
                   <div className="schedule-day-list">
                     {dayClasses.map((dailyMission, index) => (
-                      <button key={dailyMission.id} type="button" className={`daily-class-card tone-${index % 4}`} onClick={() => openEditDaily(dailyMission)}>
+                      <button key={dailyMission.id} type="button" className={`daily-class-card tone-${index % 4}`} draggable
+                        onDragStart={event => { setDragging(dailyMission.id); event.dataTransfer.setData("text/plain", dailyMission.id); event.dataTransfer.effectAllowed = "copyMove"; }} onDragEnd={() => setDragging(null)}
+                        onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c") { event.preventDefault(); setClipboard(dailyMission); } }}
+                        onClick={() => openEditDaily(dailyMission)}>
                         <span className="class-time"><Clock3 size={11} />{dailyMission.startTime}</span>
                         <strong>{dailyMission.title}</strong>
                         <small>{dailyMission.subject}</small>
@@ -149,15 +160,16 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
                       </button>
                     ))}
                     {!dayClasses.length && <button className="empty-class-slot" type="button" onClick={() => openNewDaily(day)}><Plus size={13} /> Agregar clase</button>}
+                    {clipboard && <button type="button" className="academic-paste" onClick={() => pasteClass(day)}><Copy size={12} /> Pegar clase</button>}
                   </div>
                 </div>
               );
             })}
           </section>
-          <div className="weekly-calendar-note"><CalendarRange size={16} /><span><strong>Sincronizado con el mapa principal.</strong> Cada clase aparecerá automáticamente en las fechas correspondientes mientras esta rutina esté activa.</span></div>
+          <div className="weekly-calendar-note"><CalendarRange size={16} /><span>{clipboard ? `Copiada: ${clipboard.title}. Puedes pegarla en cualquier día u otro horario.` : "Arrastra para cambiar de día; Ctrl al soltar crea una copia. En el móvil, toca una clase para cambiar su día o copiarla."}</span>{clipboard && <button type="button" className="academic-link" onClick={() => setClipboard(null)}>Cancelar copia</button>}</div>
         </>
       ) : (
-        <div className="weekly-empty"><CalendarRange size={42} /><h2>{loading ? "Consultando tus rutinas..." : "Crea tu primera misión semanal"}</h2><p>Define desde cuándo se repite y añade las clases que corresponden a cada día.</p>{!loading && <button type="button" onClick={openNewWeekly}>Crear mi horario</button>}</div>
+        <div className="weekly-empty"><CalendarRange size={42} /><h2>{loading ? "Cargando horarios…" : "Crea tu horario de clases"}</h2><p>Define las fechas del semestre y añade las clases de cada día.</p></div>
       )}
 
       {weeklyModalOpen && (
@@ -165,7 +177,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
           <section className="mission-modal schedule-modal" role="dialog" aria-modal="true" aria-labelledby="weekly-modal-title" onMouseDown={(event) => event.stopPropagation()}>
             <div className="modal-heading"><div className="modal-icon"><CalendarRange size={20} /></div><div><span className="eyebrow">MISIÓN SEMANAL</span><h2 id="weekly-modal-title">{weeklyEditing ? "Editar horario" : "Nueva rutina"}</h2></div><button className="icon-button" type="button" onClick={() => setWeeklyModalOpen(false)} aria-label="Cerrar"><X size={20} /></button></div>
             <form onSubmit={saveWeekly}>
-              <label>Nombre de la misión semanal<input required autoFocus value={weeklyDraft.title} onChange={(event) => setWeeklyDraft({ ...weeklyDraft, title: event.target.value })} placeholder="Ej. Horario del semestre" /></label>
+              <label>Nombre del horario<input required autoFocus value={weeklyDraft.title} onChange={(event) => setWeeklyDraft({ ...weeklyDraft, title: event.target.value })} placeholder="Ej. Horario del semestre" /></label>
               <div className="form-row"><label>Comienza<input required type="date" value={weeklyDraft.startDate} onChange={(event) => setWeeklyDraft({ ...weeklyDraft, startDate: event.target.value })} /></label><label>Termina <span className="optional">(opcional)</span><input type="date" min={weeklyDraft.startDate} value={weeklyDraft.endDate} onChange={(event) => setWeeklyDraft({ ...weeklyDraft, endDate: event.target.value })} /></label></div>
               <p className="schedule-form-help">Las clases se repetirán cada semana dentro de este intervalo.</p>
               <div className="modal-actions">
@@ -193,6 +205,7 @@ export function WeeklySchedule({ weeklyQuests, loading, focusedWeeklyQuestId, su
                 <TimeField label="Termina" required after={dailyDraft.startTime} value={dailyDraft.endTime} onChange={(endTime) => setDailyDraft((current) => ({ ...current, endTime }))} />
               </div>
               <label>Notas <span className="optional">(opcional)</span><textarea rows={3} value={dailyDraft.notes ?? ""} onChange={(event) => setDailyDraft({ ...dailyDraft, notes: event.target.value })} placeholder="Profesor, materiales o recordatorios..." /></label>
+              {dailyDraft.id && <button type="button" className="academic-link" onClick={() => { setClipboard(dailyDraft); setDailyModalOpen(false); }}><Copy size={14} /> Copiar a otro día u horario</button>}
               <div className="modal-actions">
                 {dailyDraft.id ? <button type="button" className="delete-button" onClick={deleteDaily}><Trash2 size={14} /> Eliminar clase</button> : <span />}
                 <div><button type="button" className="secondary-button" onClick={() => setDailyModalOpen(false)}>Cancelar</button><button type="submit" className="primary-button"><ScrollText size={14} /> Guardar clase</button></div>

@@ -1,6 +1,8 @@
-# Bitácora del Navegante
+# Bitácora · Tu espacio de estudio
 
-Planificador académico con Next.js, React y MongoDB. Cada persona crea una cuenta por correo y conserva en la nube sus misiones, materias, notas, porcentajes y progreso.
+Planificador para estudiantes universitarios con Next.js, React y MongoDB. Organiza clases, entregas, proyectos y sesiones de estudio sin separar el cronómetro de la tarea.
+
+Esta copia fue recuperada desde un directorio de trabajo. El historial anterior, el remoto y las credenciales no estaban disponibles: consulta [la nota de recuperación](docs/RECUPERACION.md).
 
 ## Inicio rápido
 
@@ -37,14 +39,14 @@ Genera un secreto con un administrador de contraseñas o con `openssl rand -base
 - Contraseñas cifradas con bcrypt.
 - Sesiones firmadas en cookies `httpOnly`.
 - Misiones aisladas por usuario en MongoDB.
-- Calendario, agenda diaria y Misiones de Mundo.
-- Mapa de campaña cronológico con destinos interactivos y fortalezas para jefes finales.
-- Misiones semanales con clases diarias recurrentes, visibles también en el calendario.
-- Catálogo global de materias reutilizado por misiones, clases, mapas y promedios.
+- Hoy: entregas del día, próximas tareas, clases y huecos entre clases.
+- Semana: los siete días con clases y entregas diferenciadas y navegación entre semanas.
+- Proyectos: tareas agrupadas mediante filtros de materia, proyecto y estado.
+- Horarios recurrentes: arrastrar clases entre días, copiar con Ctrl al soltar y copiar/pegar entre horarios. En móvil, abrir una clase para cambiar su día o copiarla.
+- Catálogo de materias reutilizado por tareas y clases.
 - Control horario accesible: escritura flexible, ajustes de 15 minutos y validación visible.
-- Progreso RPG con experiencia, niveles, rangos y recompensas según la importancia.
-- Centro de mando con siguiente objetivo, urgencia, recompensa y filtros rápidos de campaña.
-- Celebraciones visuales de victoria y efectos especiales al derrotar jefes finales.
+- Cronómetro persistente por usuario en este navegador, pausa/reanudación y reintento si falla el guardado.
+- Registro de tiempo separado del estado de entrega, con identificador único para evitar duplicación al reintentar.
 - Cinco temas de color intercambiables, incluido Reino Rosa, guardados en el navegador.
 - Notas, porcentajes y promedio ponderado.
 - Diseño adaptable a escritorio y celular.
@@ -52,7 +54,8 @@ Genera un secreto con un administrador de contraseñas o con `openssl rand -base
 
 ## Documentación
 
-- [Guía de uso](docs/GUIA-DE-USO.md)
+- [Recuperación y uso de la nueva interfaz](docs/RECUPERACION.md)
+- [Guía de la versión recuperada (interfaz anterior)](docs/GUIA-DE-USO.md)
 - [Arquitectura](docs/ARQUITECTURA.md)
 - [Datos, seguridad y MongoDB](docs/DATOS-Y-SEGURIDAD.md)
 - [Cómo extender el proyecto](docs/COMO-EXTENDER.md)
@@ -61,5 +64,10 @@ Genera un secreto con un administrador de contraseñas o con `openssl rand -base
 
 ```bash
 npm run build
+npm run typecheck
+npm test
+npm run test:e2e
 npm audit
 ```
+
+Las pruebas de navegador usan Edge y datos simulados: no necesitan credenciales ni escriben en MongoDB. Para otro navegador, configura `PLAYWRIGHT_CHANNEL` (por ejemplo `chrome`).

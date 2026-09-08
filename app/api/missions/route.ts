@@ -13,7 +13,7 @@ export async function GET() {
   const db = await getDb();
   const missions = await db.collection<MissionDocument>("missions")
     .find({ userId })
-    .project({ _id: 0, userId: 0 })
+    .project({ _id: 0, userId: 0, studySessions: 0 })
     .sort({ date: 1, time: 1 })
     .toArray();
   return NextResponse.json(missions);

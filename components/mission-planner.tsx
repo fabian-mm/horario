@@ -1,387 +1,134 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Award, BookOpen, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Compass, Crown, Flag, Flame, Gem, Globe2, Library, LoaderCircle, MapPin, MapPinned, Menu, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, Sparkles, Swords, Target, Trophy, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, ArrowUpRight, BookOpen, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, FolderOpen, GraduationCap, LayoutDashboard, LoaderCircle, Play, Plus, Search, Settings2, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMissions } from "@/hooks/use-missions";
 import { useSubjects } from "@/hooks/use-subjects";
 import { useTheme } from "@/hooks/use-theme";
 import { useWeeklyQuests } from "@/hooks/use-weekly-quests";
-import { calculatePlayerProgress, calculateStreak, formatLongDate, getMissionStatus, getMissionXp, Mission, Priority, priorityMeta, sortMissionsByDateTime, toISODate } from "@/lib/missions";
-import { getScheduledOccurrences, sortDailyMissionsByTime } from "@/lib/schedule";
+import { academicWeek, durationLabel, freeStudySlots, minuteLabel, pendingTasks } from "@/lib/academic";
+import { getMissionStatus, sortMissionsByDateTime, toISODate, type Mission, type MissionStatus } from "@/lib/missions";
+import { getScheduledOccurrences } from "@/lib/schedule";
 import { resolveSubjectName } from "@/lib/subjects";
-import { getUserInitials } from "@/lib/users";
 import { AccountPanel } from "./account-panel";
-import { AdventureMap } from "./adventure-map";
 import { AuthScreen } from "./auth-screen";
-import { GameFeedback, RewardEvent } from "./game-feedback";
 import { MissionForm } from "./mission-form";
 import { SubjectsView } from "./subjects-view";
 import { WeeklySchedule } from "./weekly-schedule";
-import { WorldMissions } from "./world-missions";
+import { StudyFocus } from "./study-focus";
 
-const WEEK_DAYS = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
-type Filter = "all" | "pending" | "completed" | Priority;
-type View = "calendar" | "world" | "map" | "weekly" | "subjects";
+type View = "today" | "week" | "projects" | "subjects" | "routine";
+const dateLabel = (date: Date) => new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short" }).format(date);
+const navigation = [
+  { id: "today" as View, label: "Hoy", icon: LayoutDashboard },
+  { id: "week" as View, label: "Semana", icon: CalendarDays },
+  { id: "projects" as View, label: "Proyectos", icon: FolderOpen },
+];
 
-function calendarDays(month: Date) {
-  const first = new Date(month.getFullYear(), month.getMonth(), 1);
-  const mondayOffset = (first.getDay() + 6) % 7;
-  const start = new Date(month.getFullYear(), month.getMonth(), 1 - mondayOffset);
-  return Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    return date;
-  });
+function TaskList({ tasks, onEdit, onStatus, onStudy, empty }: { tasks: Mission[]; onEdit: (task: Mission) => void; onStatus: (id: string, status: MissionStatus) => void; onStudy: (task: Mission) => void; empty: string }) {
+  return <div className="academic-task-list">{tasks.map(task => {
+    const status = getMissionStatus(task);
+    return <article className={`academic-task ${status}`} key={task.id}>
+      <button type="button" className="academic-check" aria-label={`${status === "completed" ? "Reabrir" : "Completar"} ${task.title}`} onClick={() => onStatus(task.id, status === "completed" ? "pending" : "completed")}><Check size={15} /></button>
+      <button type="button" className="academic-task-copy" onClick={() => onEdit(task)}><strong>{task.title}</strong><small>{task.subject}{task.project && ` · ${task.project}`}</small></button>
+      <div className="academic-task-meta"><time dateTime={`${task.date}T${task.time}`}>{dateLabel(new Date(`${task.date}T12:00:00`))} · {task.time}</time><small>{task.studiedMinutes ? `${durationLabel(task.studiedMinutes)} estudiados` : task.estimatedMinutes ? `${durationLabel(task.estimatedMinutes)} estimados` : status === "submitted" ? "Entregada" : ""}</small></div>
+      {status === "pending" && <button type="button" className="academic-study-action" onClick={() => onStudy(task)} aria-label={`Estudiar ${task.title}`} title="Iniciar sesión de estudio"><Play size={15} /><span>Estudiar</span></button>}
+    </article>;
+  })}{!tasks.length && <p className="academic-empty">{empty}</p>}</div>;
 }
 
 export function MissionPlanner() {
   const auth = useAuth();
   const { theme, setTheme } = useTheme();
-  const { missions, loading: missionsLoading, error: missionsError, upsert, toggle, setStatus, remove } = useMissions(Boolean(auth.user));
-  const { weeklyQuests, loading: scheduleLoading, error: scheduleError, upsert: upsertWeeklyQuest, remove: removeWeeklyQuest } = useWeeklyQuests(Boolean(auth.user));
-  const { subjects, loading: subjectsLoading, error: subjectsError, upsert: upsertSubject, remove: removeSubject } = useSubjects(Boolean(auth.user));
-  const [month, setMonth] = useState(() => {
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), 1);
-  });
+  const { missions, loading, error, upsert, setStatus, remove, recordStudy } = useMissions(Boolean(auth.user));
+  const schedule = useWeeklyQuests(Boolean(auth.user));
+  const catalog = useSubjects(Boolean(auth.user));
+  const [view, setView] = useState<View>("today");
+  const [anchor, setAnchor] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const [editing, setEditing] = useState<Mission | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [filter, setFilter] = useState<Filter>("all");
-  const [view, setView] = useState<View>("calendar");
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-  const [draftSubject, setDraftSubject] = useState<string | undefined>();
   const [query, setQuery] = useState("");
-  const [mobileNav, setMobileNav] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [subject, setSubject] = useState("");
+  const [project, setProject] = useState("");
+  const [taskFilter, setTaskFilter] = useState<"pending" | "all" | "completed">("pending");
+  const [editing, setEditing] = useState<Mission | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [focusedWeeklyQuestId, setFocusedWeeklyQuestId] = useState<string | null>(null);
-  const [reward, setReward] = useState<RewardEvent | null>(null);
+  const [studyTask, setStudyTask] = useState<Mission | null>(null);
+  const [focusedRoutine, setFocusedRoutine] = useState<string | null>(null);
+  const tasks = useMemo(() => sortMissionsByDateTime(missions.map(task => ({ ...task, subject: resolveSubjectName(catalog.subjects, task.subject, task.subjectId) }))), [missions, catalog.subjects]);
+  const search = query.trim().toLocaleLowerCase("es");
+  const matching = tasks.filter(task => !search || `${task.title} ${task.subject} ${task.project ?? ""}`.toLocaleLowerCase("es").includes(search));
+  const priorities = pendingTasks(matching);
+  const week = academicWeek(anchor);
+  const today = new Date();
+  const todayIso = toISODate(today);
+  const classesToday = getScheduledOccurrences(today, schedule.weeklyQuests);
+  const slots = freeStudySlots(classesToday);
+  const projects = Array.from(new Set(tasks.map(task => task.project?.trim()).filter((name): name is string => Boolean(name))));
+  const projectTasks = matching.filter(task => (!subject || task.subject === subject) && (!project || task.project === project) && (taskFilter === "all" || (taskFilter === "pending" ? getMissionStatus(task) !== "completed" : getMissionStatus(task) === "completed")));
+  const openNew = (date = new Date()) => { setSelectedDate(date); setEditing(null); setFormOpen(true); };
+  const openEdit = (task: Mission) => { setEditing(task); setFormOpen(true); };
+  const openRoutine = (id?: string) => { setFocusedRoutine(id ?? null); setView("routine"); };
+  const errors = error ?? schedule.error ?? catalog.error;
+  const activeNav = view === "routine" ? "week" : view === "subjects" ? "projects" : view;
+  const taskList = (items: Mission[], empty: string) => <TaskList tasks={items} onEdit={openEdit} onStatus={setStatus} onStudy={setStudyTask} empty={empty} />;
 
-  const days = useMemo(() => calendarDays(month), [month]);
-  const normalizedQuery = query.trim().toLocaleLowerCase("es");
-  const catalogMissions = useMemo(() => sortMissionsByDateTime(missions.map((mission) => ({ ...mission, subject: resolveSubjectName(subjects, mission.subject, mission.subjectId) }))), [missions, subjects]);
-  const catalogWeeklyQuests = useMemo(() => weeklyQuests.map((weeklyQuest) => ({
-    ...weeklyQuest,
-    dailyMissions: sortDailyMissionsByTime(weeklyQuest.dailyMissions.map((dailyMission) => ({
-      ...dailyMission,
-      subject: resolveSubjectName(subjects, dailyMission.subject, dailyMission.subjectId),
-    }))),
-  })), [weeklyQuests, subjects]);
-  const filtered = useMemo(() => catalogMissions.filter((mission) => {
-    const status = getMissionStatus(mission);
-    const matchesFilter = filter === "all" || (filter === "pending" && status === "pending") || (filter === "completed" && status === "completed") || mission.priority === filter;
-    return matchesFilter && (!normalizedQuery || `${mission.title} ${mission.subject}`.toLocaleLowerCase("es").includes(normalizedQuery));
-  }), [catalogMissions, filter, normalizedQuery]);
-  const worldMissions = useMemo(() => {
-    return catalogMissions.filter((mission) => !normalizedQuery || `${mission.title} ${mission.subject}`.toLocaleLowerCase("es").includes(normalizedQuery));
-  }, [catalogMissions, normalizedQuery]);
-  const missionsByDate = useMemo(() => {
-    const grouped = new Map<string, Mission[]>();
-    filtered.forEach((mission) => {
-      const dayMissions = grouped.get(mission.date);
-      if (dayMissions) dayMissions.push(mission);
-      else grouped.set(mission.date, [mission]);
-    });
-    return new Map(Array.from(grouped.entries()).map(([date, dayMissions]) => [date, sortMissionsByDateTime(dayMissions)]));
-  }, [filtered]);
-  const scheduleByDate = useMemo(() => {
-    const grouped = new Map<string, ReturnType<typeof getScheduledOccurrences>>();
-    if (filter !== "all" && filter !== "pending") return grouped;
-    days.forEach((date) => {
-      const occurrences = getScheduledOccurrences(date, catalogWeeklyQuests).filter((dailyMission) => !normalizedQuery || `${dailyMission.title} ${dailyMission.subject} ${dailyMission.location ?? ""}`.toLocaleLowerCase("es").includes(normalizedQuery));
-      if (occurrences.length) grouped.set(toISODate(date), occurrences);
-    });
-    return grouped;
-  }, [days, filter, catalogWeeklyQuests, normalizedQuery]);
-  const selectedIso = toISODate(selectedDate);
-  const selectedMissions = missionsByDate.get(selectedIso) ?? [];
-  const selectedClasses = scheduleByDate.get(selectedIso) ?? [];
+  if (auth.loading) return <main className="app-loading"><LoaderCircle className="spin" size={24} /><span>Abriendo tu espacio de estudio…</span></main>;
+  if (!auth.user) return <AuthScreen connectionError={auth.error} onRegister={auth.register} onLogin={auth.login} />;
 
-  useEffect(() => {
-    if (!reward) return;
-    const timeout = window.setTimeout(() => setReward(null), 3600);
-    return () => window.clearTimeout(timeout);
-  }, [reward]);
-
-  const openNew = (date = selectedDate, subject?: string) => { setSelectedDate(date); setDraftSubject(subject); setEditing(null); setModalOpen(true); };
-  const openEdit = (mission: Mission) => { setDraftSubject(undefined); setEditing(mission); setModalOpen(true); };
-  const moveMonth = (amount: number) => setMonth(new Date(month.getFullYear(), month.getMonth() + amount, 1));
-  const player = useMemo(() => calculatePlayerProgress(missions), [missions]);
-  const gameStats = useMemo(() => missions.reduce((stats, mission) => {
-    const status = getMissionStatus(mission);
-    if (status === "pending") stats.pending += 1;
-    if (status === "completed") stats.completed += 1;
-    if (mission.priority === "boss") {
-      stats.bosses += 1;
-      if (status === "completed") stats.bossesDefeated += 1;
-    }
-    return stats;
-  }, { pending: 0, completed: 0, bosses: 0, bossesDefeated: 0 }), [missions]);
-  const pending = gameStats.pending;
-  const streak = useMemo(() => calculateStreak(missions), [missions]);
-  const monthName = new Intl.DateTimeFormat("es-CO", { month: "long" }).format(month);
-  const campaignProgress = missions.length ? Math.round((gameStats.completed / missions.length) * 100) : 0;
-  const nextObjective = useMemo(() => sortMissionsByDateTime(catalogMissions.filter((mission) => getMissionStatus(mission) !== "completed"))[0] ?? null, [catalogMissions]);
-  const objectiveTiming = useMemo(() => {
-    if (!nextObjective) return "Campaña completada";
-    const today = new Date();
-    today.setHours(12, 0, 0, 0);
-    const target = new Date(`${nextObjective.date}T12:00:00`);
-    const daysAway = Math.round((target.getTime() - today.getTime()) / 86_400_000);
-    if (daysAway < 0) return `Venció hace ${Math.abs(daysAway)} ${Math.abs(daysAway) === 1 ? "día" : "días"}`;
-    if (daysAway === 0) return "Objetivo de hoy";
-    if (daysAway === 1) return "Objetivo de mañana";
-    return `Faltan ${daysAway} días`;
-  }, [nextObjective]);
-
-  const showReward = (mission: Mission) => setReward({ id: Date.now(), title: mission.title, xp: getMissionXp(mission), boss: mission.priority === "boss" });
-  const toggleWithFeedback = (id: string) => {
-    const mission = missions.find((item) => item.id === id);
-    if (mission && getMissionStatus(mission) !== "completed") showReward(mission);
-    toggle(id);
-  };
-  const setStatusWithFeedback = (id: string, status: Parameters<typeof setStatus>[1]) => {
-    const mission = missions.find((item) => item.id === id);
-    if (mission && status === "completed" && getMissionStatus(mission) !== "completed") showReward(mission);
-    setStatus(id, status);
-  };
-  const openObjective = (mission: Mission) => {
-    const objectiveDate = new Date(`${mission.date}T12:00:00`);
-    setSelectedDate(objectiveDate);
-    setMonth(new Date(objectiveDate.getFullYear(), objectiveDate.getMonth(), 1));
-    openEdit(mission);
-  };
-  const relics = [
-    { label: "Primera victoria", unlocked: gameStats.completed >= 1, icon: <Trophy size={13} /> },
-    { label: "Cazajefes", unlocked: gameStats.bossesDefeated >= 1, icon: <Swords size={13} /> },
-    { label: "Racha de 3 días", unlocked: streak >= 3, icon: <Flame size={13} /> },
-    { label: "Coleccionista", unlocked: missions.length >= 5, icon: <Gem size={13} /> },
-  ];
-
-  const filters: { id: Filter; label: string; icon: React.ReactNode }[] = [
-    { id: "all", label: "Todas las misiones", icon: <Compass size={18} /> },
-    { id: "pending", label: "Por conquistar", icon: <Flag size={18} /> },
-    { id: "boss", label: "Jefes finales", icon: <Swords size={18} /> },
-    { id: "completed", label: "Completadas", icon: <Check size={18} /> },
-  ];
-
-  if (auth.loading) {
-    return <main className="app-loading"><Compass size={38} /><LoaderCircle className="spin" size={22} /><span>Abriendo tu bitácora...</span></main>;
-  }
-
-  if (!auth.user) {
-    return <AuthScreen connectionError={auth.error} onRegister={auth.register} onLogin={auth.login} />;
-  }
-
-  return (
-    <main className="app-shell" data-theme={theme}>
-      <aside className={`sidebar ${mobileNav ? "open" : ""} ${sidebarCollapsed ? "collapsed" : ""}`}>
-        <button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Cerrar menú"><X /></button>
-        <button className="sidebar-collapse" onClick={() => setSidebarCollapsed((current) => !current)} aria-label={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"} title={sidebarCollapsed ? "Mostrar menú" : "Ocultar menú"}>
-          {sidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
-        </button>
-        <div className="brand">
-          <span className="brand-mark"><Compass size={26} strokeWidth={1.7} /></span>
-          <div><strong>BITÁCORA</strong><small>DEL NAVEGANTE</small></div>
-        </div>
-
-        <nav>
-          <span className="nav-label">MAPA DE AVENTURA</span>
-          <button className={view === "world" ? "active" : ""} onClick={() => { setView("world"); setMobileNav(false); }}>
-            <Globe2 size={18} /><span>Misiones de Mundo</span>
-          </button>
-          <button className={view === "map" ? "active" : ""} onClick={() => { setView("map"); setFilter("all"); setMobileNav(false); }}>
-            <MapPinned size={18} /><span>Mapa de campaña</span>
-          </button>
-          <button className={view === "weekly" ? "active" : ""} onClick={() => { setFocusedWeeklyQuestId(null); setView("weekly"); setMobileNav(false); }}>
-            <CalendarRange size={18} /><span>Misiones semanales</span>
-          </button>
-          <button className={view === "subjects" ? "active" : ""} onClick={() => { setView("subjects"); setMobileNav(false); }}>
-            <Library size={18} /><span>Mis materias</span>
-          </button>
-          {filters.map((item) => (
-            <button key={item.id} className={view === "calendar" && filter === item.id ? "active" : ""} onClick={() => { setView("calendar"); setFilter(item.id); setMobileNav(false); }}>
-              {item.icon}<span>{item.label}</span>
-              {item.id === "pending" && <em>{pending}</em>}
-            </button>
-          ))}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="rank-card">
-            <div className="rank-top"><span>RANGO ACTUAL</span><b><Shield size={11} /> NIV. {player.level}</b></div>
-            <div className="rank-identity"><span>{player.level}</span><div><strong>{player.rank}</strong><small>{player.totalXp} XP acumulada</small></div></div>
-            <div className="progress-track"><i style={{ width: `${player.progress}%` }} /></div>
-            <small>{player.xpInLevel}/{player.xpPerLevel} XP · faltan {player.xpToNextLevel} para subir</small>
-            <div className="relic-strip" aria-label="Reliquias de aventura">
-              {relics.map((relic) => <span key={relic.label} className={relic.unlocked ? "unlocked" : "locked"} title={`${relic.label}: ${relic.unlocked ? "desbloqueada" : "bloqueada"}`}>{relic.icon}</span>)}
+  return <main className="academic-app" data-theme={theme}>
+    <aside className="academic-sidebar">
+      <a className="academic-brand" href="#" onClick={event => { event.preventDefault(); setView("today"); }}><span><GraduationCap size={24} /></span><div><strong>bitácora</strong><small>Tu espacio de estudio</small></div></a>
+      <nav aria-label="Navegación principal">{navigation.map(item => <button key={item.id} type="button" className={activeNav === item.id ? "active" : ""} aria-current={activeNav === item.id ? "page" : undefined} onClick={() => setView(item.id)}><item.icon size={19} /><span>{item.label}</span></button>)}</nav>
+      <div className="academic-sidebar-note"><span>UN PASO A LA VEZ</span><p>Haz espacio para lo importante.</p><small>Clases, entregas y tiempo para ti.</small></div>
+      <button type="button" className="academic-account" onClick={() => setAccountOpen(true)}><span>{auth.user.name.slice(0, 1).toUpperCase()}</span><strong>{auth.user.name}</strong><Settings2 size={17} /></button>
+    </aside>
+    <section className="academic-content">
+      <header className="academic-topbar"><span>Mi semestre <ChevronRight size={13} /> {view === "today" ? "Hoy" : view === "week" ? "Semana" : view === "routine" ? "Horario recurrente" : view === "subjects" ? "Materias" : "Proyectos"}</span><label className="academic-search"><Search size={16} /><input aria-label="Buscar tareas" placeholder="Buscar tareas, materias o proyectos" value={query} onChange={event => setQuery(event.target.value)} />{query && <button type="button" aria-label="Limpiar búsqueda" onClick={() => setQuery("")}><X size={14} /></button>}</label></header>
+      {errors && <div className="sync-alert" role="alert"><AlertTriangle size={16} />{errors}</div>}
+      <div className="academic-workspace">
+        {view === "today" && <>
+          <header className="academic-heading"><div><span className="academic-eyebrow">{new Intl.DateTimeFormat("es-CO", { weekday: "long", day: "numeric", month: "long" }).format(today)}</span><h1>Tu día, con claridad.</h1><p>Elige una tarea. Dale un espacio. Avanza a tu ritmo.</p></div><button type="button" className="primary-button" onClick={() => openNew()}><Plus size={17} /> Nueva tarea</button></header>
+          <div className="academic-summary"><span><b>{priorities.today.length}</b> {priorities.today.length === 1 ? "entrega hoy" : "entregas hoy"}</span><span><b>{classesToday.length}</b> {classesToday.length === 1 ? "clase" : "clases"}</span><span><b>{priorities.upcoming.length}</b> {priorities.upcoming.length === 1 ? "tarea próxima" : "tareas próximas"}</span></div>
+          <div className="academic-today-grid">
+            <div>
+              <section className="academic-panel"><header><div><span className="academic-eyebrow">LO IMPORTANTE PRIMERO</span><h2>Para hoy</h2></div><small>{priorities.today.length} tareas</small></header>{taskList(priorities.today, loading ? "Cargando tus tareas…" : search ? "No hay coincidencias para hoy." : "No tienes entregas para hoy. Puedes adelantar una tarea próxima.")}</section>
+              <section className="academic-panel"><header><h2>Próximas entregas</h2><button type="button" className="academic-link" onClick={() => setView("projects")}>Ver todas <ArrowUpRight size={15} /></button></header>{taskList(priorities.upcoming.slice(0, 5), "No hay próximas entregas.")}</section>
+              {priorities.overdue.length > 0 && <details className="academic-overdue"><summary><AlertTriangle size={15} /> {priorities.overdue.length} tareas con fecha pasada <span>Revisar</span></summary>{taskList(priorities.overdue, "")}</details>}
             </div>
+            <aside className="academic-day-plan"><section className="academic-panel"><header><h2>Tu horario de hoy</h2><CalendarDays size={18} /></header><div className="academic-timeline">{classesToday.map(activity => <button key={activity.occurrenceId} type="button" onClick={() => openRoutine(activity.weeklyQuestId)}><time>{activity.startTime}<small>{activity.endTime}</small></time><span><strong>{activity.title}</strong><small>{activity.subject}{activity.location && ` · ${activity.location}`}</small></span></button>)}{!classesToday.length && <p className="academic-empty">Hoy no tienes clases programadas.</p>}</div><button type="button" className="academic-panel-footer" onClick={() => { setAnchor(new Date()); setView("week"); }}>Ver mi semana <ArrowUpRight size={15} /></button></section>
+              <section className="academic-free-time"><Clock3 size={21} /><h3>Espacio para estudiar</h3><p>Según tus clases, entre las 8:00 y las 20:00.</p>{slots.slice(0, 3).map(slot => <div key={slot.start}><strong>{minuteLabel(slot.start)} — {minuteLabel(slot.end)}</strong><span>{durationLabel(slot.end - slot.start)}</span></div>)}{!slots.length && <p>No hay huecos de al menos 30 minutos.</p>}<small>Las fechas de entrega no se cuentan como tiempo ocupado.</small></section>
+            </aside>
           </div>
-          <button className="settings" onClick={() => setAccountOpen(true)}><Settings size={18} /> <span>Ajustes</span></button>
-          <button className="profile" onClick={() => setAccountOpen(true)} aria-label="Administrar mi cuenta">
-            <span>{getUserInitials(auth.user.name)}</span><div><b>{auth.user.name}</b><small>{auth.user.email}</small></div>
-          </button>
-        </div>
-      </aside>
-      {mobileNav && <div className="nav-backdrop" onClick={() => setMobileNav(false)} />}
-
-      <section className={`content ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
-        <header className="topbar">
-          <button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Abrir menú"><Menu /></button>
-          <div className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={view === "world" ? "Buscar tarea o materia..." : view === "map" ? "Buscar un destino..." : view === "weekly" ? "Buscar una clase..." : view === "subjects" ? "Buscar una materia..." : "Buscar una misión..."} /></div>
-          <div className="top-actions">
-            {(missionsLoading || scheduleLoading || subjectsLoading || missionsError || scheduleError || subjectsError) && <span className={`sync-state ${missionsError || scheduleError || subjectsError ? "error" : ""}`}>{missionsError || scheduleError || subjectsError ? "Sin guardar" : "Sincronizando"}</span>}
-            <span className="level-hud" title={`${player.rank} · ${player.totalXp} XP total`}><Sparkles size={14} /><b>NIV. {player.level}</b><small>{player.xpInLevel}/{player.xpPerLevel} XP</small></span>
-            <span className="streak">🔥 <b>{streak}</b><small> DÍAS DE RACHA</small></span>
-            <button className="primary-button compact" onClick={() => openNew(selectedDate, view === "world" ? selectedSubject ?? undefined : undefined)}><Plus size={18} /> Nueva misión</button>
+        </>}
+        {view === "week" && <>
+          <header className="academic-heading"><div><span className="academic-eyebrow">PLANIFICA TU TIEMPO</span><h1>Tu semana</h1><p>Clases y entregas juntas, con espacio para organizarte.</p></div><button type="button" className="secondary-button" onClick={() => openRoutine()}><Settings2 size={16} /> Organizar horario</button></header>
+          <div className="academic-week-toolbar"><div><button type="button" aria-label="Semana anterior" onClick={() => { const next = new Date(anchor); next.setDate(next.getDate() - 7); setAnchor(next); }}><ChevronLeft size={18} /></button><strong>{dateLabel(week[0])} — {dateLabel(week[6])}, {week[6].getFullYear()}</strong><button type="button" aria-label="Semana siguiente" onClick={() => { const next = new Date(anchor); next.setDate(next.getDate() + 7); setAnchor(next); }}><ChevronRight size={18} /></button></div><button type="button" onClick={() => setAnchor(new Date())}>Esta semana</button></div>
+          <div className="academic-week-scroll"><div className="academic-week">{week.map(date => {
+            const iso = toISODate(date);
+            const classes = getScheduledOccurrences(date, schedule.weeklyQuests).filter(item => !search || `${item.title} ${item.subject}`.toLocaleLowerCase("es").includes(search));
+            const due = matching.filter(task => task.date === iso);
+            return <section className={iso === todayIso ? "is-today" : ""} key={iso}><header><small>{new Intl.DateTimeFormat("es-CO", { weekday: "short" }).format(date)}</small><strong>{date.getDate()}</strong><button type="button" className="academic-reveal" aria-label={`Añadir tarea el ${iso}`} onClick={() => openNew(date)}><Plus size={16} /></button></header><div>{classes.map(item => <button type="button" className="academic-week-class" key={item.occurrenceId} onClick={() => openRoutine(item.weeklyQuestId)}><small>{item.startTime} — {item.endTime}</small><strong>{item.title}</strong><span>{item.subject}</span></button>)}{due.map(task => <button type="button" className={`academic-week-task ${getMissionStatus(task)}`} key={task.id} onClick={() => openEdit(task)}><small>ENTREGA · {task.time}</small><strong>{task.title}</strong><span>{task.subject}</span></button>)}{!classes.length && !due.length && <span className="academic-week-empty">Sin actividades</span>}</div></section>;
+          })}</div></div><p className="academic-caption"><span className="class-dot" /> Clases <span className="task-dot" /> Entregas · Abre una tarjeta para editar sus detalles.</p>
+        </>}
+        {view === "projects" && <>
+          <header className="academic-heading"><div><span className="academic-eyebrow">DEL OBJETIVO A LA ENTREGA</span><h1>Proyectos y tareas</h1><p>Reúne los pasos de cada proyecto y sigue su avance.</p></div><button type="button" className="primary-button" onClick={() => openNew()}><Plus size={17} /> Nueva tarea</button></header>
+          <div className="academic-project-filters">
+            <label>Materia<select aria-label="Filtrar por materia" value={subject} onChange={event => setSubject(event.target.value)}><option value="">Todas las materias</option>{Array.from(new Set([...catalog.subjects.map(item => item.name), ...tasks.map(task => task.subject)])).sort().map(name => <option key={name}>{name}</option>)}</select></label>
+            <label>Proyecto<select aria-label="Filtrar por proyecto" value={project} onChange={event => setProject(event.target.value)}><option value="">Todos los proyectos</option>{projects.map(name => <option key={name}>{name}</option>)}</select></label>
+            <button type="button" className="academic-link" onClick={() => setView("subjects")}><BookOpen size={16} /> Administrar materias</button>
           </div>
-        </header>
-
-        {(missionsError || scheduleError || subjectsError) && <div className="sync-alert" role="alert"><AlertTriangle size={15} /><span><strong>No se pudo sincronizar.</strong> {missionsError ?? scheduleError ?? subjectsError}</span></div>}
-
-        {view === "world" ? (
-          <div className="workspace world-workspace">
-            <WorldMissions
-              missions={worldMissions}
-              selectedSubject={selectedSubject}
-              onSelectSubject={setSelectedSubject}
-              onEdit={openEdit}
-              onAdd={(subject) => openNew(selectedDate, subject)}
-              onStatusChange={setStatusWithFeedback}
-            />
-          </div>
-        ) : view === "map" ? (
-          <div className="workspace adventure-map-workspace">
-            <AdventureMap missions={filtered} onAdd={() => openNew(selectedDate)} onEdit={openEdit} onStatusChange={setStatusWithFeedback} />
-          </div>
-        ) : view === "weekly" ? (
-          <div className="workspace weekly-workspace">
-            <WeeklySchedule weeklyQuests={catalogWeeklyQuests.filter((weeklyQuest) => !normalizedQuery || weeklyQuest.dailyMissions.some((dailyMission) => `${dailyMission.title} ${dailyMission.subject} ${dailyMission.location ?? ""}`.toLocaleLowerCase("es").includes(normalizedQuery)) || weeklyQuest.title.toLocaleLowerCase("es").includes(normalizedQuery))} loading={scheduleLoading} focusedWeeklyQuestId={focusedWeeklyQuestId} subjects={subjects} onManageSubjects={() => setView("subjects")} onSave={upsertWeeklyQuest} onDelete={removeWeeklyQuest} />
-          </div>
-        ) : view === "subjects" ? (
-          <div className="workspace subjects-workspace">
-            <SubjectsView subjects={subjects.filter((subject) => !normalizedQuery || subject.name.toLocaleLowerCase("es").includes(normalizedQuery))} missions={catalogMissions} weeklyQuests={catalogWeeklyQuests} loading={subjectsLoading} onSave={upsertSubject} onDelete={removeSubject} />
-          </div>
-        ) : <div className="workspace">
-          <div className="page-heading">
-            <div><span className="eyebrow">TU PRÓXIMA TRAVESÍA</span><h1>Mapa de <i>{monthName}</i></h1><p>Cada misión completada te acerca un paso más al tesoro.</p></div>
-            <div className="month-controls">
-              <button aria-label="Mes anterior" onClick={() => moveMonth(-1)}><ChevronLeft /></button>
-              <button className="today" onClick={() => { const today = new Date(); setMonth(today); setSelectedDate(today); }}>Hoy</button>
-              <button aria-label="Mes siguiente" onClick={() => moveMonth(1)}><ChevronRight /></button>
-            </div>
-          </div>
-
-          <div className="campaign-dashboard">
-            <section className={`quest-focus ${nextObjective?.priority ?? "cleared"}`} aria-labelledby="active-quest-title">
-              <div className="quest-route" aria-hidden="true"><i /><i /><i /><span>✦</span></div>
-              <div className="quest-focus-copy">
-                <span className="quest-kicker"><Target size={13} /> {nextObjective ? "OBJETIVO ACTIVO" : "MAPA DESPEJADO"}</span>
-                <h2 id="active-quest-title">{nextObjective?.title ?? "¡Campaña completada!"}</h2>
-                <p>{nextObjective ? `${nextObjective.subject} · ${formatLongDate(nextObjective.date)}` : "No quedan misiones pendientes. Puedes preparar la siguiente aventura."}</p>
-                <div className="quest-tags">
-                  <span><Clock3 size={12} /> {objectiveTiming}</span>
-                  {nextObjective && <span><Award size={12} /> {priorityMeta[nextObjective.priority].label}</span>}
-                  {nextObjective && <span className="quest-xp"><Sparkles size={12} /> +{getMissionXp(nextObjective)} XP</span>}
-                </div>
-              </div>
-              <div className="quest-focus-action">
-                <div className="campaign-ring" style={{ "--campaign-progress": `${campaignProgress * 3.6}deg` } as React.CSSProperties}><span><strong>{campaignProgress}%</strong><small>CAMPAÑA</small></span></div>
-                <button type="button" onClick={() => nextObjective ? openObjective(nextObjective) : openNew(selectedDate)}>{nextObjective ? "Abrir objetivo" : "Nueva aventura"}<ChevronRight size={15} /></button>
-              </div>
-            </section>
-
-            <div className="campaign-hud" aria-label="Filtros rápidos de campaña">
-              <button type="button" className={filter === "pending" ? "active" : ""} onClick={() => setFilter("pending")}><Flag size={15} /><small>MISIONES ACTIVAS</small><strong>{gameStats.pending}</strong></button>
-              <button type="button" className={filter === "completed" ? "active" : ""} onClick={() => setFilter("completed")}><Trophy size={15} /><small>VICTORIAS</small><strong>{gameStats.completed}</strong></button>
-              <button type="button" className={`boss-stat ${filter === "boss" ? "active" : ""}`} onClick={() => setFilter("boss")}><Crown size={15} /><small>JEFES DERROTADOS</small><strong>{gameStats.bossesDefeated}/{gameStats.bosses}</strong></button>
-              <button type="button" className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}><Sparkles size={15} /><small>XP TOTAL</small><strong>{player.totalXp}</strong></button>
-            </div>
-          </div>
-
-          <div className="planner-grid">
-          <section className="map-card">
-            <div className="quest-board-ribbon"><span><Compass size={14} /> TABLERO DE CAMPAÑA</span><small>CAPÍTULO · {monthName.toUpperCase()}</small></div>
-            <div className="map-ornament compass-rose">✣</div>
-            <div className="map-ornament ship">♜</div>
-            <div className="week-row">{WEEK_DAYS.map((day) => <span key={day}>{day}</span>)}</div>
-            <div className="calendar-grid">
-              {days.map((date) => {
-                const iso = toISODate(date);
-                const dayMissions = missionsByDate.get(iso) ?? [];
-                const dayClasses = scheduleByDate.get(iso) ?? [];
-                const outside = date.getMonth() !== month.getMonth();
-                const selected = iso === selectedIso;
-                const hasBoss = dayMissions.some((mission) => mission.priority === "boss" && getMissionStatus(mission) !== "completed");
-                const visibleClassCount = Math.min(dayClasses.length, 1);
-                const visibleMissionCount = Math.min(dayMissions.length, dayClasses.length ? 1 : 2);
-                const hiddenItems = dayClasses.length + dayMissions.length - visibleClassCount - visibleMissionCount;
-                return (
-                  <button key={iso} className={`calendar-day ${outside ? "outside" : ""} ${selected ? "selected" : ""} ${hasBoss ? "has-boss" : ""} ${dayClasses.length ? "has-class" : ""}`} onClick={() => setSelectedDate(date)} onDoubleClick={() => openNew(date)}>
-                    <span className="day-number">{date.getDate()}</span>
-                    <div className="day-missions">
-                      {dayClasses.slice(0, 1).map((dailyClass) => <span key={dailyClass.occurrenceId} className="mission-chip class-chip" onClick={(event) => { event.stopPropagation(); setFocusedWeeklyQuestId(dailyClass.weeklyQuestId); setView("weekly"); }}><i><BookOpen size={9} /></i>{dailyClass.startTime} {dailyClass.title}</span>)}
-                      {dayMissions.slice(0, dayClasses.length ? 1 : 2).map((mission) => (
-                        <span key={mission.id} className={`mission-chip ${mission.priority} ${mission.completed ? "done" : ""}`} onClick={(event) => { event.stopPropagation(); openEdit(mission); }}>
-                          <i>{priorityMeta[mission.priority].icon}</i>{mission.title}
-                        </span>
-                      ))}
-                      {hiddenItems > 0 && <small>+{hiddenItems} más</small>}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="map-legend">
-              {(Object.keys(priorityMeta) as Priority[]).map((priority) => <span key={priority}><i className={priority} />{priorityMeta[priority].shortLabel}</span>)}
-              <small>Doble clic en un día para crear una misión</small>
-            </div>
-          </section>
-
-          <section className="mission-log">
-            <div className="section-heading">
-              <div><span className="eyebrow">REGISTRO DE AVENTURA</span><h2>Misiones del {formatLongDate(toISODate(selectedDate))}</h2></div>
-              <button className="text-button" onClick={() => openNew(selectedDate)}><Plus size={17} /> Agregar en este día</button>
-            </div>
-            <div className="mission-list">
-              {selectedClasses.map((dailyClass) => (
-                <article key={dailyClass.occurrenceId} className="mission-row schedule-row">
-                  <span className="schedule-class-icon"><BookOpen size={16} /></span>
-                  <div className="mission-copy" onClick={() => { setFocusedWeeklyQuestId(dailyClass.weeklyQuestId); setView("weekly"); }}><span>CLASE DEL HORARIO · {dailyClass.weeklyQuestTitle}</span><h3>{dailyClass.title}</h3><small>{dailyClass.subject} · {dailyClass.startTime}–{dailyClass.endTime}{dailyClass.location && <> · <MapPin size={10} /> {dailyClass.location}</>}</small></div>
-                  <button className="edit-button" onClick={() => { setFocusedWeeklyQuestId(dailyClass.weeklyQuestId); setView("weekly"); }}>Ver horario</button>
-                </article>
-              ))}
-              {selectedMissions.map((mission) => (
-                <article key={mission.id} className={`mission-row ${mission.priority} ${mission.completed ? "completed" : ""}`}>
-                  <button className="check-button" onClick={() => toggleWithFeedback(mission.id)} aria-label={mission.completed ? "Marcar pendiente" : "Completar misión"}>{mission.completed && <Check size={16} />}</button>
-                  <div className="mission-badge">{priorityMeta[mission.priority].icon}</div>
-                  <div className="mission-copy" onClick={() => openEdit(mission)}><span>{priorityMeta[mission.priority].label}</span><h3>{mission.title}</h3><small>{mission.subject} · {mission.time} <b className="xp-reward">+{getMissionXp(mission)} XP</b></small></div>
-                  <div className="reward-box" aria-label={`Recompensa ${getMissionXp(mission)} puntos de experiencia`}><small>RECOMPENSA</small><strong>+{getMissionXp(mission)} XP</strong></div>
-                  <button className="edit-button" onClick={() => openEdit(mission)}>Ver misión</button>
-                </article>
-              ))}
-              {!selectedMissions.length && !selectedClasses.length && (
-                <div className="empty-state"><CalendarDays size={32} /><h3>{missionsLoading ? "Consultando la bitácora..." : "La costa está despejada"}</h3><p>{missionsLoading ? "Buscando misiones en tu cuenta." : "No hay misiones para este día."}</p>{!missionsLoading && <button onClick={() => openNew(selectedDate)}>Crear una misión</button>}</div>
-              )}
-            </div>
-          </section>
-          </div>
-        </div>}
-      </section>
-
-      <MissionForm open={modalOpen} initialDate={selectedDate} initialSubject={draftSubject} mission={editing} onClose={() => setModalOpen(false)} onSave={upsert} onDelete={remove} subjects={subjects} onManageSubjects={() => setView("subjects")} />
-      <AccountPanel
-        open={accountOpen}
-        user={auth.user}
-        onClose={() => setAccountOpen(false)}
-        onLogout={auth.logout}
-        onUpdate={auth.updateAccount}
-        theme={theme}
-        onThemeChange={setTheme}
-      />
-      <GameFeedback reward={reward} onDismiss={() => setReward(null)} />
-    </main>
-  );
+          {project && <div className="academic-project-progress"><FolderOpen size={24} /><div><strong>{project}</strong><span>{tasks.filter(t => t.project === project && getMissionStatus(t) === "completed").length} de {tasks.filter(t => t.project === project).length} tareas completadas</span></div></div>}
+          <section className="academic-panel"><header className="academic-list-tabs"><div role="group" aria-label="Estado de las tareas">{([['pending', 'En curso'], ['all', 'Todas'], ['completed', 'Completadas']] as const).map(([id, label]) => <button type="button" key={id} aria-pressed={taskFilter === id} className={taskFilter === id ? "active" : ""} onClick={() => setTaskFilter(id)}>{label}</button>)}</div><small>{projectTasks.length} tareas</small></header>{taskList(projectTasks, search || subject || project ? "No hay tareas con estos filtros." : "Crea una tarea y asígnale un proyecto para comenzar.")}</section>
+        </>}
+        {view === "subjects" && <><button className="academic-back" type="button" onClick={() => setView("projects")}><ChevronLeft size={16} /> Volver a proyectos</button><SubjectsView subjects={catalog.subjects} missions={tasks} weeklyQuests={schedule.weeklyQuests} loading={catalog.loading} onSave={catalog.upsert} onDelete={catalog.remove} /></>}
+        {view === "routine" && <><button className="academic-back" type="button" onClick={() => setView("week")}><ChevronLeft size={16} /> Volver a mi semana</button><WeeklySchedule weeklyQuests={schedule.weeklyQuests} loading={schedule.loading} focusedWeeklyQuestId={focusedRoutine} subjects={catalog.subjects} onManageSubjects={() => setView("subjects")} onSave={schedule.upsert} onDelete={schedule.remove} /></>}
+      </div>
+    </section>
+    <nav className="academic-mobile-nav" aria-label="Navegación móvil">{navigation.map(item => <button type="button" key={item.id} className={activeNav === item.id ? "active" : ""} aria-current={activeNav === item.id ? "page" : undefined} onClick={() => setView(item.id)}><item.icon size={20} />{item.label}</button>)}<button type="button" aria-label="Mi cuenta" onClick={() => setAccountOpen(true)}><Settings2 size={20} />Cuenta</button></nav>
+    <MissionForm open={formOpen} initialDate={selectedDate} initialSubject={subject || undefined} initialProject={view === "projects" ? project : undefined} mission={editing} onClose={() => setFormOpen(false)} onSave={upsert} onDelete={remove} subjects={catalog.subjects} onManageSubjects={() => setView("subjects")} />
+    <AccountPanel open={accountOpen} user={auth.user} onClose={() => setAccountOpen(false)} onLogout={auth.logout} onUpdate={auth.updateAccount} theme={theme} onThemeChange={setTheme} />
+    <StudyFocus key={auth.user.id} userId={auth.user.id} requestedTask={studyTask} onRequestHandled={() => setStudyTask(null)} onSave={recordStudy} />
+  </main>;
 }

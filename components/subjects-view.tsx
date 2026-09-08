@@ -37,15 +37,9 @@ export function SubjectsView({ subjects, missions, weeklyQuests, loading, onSave
   return (
     <div className="subjects-view">
       <header className="subjects-heading">
-        <div><span className="eyebrow">ARCHIVO DEL GREMIO</span><h1>Mis <i>Materias</i></h1><p>Define cada materia una sola vez y úsala en toda la aventura.</p></div>
+        <div><h1>Mis materias</h1><p>Las materias conectan tus clases, tareas y proyectos.</p></div>
         <button className="primary-button compact" type="button" onClick={openNew}><Plus size={18} /> Nueva materia</button>
       </header>
-
-      <section className="subject-library-intro">
-        <span><Library size={24} /></span>
-        <div><strong>Catálogo global</strong><p>Las materias de este archivo aparecen automáticamente como opciones en misiones, clases semanales, territorios, mapas y promedios.</p></div>
-        <small>{subjects.length} {subjects.length === 1 ? "materia registrada" : "materias registradas"}</small>
-      </section>
 
       <section className="subject-library-grid" aria-label="Catálogo de materias">
         {subjects.map((subject, index) => {
@@ -53,13 +47,13 @@ export function SubjectsView({ subjects, missions, weeklyQuests, loading, onSave
           return (
             <article key={subject.id} className={`global-subject-card subject-tone-${index % 5}`}>
               <span className="global-subject-icon"><BookMarked size={21} /><i>{index + 1}</i></span>
-              <div className="global-subject-copy"><small>MATERIA GLOBAL</small><h2>{subject.name}</h2><p>{usage.missionCount} misiones · {usage.classCount} clases semanales</p></div>
+              <div className="global-subject-copy"><h2>{subject.name}</h2><p>{usage.missionCount} tareas · {usage.classCount} clases semanales</p></div>
               <div className="global-subject-actions"><button type="button" onClick={() => openEdit(subject)}><Pencil size={14} /> Editar</button><button type="button" disabled={usage.total > 0} onClick={() => onDelete(subject.id)} title={usage.total > 0 ? "La materia está en uso" : "Eliminar materia"}><Trash2 size={14} /> Eliminar</button></div>
               {usage.total > 0 && <span className="subject-in-use"><Check size={11} /> EN USO</span>}
             </article>
           );
         })}
-        {!subjects.length && <div className="subjects-empty"><Library size={40} /><h2>{loading ? "Buscando materias usadas..." : "Tu archivo está vacío"}</h2><p>Registra una materia para que aparezca como opción al crear misiones y clases.</p>{!loading && <button type="button" onClick={openNew}>Crear primera materia</button>}</div>}
+        {!subjects.length && <div className="subjects-empty"><Library size={40} /><h2>{loading ? "Cargando materias…" : "Añade tu primera materia"}</h2><p>Después podrás asignarle clases y tareas.</p>{!loading && <button type="button" onClick={openNew}>Crear primera materia</button>}</div>}
       </section>
 
       {modalOpen && (

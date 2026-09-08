@@ -22,6 +22,8 @@ export const loginSchema = z.object({
 export const missionSchema = z.object({
   id: z.string().min(1).max(100),
   title: z.string().trim().min(1).max(180),
+  project: z.string().trim().max(100).optional(),
+  estimatedMinutes: z.number().int().min(0).max(60000).optional(),
   subject: z.string().trim().min(1).max(100),
   subjectId: z.string().min(1).max(100).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

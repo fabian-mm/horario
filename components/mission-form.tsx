@@ -10,6 +10,7 @@ type Props = {
   open: boolean;
   initialDate: Date;
   initialSubject?: string;
+  initialProject?: string;
   mission?: Mission | null;
   onClose: () => void;
   onSave: (mission: Mission) => void;
@@ -36,7 +37,7 @@ const emptyForm = (date: Date, subject = "", subjects: Subject[] = []): Mission 
   };
 };
 
-export function MissionForm({ open, initialDate, initialSubject, mission, onClose, onSave, onDelete, subjects, onManageSubjects }: Props) {
+export function MissionForm({ open, initialDate, initialSubject, initialProject, mission, onClose, onSave, onDelete, subjects, onManageSubjects }: Props) {
   const [form, setForm] = useState<Mission>(emptyForm(initialDate));
 
   useEffect(() => {
@@ -44,8 +45,8 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
     if (mission) {
       const selectedSubject = findSubject(subjects, mission.subject, mission.subjectId);
       setForm({ ...mission, subject: selectedSubject?.name ?? mission.subject, subjectId: selectedSubject?.id ?? mission.subjectId });
-    } else setForm(emptyForm(initialDate, initialSubject, subjects));
-  }, [open, mission, initialDate, initialSubject, subjects]);
+    } else setForm({ ...emptyForm(initialDate, initialSubject, subjects), project: initialProject ?? "" });
+  }, [open, mission, initialDate, initialSubject, initialProject, subjects]);
 
   if (!open) return null;
   const selectedSubject = findSubject(subjects, form.subject, form.subjectId);
@@ -62,15 +63,15 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
         <div className="modal-heading">
           <div className="modal-icon"><Swords size={20} /></div>
           <div>
-            <span className="eyebrow">Registro de aventura</span>
-            <h2 id="mission-title">{mission ? "Editar misión" : "Nueva misión"}</h2>
+            <span className="eyebrow">PLAN DE ESTUDIO</span>
+            <h2 id="mission-title">{mission ? "Editar tarea" : "Nueva tarea"}</h2>
           </div>
           <button className="icon-button" onClick={onClose} aria-label="Cerrar"><X size={20} /></button>
         </div>
 
         <form onSubmit={submit}>
           <label>
-            Nombre de la misión
+            ¿Qué necesitas hacer?
             <input required autoFocus value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Ej. Parcial de Termodinámica" />
           </label>
           <div className="subject-select-field">
@@ -86,6 +87,10 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
           <div className="form-row">
             <label>Fecha<input required type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
             <TimeField label="Hora" required value={form.time} onChange={(time) => setForm((current) => ({ ...current, time }))} />
+          </div>
+          <div className="form-row">
+            <label>Proyecto (opcional)<input maxLength={100} value={form.project ?? ""} onChange={(event) => setForm({ ...form, project: event.target.value })} placeholder="Ej. Proyecto de investigación" /></label>
+            <label>Tiempo estimado (min)<input type="number" min={0} max={60000} step={15} value={form.estimatedMinutes ?? ""} onChange={(event) => setForm({ ...form, estimatedMinutes: Number(event.target.value) })} placeholder="90" /></label>
           </div>
           <fieldset>
             <legend>Nivel de importancia</legend>
@@ -117,7 +122,7 @@ export function MissionForm({ open, initialDate, initialSubject, mission, onClos
             {mission && onDelete ? <button type="button" className="delete-button" onClick={() => { onDelete(mission.id); onClose(); }}>Eliminar</button> : <span />}
             <div>
               <button type="button" className="secondary-button" onClick={onClose}>Cancelar</button>
-              <button type="submit" className="primary-button">Guardar misión</button>
+              <button type="submit" className="primary-button">Guardar tarea</button>
             </div>
           </div>
         </form>

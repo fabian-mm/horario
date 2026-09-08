@@ -4,6 +4,9 @@ export type MissionStatus = "pending" | "submitted" | "completed";
 export type Mission = {
   id: string;
   title: string;
+  project?: string;
+  estimatedMinutes?: number;
+  studiedMinutes?: number;
   subject: string;
   subjectId?: string;
   date: string;
@@ -19,9 +22,9 @@ export type Mission = {
 };
 
 export const statusMeta: Record<MissionStatus, { label: string; description: string }> = {
-  pending: { label: "Pendiente", description: "Aún por conquistar" },
+  pending: { label: "Pendiente", description: "Por trabajar" },
   submitted: { label: "Entregada", description: "Esperando resultado" },
-  completed: { label: "Cumplida", description: "Misión terminada" },
+  completed: { label: "Completada", description: "Tarea terminada" },
 };
 
 export const getMissionStatus = (mission: Mission): MissionStatus =>
@@ -50,9 +53,9 @@ export const calculateSubjectAverage = (missions: Mission[]): SubjectAverage => 
 };
 
 export const priorityMeta: Record<Priority, { label: string; shortLabel: string; icon: string }> = {
-  normal: { label: "Misión", shortLabel: "Normal", icon: "◆" },
-  important: { label: "Misión importante", shortLabel: "Importante", icon: "⚑" },
-  boss: { label: "Jefe final", shortLabel: "Jefe final", icon: "✦" },
+  normal: { label: "Prioridad normal", shortLabel: "Normal", icon: "◆" },
+  important: { label: "Prioridad alta", shortLabel: "Alta", icon: "⚑" },
+  boss: { label: "Prioridad urgente", shortLabel: "Urgente", icon: "✦" },
 };
 
 const XP_PER_LEVEL = 250;

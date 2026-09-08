@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "tsc lib/academic.ts lib/missions.ts --module commonjs --target es2022 --skipLibCheck --outDir .checks && node --test tests/academic.cjs tests/study-route.cjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.2.9",
@@ -21,6 +23,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.3",
     "@types/react-dom": "^19.0.2",

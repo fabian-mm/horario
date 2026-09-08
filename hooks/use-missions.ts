@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getMissionStatus, Mission, MissionStatus } from "@/lib/missions";
+import type { StudyRecord } from "@/components/study-focus";
 
 export function useMissions(enabled: boolean) {
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -100,5 +101,23 @@ export function useMissions(enabled: boolean) {
       });
   };
 
-  return { missions, loading, error, upsert, toggle, setStatus, remove };
+  const recordStudy = async (missionId: string, record: StudyRecord) => {
+    setError(null);
+    try {
+      const response = await fetch(`/api/missions/${encodeURIComponent(missionId)}/study`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record),
+        signal: AbortSignal.timeout(20000),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error ?? "No se pudo guardar el tiempo.");
+      if (!Number.isFinite(body.studiedMinutes)) throw new Error("La respuesta de guardado no es válida. Puedes reintentar sin duplicar tu tiempo.");
+      setMissions(current => current.map(task => task.id === missionId ? { ...task, studiedMinutes: body.studiedMinutes } : task));
+      return true;
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "No se pudo guardar el tiempo.");
+      return false;
+    }
+  };
+
+  return { missions, loading, error, upsert, toggle, setStatus, remove, recordStudy };
 }
