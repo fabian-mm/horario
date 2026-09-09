@@ -1,4 +1,5 @@
 import { getMissionStatus, sortMissionsByDateTime, toISODate, type Mission } from "./missions";
+import { getScheduledOccurrences, type WeeklyQuest } from "./schedule";
 
 export function academicWeek(anchor: Date) {
   const monday = new Date(anchor);
@@ -37,3 +38,41 @@ export function freeStudySlots(blocks: { startTime: string; endTime: string }[])
 
 export const minuteLabel = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 export const durationLabel = (minutes: number) => minutes >= 60 ? `${Math.floor(minutes / 60)} h${minutes % 60 ? ` ${minutes % 60} min` : ""}` : `${minutes} min`;
+
+export function studyBlocksOn(missions: Mission[], date: string) {
+  return missions.filter(task => getMissionStatus(task) === "pending").flatMap(task =>
+    (task.studyBlocks ?? []).filter(block => block.date === date).map(block => ({ ...block, taskId: task.id, title: task.title, subject: task.subject })),
+  ).sort((a, b) => a.startTime.localeCompare(b.startTime));
+}
+
+export function planningWarnings(task: Mission, missions: Mission[], schedules: WeeklyQuest[]) {
+  const warnings: string[] = [];
+  const overlaps = (a: { startTime: string; endTime: string }, b: { startTime: string; endTime: string }) => a.startTime < b.endTime && b.startTime < a.endTime;
+  for (const block of task.studyBlocks ?? []) {
+    if (!block.date || !block.startTime || !block.endTime || block.endTime <= block.startTime) continue;
+    if (`${block.date}T${block.endTime}` > `${task.date}T${task.time}`) warnings.push(`${block.date} · ${block.startTime}: termina después de la entrega.`);
+    const day = new Date(`${block.date}T12:00:00`);
+    if (!Number.isFinite(day.getTime())) continue;
+    const classes = getScheduledOccurrences(day, schedules).filter(item => overlaps(block, item));
+    classes.forEach(item => warnings.push(`${block.date} · ${block.startTime}: se cruza con ${item.title}.`));
+    const otherBlocks = studyBlocksOn(missions.filter(item => item.id !== task.id), block.date);
+    otherBlocks.filter(item => overlaps(block, item)).forEach(item => warnings.push(`${block.date} · ${block.startTime}: se cruza con el estudio de ${item.title}.`));
+    if ((task.studyBlocks ?? []).some(other => other.id !== block.id && other.date === block.date && overlaps(block, other))) warnings.push(`${block.date} · ${block.startTime}: se cruza con otro bloque de esta tarea.`);
+  }
+  return [...new Set(warnings)];
+}
+
+export function projectSummaries(missions: Mission[]) {
+  const groups = new Map<string, Mission[]>();
+  missions.forEach(task => { if (!task.project?.trim()) return; const key = JSON.stringify([task.subject, task.project.trim()]); groups.set(key, [...(groups.get(key) ?? []), task]); });
+  return [...groups.entries()].map(([key, tasks]) => {
+    const pending = sortMissionsByDateTime(tasks.filter(task => getMissionStatus(task) === "pending"));
+    return { key, name: tasks[0].project!.trim(), subject: tasks[0].subject, total: tasks.length,
+      completed: tasks.filter(task => getMissionStatus(task) === "completed").length,
+      awaiting: tasks.filter(task => getMissionStatus(task) === "submitted").length,
+      remainingMinutes: pending.reduce((sum, task) => sum + Math.max(0, (task.estimatedMinutes ?? 0) - (task.studiedMinutes ?? 0)), 0),
+      unestimated: pending.filter(task => !task.estimatedMinutes).length,
+      nextDeadline: pending[0]?.date,
+    };
+  }).sort((a, b) => (a.nextDeadline ?? "9999").localeCompare(b.nextDeadline ?? "9999") || a.name.localeCompare(b.name, "es"));
+}

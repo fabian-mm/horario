@@ -4,6 +4,8 @@ import "@fontsource/dm-sans/500.css";
 import "@fontsource/dm-sans/600.css";
 import "./globals.css";
 import "./academic.css";
+import "./rpg.css";
+import "./planning.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

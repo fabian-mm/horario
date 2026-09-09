@@ -47,6 +47,8 @@ Genera un secreto con un administrador de contraseñas o con `openssl rand -base
 - Control horario accesible: escritura flexible, ajustes de 15 minutos y validación visible.
 - Cronómetro persistente por usuario en este navegador, pausa/reanudación y reintento si falla el guardado.
 - Registro de tiempo separado del estado de entrega, con identificador único para evitar duplicación al reintentar.
+- Estética RPG de exploración: pergamino, paisaje vectorial, insignias, nivel y rango. La experiencia existente (25/50/100 XP por prioridad) se calcula con las tareas completadas; reabrirlas recalcula el total, sin acumular recompensas duplicadas.
+- Celebración breve al completar desde el tablón; respeta la preferencia de movimiento reducido. La búsqueda no altera el progreso del personaje.
 - Cinco temas de color intercambiables, incluido Reino Rosa, guardados en el navegador.
 - Notas, porcentajes y promedio ponderado.
 - Diseño adaptable a escritorio y celular.

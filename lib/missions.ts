@@ -1,5 +1,7 @@
 export type Priority = "normal" | "important" | "boss";
 export type MissionStatus = "pending" | "submitted" | "completed";
+export type StudyBlock = { id: string; date: string; startTime: string; endTime: string };
+export type Subtask = { id: string; title: string; completed: boolean };
 
 export type Mission = {
   id: string;
@@ -7,6 +9,8 @@ export type Mission = {
   project?: string;
   estimatedMinutes?: number;
   studiedMinutes?: number;
+  subtasks?: Subtask[];
+  studyBlocks?: StudyBlock[];
   subject: string;
   subjectId?: string;
   date: string;

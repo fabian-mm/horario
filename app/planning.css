@@ -1,0 +1,39 @@
+.mission-tools { display: grid; gap: 10px; }
+.mission-tools details { border: 1px solid var(--academic-border); border-radius: 8px; padding: 12px; background: var(--academic-bg); }
+.mission-tools summary { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; font-weight: 500; }
+.mission-tools summary > span { margin-left: auto; color: var(--ink-soft); font-size: 10px; }
+.mission-tools p { font-size: 11px; color: var(--ink-soft); line-height: 1.7; }
+.mission-tools .subtask-edit { display: flex; gap: 8px; align-items: center; margin: 7px 0; }
+.mission-tools .subtask-edit > input[type=checkbox] { width: 18px; height: 18px; flex-shrink: 0; margin: 0; accent-color: var(--forest); }
+.mission-tools .subtask-edit > input:not([type=checkbox]) { flex: 1; min-width: 0; margin: 0; }
+.mission-tools .subtask-edit > button, .study-block-edit > button { border: 0; color: var(--ink-soft); background: none; display: grid; place-items: center; min-width: 28px; min-height: 32px; }
+.study-block-edit { display: grid; grid-template-columns: 1.5fr 1fr 1fr 28px; gap: 8px; align-items: end; padding: 10px 0; }
+.study-block-edit label { min-width: 0; }
+.rpg-app .study-block-edit input { min-width: 0; padding: 8px 5px; font-size: 12px; }
+.planning-warnings { background: color-mix(in srgb, var(--gold) 12%, var(--paper)); border-left: 2px solid var(--gold); padding: 12px; font-size: 11px; line-height: 1.7; margin: 12px 0 0; color: var(--ink); }
+.planning-warnings ul { padding-left: 16px; }
+.planning-warnings small { font-size: 10px; color: var(--ink-soft); }
+.mission-modal .mission-save-fields { display: contents; }
+.project-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.project-summary-card { text-align: left; display: grid; gap: 7px; background: var(--academic-card); color: var(--ink); border: 1px solid var(--academic-border); border-radius: 9px; padding: 18px; }
+.project-summary-card:hover { border-color: var(--gold); }
+.project-summary-card .academic-eyebrow { display: flex; align-items: center; gap: 6px; }
+.project-summary-card > strong { font: 500 19px "Fraunces Variable", serif; overflow-wrap: anywhere; }
+.project-summary-card > span:not(.academic-eyebrow) { font-size: 11px; color: var(--ink-soft); }
+.project-summary-card small { display: flex; gap: 5px; align-items: center; font-size: 11px; color: var(--ink-soft); }
+.project-summary-card progress { appearance: none; width: 100%; height: 5px; border: 0; border-radius: 5px; overflow: hidden; margin: 4px 0; background: var(--academic-soft); color: var(--sage); }
+.project-summary-card progress::-webkit-progress-bar { background: var(--academic-soft); }
+.project-summary-card progress::-webkit-progress-value { background: var(--sage); }
+.project-summary-card progress::-moz-progress-bar { background: var(--sage); }
+.study-plan h2 { display: flex; align-items: center; gap: 8px; }
+.study-plan-row { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-top: 1px solid var(--academic-border); }
+.study-plan-row time { font-size: 12px; font-variant-numeric: tabular-nums; }
+.study-plan-row time small, .study-plan-row button small { display: block; font-size: 10px; color: var(--ink-soft); }
+.study-plan-row > button:not(.academic-study-action) { flex: 1; min-width: 0; text-align: left; color: var(--ink); background: none; border: 0; }
+.study-plan-row strong { font-size: 13px; font-weight: 500; }
+.study-plan-row:hover .academic-study-action, .study-plan-row:focus-within .academic-study-action { opacity: 1; }
+.academic-week-study { display: grid; gap: 6px; width: 100%; text-align: left; border: 1px dashed var(--sage); padding: 11px 9px; border-radius: 5px; color: var(--ink); background: var(--academic-soft); }
+.academic-week-study small { font-size: 9px; }
+.academic-week-study strong { font-size: 11px; font-weight: 500; overflow-wrap: anywhere; }
+.academic-week-study span { font-size: 9px; color: var(--ink-soft); }
+@media (max-width: 700px) { .project-overview { grid-template-columns: 1fr; } .study-block-edit { grid-template-columns: 1fr 1fr 28px; } .study-block-edit label:first-child { grid-column: 1 / -1; } }

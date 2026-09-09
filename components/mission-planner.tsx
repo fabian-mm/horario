@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowUpRight, BookOpen, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, FolderOpen, GraduationCap, LayoutDashboard, LoaderCircle, Play, Plus, Search, Settings2, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMissions } from "@/hooks/use-missions";
 import { useSubjects } from "@/hooks/use-subjects";
 import { useTheme } from "@/hooks/use-theme";
 import { useWeeklyQuests } from "@/hooks/use-weekly-quests";
-import { academicWeek, durationLabel, freeStudySlots, minuteLabel, pendingTasks } from "@/lib/academic";
-import { getMissionStatus, sortMissionsByDateTime, toISODate, type Mission, type MissionStatus } from "@/lib/missions";
+import { academicWeek, durationLabel, freeStudySlots, minuteLabel, pendingTasks, studyBlocksOn } from "@/lib/academic";
+import { calculatePlayerProgress, getMissionXp, getMissionStatus, sortMissionsByDateTime, toISODate, type Mission, type MissionStatus } from "@/lib/missions";
 import { getScheduledOccurrences } from "@/lib/schedule";
 import { resolveSubjectName } from "@/lib/subjects";
 import { AccountPanel } from "./account-panel";
@@ -17,6 +17,10 @@ import { MissionForm } from "./mission-form";
 import { SubjectsView } from "./subjects-view";
 import { WeeklySchedule } from "./weekly-schedule";
 import { StudyFocus } from "./study-focus";
+import { StudyPlan } from "./study-plan";
+import { ProjectOverview } from "./project-overview";
+import { AdventureProgress } from "./adventure-progress";
+import { GameFeedback, type RewardEvent } from "./game-feedback";
 
 type View = "today" | "week" | "projects" | "subjects" | "routine";
 const dateLabel = (date: Date) => new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short" }).format(date);
@@ -29,9 +33,9 @@ const navigation = [
 function TaskList({ tasks, onEdit, onStatus, onStudy, empty }: { tasks: Mission[]; onEdit: (task: Mission) => void; onStatus: (id: string, status: MissionStatus) => void; onStudy: (task: Mission) => void; empty: string }) {
   return <div className="academic-task-list">{tasks.map(task => {
     const status = getMissionStatus(task);
-    return <article className={`academic-task ${status}`} key={task.id}>
+    return <article className={`academic-task ${status} quest-${task.priority}`} key={task.id}>
       <button type="button" className="academic-check" aria-label={`${status === "completed" ? "Reabrir" : "Completar"} ${task.title}`} onClick={() => onStatus(task.id, status === "completed" ? "pending" : "completed")}><Check size={15} /></button>
-      <button type="button" className="academic-task-copy" onClick={() => onEdit(task)}><strong>{task.title}</strong><small>{task.subject}{task.project && ` · ${task.project}`}</small></button>
+      <button type="button" className="academic-task-copy" onClick={() => onEdit(task)}><strong>{task.title}</strong><small>{task.subject}{task.project && ` · ${task.project}`}{Boolean(task.subtasks?.length) && ` · ${task.subtasks!.filter(step => step.completed).length}/${task.subtasks!.length} pasos`} <span className="rpg-task-xp">{status === "completed" ? "✦" : "◇"} {getMissionXp(task)} XP{task.priority === "boss" && " · Desafío épico"}</span></small></button>
       <div className="academic-task-meta"><time dateTime={`${task.date}T${task.time}`}>{dateLabel(new Date(`${task.date}T12:00:00`))} · {task.time}</time><small>{task.studiedMinutes ? `${durationLabel(task.studiedMinutes)} estudiados` : task.estimatedMinutes ? `${durationLabel(task.estimatedMinutes)} estimados` : status === "submitted" ? "Entregada" : ""}</small></div>
       {status === "pending" && <button type="button" className="academic-study-action" onClick={() => onStudy(task)} aria-label={`Estudiar ${task.title}`} title="Iniciar sesión de estudio"><Play size={15} /><span>Estudiar</span></button>}
     </article>;
@@ -56,6 +60,12 @@ export function MissionPlanner() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [studyTask, setStudyTask] = useState<Mission | null>(null);
   const [focusedRoutine, setFocusedRoutine] = useState<string | null>(null);
+  const [reward, setReward] = useState<(RewardEvent & { missionId: string }) | null>(null);
+  useEffect(() => {
+    if (!reward) return;
+    const timeout = window.setTimeout(() => setReward(null), 5500);
+    return () => window.clearTimeout(timeout);
+  }, [reward]);
   const tasks = useMemo(() => sortMissionsByDateTime(missions.map(task => ({ ...task, subject: resolveSubjectName(catalog.subjects, task.subject, task.subjectId) }))), [missions, catalog.subjects]);
   const search = query.trim().toLocaleLowerCase("es");
   const matching = tasks.filter(task => !search || `${task.title} ${task.subject} ${task.project ?? ""}`.toLocaleLowerCase("es").includes(search));
@@ -64,7 +74,7 @@ export function MissionPlanner() {
   const today = new Date();
   const todayIso = toISODate(today);
   const classesToday = getScheduledOccurrences(today, schedule.weeklyQuests);
-  const slots = freeStudySlots(classesToday);
+  const slots = freeStudySlots([...classesToday, ...studyBlocksOn(tasks, todayIso)]);
   const projects = Array.from(new Set(tasks.map(task => task.project?.trim()).filter((name): name is string => Boolean(name))));
   const projectTasks = matching.filter(task => (!subject || task.subject === subject) && (!project || task.project === project) && (taskFilter === "all" || (taskFilter === "pending" ? getMissionStatus(task) !== "completed" : getMissionStatus(task) === "completed")));
   const openNew = (date = new Date()) => { setSelectedDate(date); setEditing(null); setFormOpen(true); };
@@ -72,16 +82,23 @@ export function MissionPlanner() {
   const openRoutine = (id?: string) => { setFocusedRoutine(id ?? null); setView("routine"); };
   const errors = error ?? schedule.error ?? catalog.error;
   const activeNav = view === "routine" ? "week" : view === "subjects" ? "projects" : view;
-  const taskList = (items: Mission[], empty: string) => <TaskList tasks={items} onEdit={openEdit} onStatus={setStatus} onStudy={setStudyTask} empty={empty} />;
+  const player = calculatePlayerProgress(tasks);
+  const changeTaskStatus = (id: string, status: MissionStatus) => {
+    const task = tasks.find(item => item.id === id);
+    if (task && status === "completed" && getMissionStatus(task) !== "completed") setReward({ id: Date.now(), missionId: id, title: task.title, xp: getMissionXp(task), boss: task.priority === "boss" });
+    else setReward(null);
+    setStatus(id, status);
+  };
+  const taskList = (items: Mission[], empty: string) => <TaskList tasks={items} onEdit={openEdit} onStatus={changeTaskStatus} onStudy={setStudyTask} empty={empty} />;
 
   if (auth.loading) return <main className="app-loading"><LoaderCircle className="spin" size={24} /><span>Abriendo tu espacio de estudio…</span></main>;
   if (!auth.user) return <AuthScreen connectionError={auth.error} onRegister={auth.register} onLogin={auth.login} />;
 
-  return <main className="academic-app" data-theme={theme}>
+  return <main className="academic-app rpg-app" data-theme={theme}>
     <aside className="academic-sidebar">
-      <a className="academic-brand" href="#" onClick={event => { event.preventDefault(); setView("today"); }}><span><GraduationCap size={24} /></span><div><strong>bitácora</strong><small>Tu espacio de estudio</small></div></a>
+      <a className="academic-brand" href="#" onClick={event => { event.preventDefault(); setView("today"); }}><span><GraduationCap size={24} /></span><div><strong>bitácora</strong><small>Gremio del conocimiento</small></div></a>
       <nav aria-label="Navegación principal">{navigation.map(item => <button key={item.id} type="button" className={activeNav === item.id ? "active" : ""} aria-current={activeNav === item.id ? "page" : undefined} onClick={() => setView(item.id)}><item.icon size={19} /><span>{item.label}</span></button>)}</nav>
-      <div className="academic-sidebar-note"><span>UN PASO A LA VEZ</span><p>Haz espacio para lo importante.</p><small>Clases, entregas y tiempo para ti.</small></div>
+      <div className="academic-sidebar-note"><span>DIARIO DE EXPLORACIÓN</span><p>Tu próxima conquista empieza aquí.</p><small>Sin prisas. Descansar también es parte del viaje.</small><div className="rpg-sidebar-rank">✦ NIVEL {player.level}<span>{player.rank}</span></div></div>
       <button type="button" className="academic-account" onClick={() => setAccountOpen(true)}><span>{auth.user.name.slice(0, 1).toUpperCase()}</span><strong>{auth.user.name}</strong><Settings2 size={17} /></button>
     </aside>
     <section className="academic-content">
@@ -89,16 +106,18 @@ export function MissionPlanner() {
       {errors && <div className="sync-alert" role="alert"><AlertTriangle size={16} />{errors}</div>}
       <div className="academic-workspace">
         {view === "today" && <>
-          <header className="academic-heading"><div><span className="academic-eyebrow">{new Intl.DateTimeFormat("es-CO", { weekday: "long", day: "numeric", month: "long" }).format(today)}</span><h1>Tu día, con claridad.</h1><p>Elige una tarea. Dale un espacio. Avanza a tu ritmo.</p></div><button type="button" className="primary-button" onClick={() => openNew()}><Plus size={17} /> Nueva tarea</button></header>
+          <header className="academic-heading"><div><span className="academic-eyebrow">{new Intl.DateTimeFormat("es-CO", { weekday: "long", day: "numeric", month: "long" }).format(today)}</span><h1>Tu aventura de hoy.</h1><p>Prepara tu equipo. Elige una misión. Avanza a tu ritmo.</p></div><button type="button" className="primary-button" onClick={() => openNew()}><Plus size={17} /> Nueva tarea</button></header>
+          <AdventureProgress missions={tasks} />
           <div className="academic-summary"><span><b>{priorities.today.length}</b> {priorities.today.length === 1 ? "entrega hoy" : "entregas hoy"}</span><span><b>{classesToday.length}</b> {classesToday.length === 1 ? "clase" : "clases"}</span><span><b>{priorities.upcoming.length}</b> {priorities.upcoming.length === 1 ? "tarea próxima" : "tareas próximas"}</span></div>
+          <StudyPlan tasks={tasks} date={todayIso} onEdit={openEdit} onStudy={setStudyTask} />
           <div className="academic-today-grid">
             <div>
-              <section className="academic-panel"><header><div><span className="academic-eyebrow">LO IMPORTANTE PRIMERO</span><h2>Para hoy</h2></div><small>{priorities.today.length} tareas</small></header>{taskList(priorities.today, loading ? "Cargando tus tareas…" : search ? "No hay coincidencias para hoy." : "No tienes entregas para hoy. Puedes adelantar una tarea próxima.")}</section>
+              <section className="academic-panel"><header><div><span className="academic-eyebrow">TABLÓN DE MISIONES</span><h2>Para hoy</h2></div><small>{priorities.today.length} {priorities.today.length === 1 ? "tarea" : "tareas"}</small></header>{taskList(priorities.today, loading ? "Cargando tus tareas…" : search ? "No hay coincidencias para hoy." : "Tu tablón está despejado. Puedes explorar una próxima misión o descansar.")}</section>
               <section className="academic-panel"><header><h2>Próximas entregas</h2><button type="button" className="academic-link" onClick={() => setView("projects")}>Ver todas <ArrowUpRight size={15} /></button></header>{taskList(priorities.upcoming.slice(0, 5), "No hay próximas entregas.")}</section>
               {priorities.overdue.length > 0 && <details className="academic-overdue"><summary><AlertTriangle size={15} /> {priorities.overdue.length} tareas con fecha pasada <span>Revisar</span></summary>{taskList(priorities.overdue, "")}</details>}
             </div>
             <aside className="academic-day-plan"><section className="academic-panel"><header><h2>Tu horario de hoy</h2><CalendarDays size={18} /></header><div className="academic-timeline">{classesToday.map(activity => <button key={activity.occurrenceId} type="button" onClick={() => openRoutine(activity.weeklyQuestId)}><time>{activity.startTime}<small>{activity.endTime}</small></time><span><strong>{activity.title}</strong><small>{activity.subject}{activity.location && ` · ${activity.location}`}</small></span></button>)}{!classesToday.length && <p className="academic-empty">Hoy no tienes clases programadas.</p>}</div><button type="button" className="academic-panel-footer" onClick={() => { setAnchor(new Date()); setView("week"); }}>Ver mi semana <ArrowUpRight size={15} /></button></section>
-              <section className="academic-free-time"><Clock3 size={21} /><h3>Espacio para estudiar</h3><p>Según tus clases, entre las 8:00 y las 20:00.</p>{slots.slice(0, 3).map(slot => <div key={slot.start}><strong>{minuteLabel(slot.start)} — {minuteLabel(slot.end)}</strong><span>{durationLabel(slot.end - slot.start)}</span></div>)}{!slots.length && <p>No hay huecos de al menos 30 minutos.</p>}<small>Las fechas de entrega no se cuentan como tiempo ocupado.</small></section>
+              <section className="academic-free-time"><Clock3 size={21} /><h3>Espacio para estudiar</h3><p>Según clases y bloques de estudio, entre las 8:00 y las 20:00.</p>{slots.slice(0, 3).map(slot => <div key={slot.start}><strong>{minuteLabel(slot.start)} — {minuteLabel(slot.end)}</strong><span>{durationLabel(slot.end - slot.start)}</span></div>)}{!slots.length && <p>No hay huecos de al menos 30 minutos.</p>}<small>Las fechas de entrega no se cuentan como tiempo ocupado.</small></section>
             </aside>
           </div>
         </>}
@@ -109,8 +128,9 @@ export function MissionPlanner() {
             const iso = toISODate(date);
             const classes = getScheduledOccurrences(date, schedule.weeklyQuests).filter(item => !search || `${item.title} ${item.subject}`.toLocaleLowerCase("es").includes(search));
             const due = matching.filter(task => task.date === iso);
-            return <section className={iso === todayIso ? "is-today" : ""} key={iso}><header><small>{new Intl.DateTimeFormat("es-CO", { weekday: "short" }).format(date)}</small><strong>{date.getDate()}</strong><button type="button" className="academic-reveal" aria-label={`Añadir tarea el ${iso}`} onClick={() => openNew(date)}><Plus size={16} /></button></header><div>{classes.map(item => <button type="button" className="academic-week-class" key={item.occurrenceId} onClick={() => openRoutine(item.weeklyQuestId)}><small>{item.startTime} — {item.endTime}</small><strong>{item.title}</strong><span>{item.subject}</span></button>)}{due.map(task => <button type="button" className={`academic-week-task ${getMissionStatus(task)}`} key={task.id} onClick={() => openEdit(task)}><small>ENTREGA · {task.time}</small><strong>{task.title}</strong><span>{task.subject}</span></button>)}{!classes.length && !due.length && <span className="academic-week-empty">Sin actividades</span>}</div></section>;
-          })}</div></div><p className="academic-caption"><span className="class-dot" /> Clases <span className="task-dot" /> Entregas · Abre una tarjeta para editar sus detalles.</p>
+            const study = studyBlocksOn(matching, iso);
+            return <section className={iso === todayIso ? "is-today" : ""} key={iso}><header><small>{new Intl.DateTimeFormat("es-CO", { weekday: "short" }).format(date)}</small><strong>{date.getDate()}</strong><button type="button" className="academic-reveal" aria-label={`Añadir tarea el ${iso}`} onClick={() => openNew(date)}><Plus size={16} /></button></header><div>{classes.map(item => <button type="button" className="academic-week-class" key={item.occurrenceId} onClick={() => openRoutine(item.weeklyQuestId)}><small>{item.startTime} — {item.endTime}</small><strong>{item.title}</strong><span>{item.subject}</span></button>)}{due.map(task => <button type="button" className={`academic-week-task ${getMissionStatus(task)}`} key={task.id} onClick={() => openEdit(task)}><small>ENTREGA · {task.time}</small><strong>{task.title}</strong><span>{task.subject}</span></button>)}{study.map(block => <button type="button" className="academic-week-study" key={`${block.taskId}:${block.id}`} onClick={() => openEdit(tasks.find(task => task.id === block.taskId)!)}><small>ESTUDIO · {block.startTime} — {block.endTime}</small><strong>{block.title}</strong><span>{block.subject}</span></button>)}{!classes.length && !due.length && !study.length && <span className="academic-week-empty">Sin actividades</span>}</div></section>;
+          })}</div></div><p className="academic-caption"><span className="class-dot" /> Clases <span className="task-dot" /> Entregas · Borde discontinuo: estudio · Abre una tarjeta para editar sus detalles.</p>
         </>}
         {view === "projects" && <>
           <header className="academic-heading"><div><span className="academic-eyebrow">DEL OBJETIVO A LA ENTREGA</span><h1>Proyectos y tareas</h1><p>Reúne los pasos de cada proyecto y sigue su avance.</p></div><button type="button" className="primary-button" onClick={() => openNew()}><Plus size={17} /> Nueva tarea</button></header>
@@ -119,7 +139,7 @@ export function MissionPlanner() {
             <label>Proyecto<select aria-label="Filtrar por proyecto" value={project} onChange={event => setProject(event.target.value)}><option value="">Todos los proyectos</option>{projects.map(name => <option key={name}>{name}</option>)}</select></label>
             <button type="button" className="academic-link" onClick={() => setView("subjects")}><BookOpen size={16} /> Administrar materias</button>
           </div>
-          {project && <div className="academic-project-progress"><FolderOpen size={24} /><div><strong>{project}</strong><span>{tasks.filter(t => t.project === project && getMissionStatus(t) === "completed").length} de {tasks.filter(t => t.project === project).length} tareas completadas</span></div></div>}
+          <ProjectOverview tasks={tasks.filter(task => (!subject || task.subject === subject) && (!project || task.project === project))} onSelect={(subjectName, projectName) => { setSubject(subjectName); setProject(projectName); }} />
           <section className="academic-panel"><header className="academic-list-tabs"><div role="group" aria-label="Estado de las tareas">{([['pending', 'En curso'], ['all', 'Todas'], ['completed', 'Completadas']] as const).map(([id, label]) => <button type="button" key={id} aria-pressed={taskFilter === id} className={taskFilter === id ? "active" : ""} onClick={() => setTaskFilter(id)}>{label}</button>)}</div><small>{projectTasks.length} tareas</small></header>{taskList(projectTasks, search || subject || project ? "No hay tareas con estos filtros." : "Crea una tarea y asígnale un proyecto para comenzar.")}</section>
         </>}
         {view === "subjects" && <><button className="academic-back" type="button" onClick={() => setView("projects")}><ChevronLeft size={16} /> Volver a proyectos</button><SubjectsView subjects={catalog.subjects} missions={tasks} weeklyQuests={schedule.weeklyQuests} loading={catalog.loading} onSave={catalog.upsert} onDelete={catalog.remove} /></>}
@@ -127,8 +147,9 @@ export function MissionPlanner() {
       </div>
     </section>
     <nav className="academic-mobile-nav" aria-label="Navegación móvil">{navigation.map(item => <button type="button" key={item.id} className={activeNav === item.id ? "active" : ""} aria-current={activeNav === item.id ? "page" : undefined} onClick={() => setView(item.id)}><item.icon size={20} />{item.label}</button>)}<button type="button" aria-label="Mi cuenta" onClick={() => setAccountOpen(true)}><Settings2 size={20} />Cuenta</button></nav>
-    <MissionForm open={formOpen} initialDate={selectedDate} initialSubject={subject || undefined} initialProject={view === "projects" ? project : undefined} mission={editing} onClose={() => setFormOpen(false)} onSave={upsert} onDelete={remove} subjects={catalog.subjects} onManageSubjects={() => setView("subjects")} />
+    <MissionForm open={formOpen} initialDate={selectedDate} initialSubject={subject || undefined} initialProject={view === "projects" ? project : undefined} missions={tasks} schedules={schedule.weeklyQuests} mission={editing} onClose={() => setFormOpen(false)} onSave={upsert} onDelete={remove} subjects={catalog.subjects} onManageSubjects={() => setView("subjects")} />
     <AccountPanel open={accountOpen} user={auth.user} onClose={() => setAccountOpen(false)} onLogout={auth.logout} onUpdate={auth.updateAccount} theme={theme} onThemeChange={setTheme} />
     <StudyFocus key={auth.user.id} userId={auth.user.id} requestedTask={studyTask} onRequestHandled={() => setStudyTask(null)} onSave={recordStudy} />
+    <GameFeedback reward={!errors && reward && tasks.some(task => task.id === reward.missionId && getMissionStatus(task) === "completed") ? reward : null} onDismiss={() => setReward(null)} />
   </main>;
 }

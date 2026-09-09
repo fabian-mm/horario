@@ -47,16 +47,20 @@ export function useMissions(enabled: boolean) {
     return body as Mission;
   };
 
-  const upsert = (mission: Mission) => {
-    const previous = missions;
+  const upsert = async (mission: Mission) => {
+    const previous = missions.find(item => item.id === mission.id);
     setMissions((current) => current.some((item) => item.id === mission.id)
       ? current.map((item) => item.id === mission.id ? mission : item)
       : [...current, mission]);
     setError(null);
-    saveRemote(mission).catch((requestError) => {
-      setMissions(previous);
+    try {
+      await saveRemote(mission);
+      return true;
+    } catch (requestError) {
+      setMissions(current => current.flatMap(item => item === mission ? (previous ? [previous] : []) : [item]));
       setError(requestError instanceof Error ? requestError.message : "No se pudo guardar la misión.");
-    });
+      return false;
+    }
   };
 
   const updateMission = (id: string, transform: (mission: Mission) => Mission) => {

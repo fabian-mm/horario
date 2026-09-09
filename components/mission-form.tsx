@@ -5,6 +5,8 @@ import { Flag, Swords, X } from "lucide-react";
 import { Mission, MissionStatus, Priority, priorityMeta, statusMeta, toISODate } from "@/lib/missions";
 import { findSubject, Subject } from "@/lib/subjects";
 import { TimeField } from "@/components/time-field";
+import { MissionToolsFields } from "./mission-tools-fields";
+import type { WeeklyQuest } from "@/lib/schedule";
 
 type Props = {
   open: boolean;
@@ -13,7 +15,9 @@ type Props = {
   initialProject?: string;
   mission?: Mission | null;
   onClose: () => void;
-  onSave: (mission: Mission) => void;
+  onSave: (mission: Mission) => void | boolean | Promise<void | boolean>;
+  missions?: Mission[];
+  schedules?: WeeklyQuest[];
   onDelete?: (id: string) => void;
   subjects: Subject[];
   onManageSubjects: () => void;
@@ -37,11 +41,14 @@ const emptyForm = (date: Date, subject = "", subjects: Subject[] = []): Mission 
   };
 };
 
-export function MissionForm({ open, initialDate, initialSubject, initialProject, mission, onClose, onSave, onDelete, subjects, onManageSubjects }: Props) {
+export function MissionForm({ open, initialDate, initialSubject, initialProject, mission, onClose, onSave, onDelete, subjects, onManageSubjects, missions = [], schedules = [] }: Props) {
   const [form, setForm] = useState<Mission>(emptyForm(initialDate));
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     if (!open) return;
+    setSaveError("");
     if (mission) {
       const selectedSubject = findSubject(subjects, mission.subject, mission.subjectId);
       setForm({ ...mission, subject: selectedSubject?.name ?? mission.subject, subjectId: selectedSubject?.id ?? mission.subjectId });
@@ -51,14 +58,21 @@ export function MissionForm({ open, initialDate, initialSubject, initialProject,
   if (!open) return null;
   const selectedSubject = findSubject(subjects, form.subject, form.subjectId);
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    onSave({ ...form, id: form.id || crypto.randomUUID(), title: form.title.trim(), subject: form.subject.trim(), completed: form.status === "completed" });
-    onClose();
+    if (saving) return;
+    if (form.studyBlocks?.some(block => block.endTime <= block.startTime)) { setSaveError("Cada bloque debe terminar después de comenzar, dentro del mismo día."); return; }
+    const draft = { ...form, id: form.id || crypto.randomUUID(), title: form.title.trim(), subject: form.subject.trim(), completed: form.status === "completed" };
+    setForm(draft);
+    setSaving(true);
+    setSaveError("");
+    try { const saved = await onSave(draft); if (saved === false) setSaveError("No se pudo guardar. Tus cambios siguen aquí para reintentar."); else onClose(); }
+    catch { setSaveError("No se pudo guardar. Tus cambios siguen aquí para reintentar."); }
+    finally { setSaving(false); }
   };
 
   return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
+    <div className="modal-backdrop" onMouseDown={() => { if (!saving) onClose(); }}>
       <section className="mission-modal" role="dialog" aria-modal="true" aria-labelledby="mission-title" onMouseDown={(event) => event.stopPropagation()}>
         <div className="modal-heading">
           <div className="modal-icon"><Swords size={20} /></div>
@@ -66,10 +80,11 @@ export function MissionForm({ open, initialDate, initialSubject, initialProject,
             <span className="eyebrow">PLAN DE ESTUDIO</span>
             <h2 id="mission-title">{mission ? "Editar tarea" : "Nueva tarea"}</h2>
           </div>
-          <button className="icon-button" onClick={onClose} aria-label="Cerrar"><X size={20} /></button>
+          <button className="icon-button" disabled={saving} onClick={onClose} aria-label="Cerrar"><X size={20} /></button>
         </div>
 
         <form onSubmit={submit}>
+          <fieldset className="mission-save-fields" disabled={saving}>
           <label>
             ¿Qué necesitas hacer?
             <input required autoFocus value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Ej. Parcial de Termodinámica" />
@@ -85,7 +100,7 @@ export function MissionForm({ open, initialDate, initialSubject, initialProject,
             <button type="button" onClick={() => { onClose(); onManageSubjects(); }}>{subjects.length ? "Administrar materias" : "+ Crear materia"}</button>
           </div>
           <div className="form-row">
-            <label>Fecha<input required type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
+            <label>Fecha de entrega<input required type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
             <TimeField label="Hora" required value={form.time} onChange={(time) => setForm((current) => ({ ...current, time }))} />
           </div>
           <div className="form-row">
@@ -104,6 +119,7 @@ export function MissionForm({ open, initialDate, initialSubject, initialProject,
               ))}
             </div>
           </fieldset>
+          <MissionToolsFields task={form} onChange={setForm} missions={missions} schedules={schedules} />
           <div className="form-row form-row-metrics">
             <label>
               Estado
@@ -119,12 +135,14 @@ export function MissionForm({ open, initialDate, initialSubject, initialProject,
             <textarea rows={3} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Pistas, temas o recordatorios..." />
           </label>
           <div className="modal-actions">
-            {mission && onDelete ? <button type="button" className="delete-button" onClick={() => { onDelete(mission.id); onClose(); }}>Eliminar</button> : <span />}
+            {mission && onDelete ? <button type="button" disabled={saving} className="delete-button" onClick={() => { onDelete(mission.id); onClose(); }}>Eliminar</button> : <span />}
             <div>
-              <button type="button" className="secondary-button" onClick={onClose}>Cancelar</button>
-              <button type="submit" className="primary-button">Guardar tarea</button>
+              <button type="button" disabled={saving} className="secondary-button" onClick={onClose}>Cancelar</button>
+              <button type="submit" disabled={saving} className="primary-button">{saving ? "Guardando…" : "Guardar tarea"}</button>
             </div>
           </div>
+          {saveError && <p className="planning-warnings" role="alert">{saveError}</p>}
+          </fieldset>
         </form>
       </section>
     </div>

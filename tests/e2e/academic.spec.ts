@@ -28,7 +28,7 @@ async function setup(page: Page) {
     return route.fulfill({ status: 404, json: { error: 'Unexpected test endpoint' } });
   });
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Tu día, con claridad.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tu aventura de hoy.' })).toBeVisible();
   return { tasks, schedules, studies, allowStudy: () => { failStudy = false; } };
 }
 
@@ -92,4 +92,39 @@ test('móvil: acciones accesibles y página sin desbordamiento horizontal', asyn
   await page.screenshot({ path: 'test-results/hoy-mobile.png', fullPage: true });
   await page.getByRole('navigation', { name: 'Navegación móvil' }).getByRole('button', { name: 'Semana' }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('RPG: completar y reabrir recalcula la experiencia sin duplicarla', async ({ page }) => {
+  await setup(page);
+  const xp = page.getByRole('progressbar', { name: 'Experiencia del nivel' });
+  await expect(xp).toHaveAttribute('value', '0');
+  await page.getByRole('button', { name: 'Completar Terminar informe de laboratorio', exact: true }).click();
+  await expect(xp).toHaveAttribute('value', '25');
+  await expect(page.locator('.game-feedback')).toContainText('MISIÓN CUMPLIDA');
+  await page.getByRole('navigation', { name: 'Navegación principal' }).getByRole('button', { name: 'Proyectos' }).click();
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('button', { name: 'Reabrir Terminar informe de laboratorio', exact: true }).click();
+  await expect(page.locator('.game-feedback')).toHaveCount(0);
+  await page.getByRole('navigation', { name: 'Navegación principal' }).getByRole('button', { name: 'Hoy', exact: true }).click();
+  await expect(xp).toHaveAttribute('value', '0');
+  await page.getByRole('button', { name: 'Completar Terminar informe de laboratorio', exact: true }).click();
+  await expect(xp).toHaveAttribute('value', '25');
+  await page.getByRole('textbox', { name: 'Buscar tareas' }).fill('sin coincidencias');
+  await expect(xp).toHaveAttribute('value', '25');
+});
+
+test('RPG: respeta movimiento reducido y cambio de tema', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await setup(page);
+  await page.getByRole('button', { name: 'Completar Terminar informe de laboratorio', exact: true }).click();
+  expect(await page.locator('.game-feedback').evaluate(element => getComputedStyle(element).animationName)).toBe('none');
+  await page.getByRole('button', { name: 'Cerrar recompensa' }).click();
+  await page.locator('.academic-account').click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.getByRole('radio', { name: /Arcano Violeta/ }).click();
+  await expect(page.locator('.rpg-app')).toHaveAttribute('data-theme', 'arcane');
+  await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  await page.screenshot({ path: 'test-results/rpg-arcane.png', fullPage: true });
+  await page.reload();
+  await expect(page.locator('.rpg-app')).toHaveAttribute('data-theme', 'arcane');
 });
