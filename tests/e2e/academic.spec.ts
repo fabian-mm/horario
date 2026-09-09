@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { defaultPlanning } from '../../lib/planning';
 
 async function setup(page: Page) {
   await page.clock.install({ time: new Date('2026-09-08T14:00:00Z') });
@@ -9,13 +10,18 @@ async function setup(page: Page) {
   const schedules = [{ id: 'semester', title: 'Semestre 2026-2', active: true, startDate: '2026-08-01', dailyMissions: [{ id: 'class-a', title: 'Laboratorio de física', subject: 'Física', subjectId: 'physics', dayOfWeek: 2, startTime: '10:00', endTime: '12:00', location: 'Aula 204' }] }];
   const studies: { id: string; minutes: number }[] = [];
   let failStudy = true;
+  let planning = structuredClone(defaultPlanning);
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
+    if (path === '/api/planning') {
+      if (route.request().method() === 'PATCH') planning = { ...planning, ...route.request().postDataJSON() };
+      return route.fulfill({ json: planning });
+    }
     if (path === '/api/auth/session') return route.fulfill({ json: { user: { id: 'test-student', name: 'Valentina', email: 'test@example.invalid', subtitle: 'Estudiante' } } });
     if (path === '/api/subjects') return route.fulfill({ json: [{ id: 'physics', name: 'Física' }, { id: 'math', name: 'Cálculo' }] });
     if (path === '/api/missions/report/study') {
       studies.push(route.request().postDataJSON());
-      return route.fulfill(failStudy ? { status: 503, json: { error: 'Fallo de conexión simulado' } } : { json: { studiedMinutes: 90 } });
+      return route.fulfill(failStudy ? { status: 503, json: { error: 'Fallo de conexión simulado' } } : { json: { studiedMinutes: route.request().postDataJSON().minutes } });
     }
     if (path === '/api/missions') {
       if (route.request().method() === 'POST') { const task = route.request().postDataJSON(); const index = tasks.findIndex(t => t.id === task.id); if (index < 0) tasks.push(task); else tasks[index] = task; return route.fulfill({ json: task }); }
@@ -111,6 +117,64 @@ test('RPG: completar y reabrir recalcula la experiencia sin duplicarla', async (
   await expect(xp).toHaveAttribute('value', '25');
   await page.getByRole('textbox', { name: 'Buscar tareas' }).fill('sin coincidencias');
   await expect(xp).toHaveAttribute('value', '25');
+});
+
+test('prioridades persisten sin duplicar tareas ni cambiar la entrega y caducan al día siguiente', async ({ page }) => {
+  const f = await setup(page);
+  await page.getByRole('button', { name: 'Elegir misiones · 0/3' }).click();
+  await page.getByRole('checkbox', { name: /Preparar parcial/ }).check();
+  await page.getByRole('button', { name: 'Guardar prioridades' }).click();
+  await expect(page.getByRole('region', { name: 'Misiones principales de hoy' })).toContainText('Preparar parcial');
+  await expect(page.getByRole('button', { name: 'Estudiar Preparar parcial de cálculo' })).toHaveCount(1);
+  expect(f.tasks[1].date).toBe('2026-09-10');
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Elegir misiones · 1/3' })).toBeVisible();
+  await page.clock.fastForward(24 * 60 * 60000);
+  await expect(page.getByRole('button', { name: 'Elegir misiones · 0/3' })).toBeVisible();
+});
+
+test('disponibilidad descuenta clases y compromisos y avisa de sobrecarga', async ({ page }) => {
+  await setup(page);
+  await page.getByRole('navigation', { name: 'Navegación principal' }).getByRole('button', { name: 'Semana' }).click();
+  await page.getByRole('button', { name: 'Mi disponibilidad', exact: true }).click();
+  const days = page.getByRole('group', { name: 'Días disponibles para estudiar' });
+  for (const day of ['Lun', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']) await days.getByRole('button', { name: day, exact: true }).click();
+  await page.getByLabel('Disponible desde').fill('09:00');
+  await page.getByLabel('Disponible hasta').fill('14:00');
+  await page.getByRole('button', { name: 'Añadir compromiso' }).click();
+  await page.getByLabel('Compromiso 1', { exact: true }).fill('Almuerzo');
+  await page.getByRole('button', { name: 'Guardar disponibilidad' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.load-metrics')).toContainText('2 h disponibles');
+  await expect(page.locator('.load-warning')).toContainText('1 h 30 min');
+  await page.screenshot({ path: 'test-results/disponibilidad-desktop.png', fullPage: true });
+  await page.reload();
+  await page.getByRole('button', { name: 'Configurar disponibilidad' }).click();
+  await expect(page.getByLabel('Compromiso 1', { exact: true })).toHaveValue('Almuerzo');
+});
+
+test('concentración 25/5 no suma descansos ni inicia otro ciclo sin permiso', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const f = await setup(page);
+  await page.getByText('Modo de concentración', { exact: true }).click();
+  await page.getByRole('combobox', { name: /Modo de estudio/ }).selectOption('25');
+  await page.getByRole('button', { name: 'Guardar modo' }).click();
+  await expect(page.getByText('Modo guardado para tu próxima sesión.')).toBeVisible();
+  await page.getByRole('button', { name: 'Estudiar Terminar informe de laboratorio' }).click();
+  await page.clock.fastForward(25 * 60000);
+  await expect(page.locator('.focus-total')).toContainText('00:25:00');
+  await expect(page.locator('.academic-focus')).toContainText('CAMPAMENTO · DESCANSO');
+  await expect(page.locator('.academic-focus time')).toHaveText(/^00:0[45]:\d{2}$/);
+  await page.screenshot({ path: 'test-results/concentracion-mobile.png', fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.clock.fastForward(65 * 60000);
+  await expect(page.getByRole('button', { name: 'Siguiente bloque de estudio' })).toBeVisible();
+  await expect(page.locator('.focus-total')).toContainText('00:25:00');
+  f.allowStudy();
+  await page.getByRole('button', { name: 'Guardar sesión', exact: true }).click();
+  await expect(page.locator('.academic-focus')).toHaveCount(0);
+  expect(f.studies[0].minutes).toBe(25);
+  expect(f.tasks[0].status).toBe('pending');
 });
 
 test('RPG: respeta movimiento reducido y cambio de tema', async ({ page }) => {

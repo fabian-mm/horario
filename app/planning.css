@@ -37,3 +37,49 @@
 .academic-week-study strong { font-size: 11px; font-weight: 500; overflow-wrap: anywhere; }
 .academic-week-study span { font-size: 9px; color: var(--ink-soft); }
 @media (max-width: 700px) { .project-overview { grid-template-columns: 1fr; } .study-block-edit { grid-template-columns: 1fr 1fr 28px; } .study-block-edit label:first-child { grid-column: 1 / -1; } }
+.planning-help { color: var(--ink-soft); font-size: 12px; line-height: 1.7; margin: 0; }
+.planning-section-title { font-size: 16px; font-family: "Fraunces Variable", serif; margin: 6px 0; }
+.availability-days { display: flex; gap: 5px; flex-wrap: wrap; }
+.availability-days button { min-width: 38px; min-height: 35px; padding: 6px; border: 1px solid var(--academic-border); border-radius: 6px; background: var(--paper); color: var(--ink-soft); font-size: 11px; }
+.availability-days button[aria-pressed=true] { background: var(--forest); color: var(--paper); border-color: var(--forest); }
+.commitment-editor { border: 1px solid var(--academic-border); border-radius: 8px; padding: 12px; display: grid; gap: 10px; }
+.commitment-heading { display: flex; gap: 10px; align-items: center; }
+.commitment-heading label { flex: 1; min-width: 0; }
+.weekly-load { padding: 18px 20px; margin-bottom: 20px; border: 1px solid var(--academic-border); border-radius: 9px; background: var(--academic-card); }
+.weekly-load header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.weekly-load h2, .daily-focus h2 { display: flex; align-items: center; gap: 8px; font-size: 17px; margin: 0; }
+.load-metrics { display: flex; flex-wrap: wrap; gap: 20px; margin: 15px 0; }
+.load-metrics span { display: grid; gap: 2px; font-size: 11px; color: var(--ink-soft); }
+.load-metrics strong { font-size: 19px; font-family: "Fraunces Variable", serif; color: var(--ink); font-weight: 500; }
+.load-warning { padding: 9px 12px; background: color-mix(in srgb, var(--coral) 10%, var(--paper)); color: var(--ink); border-left: 2px solid var(--coral); font-size: 12px; }
+.weekly-load > small, .weekly-load details { font-size: 11px; color: var(--ink-soft); line-height: 1.7; }
+.weekly-load > small { display: block; margin-top: 8px; }
+.weekly-load summary, .concentration-settings summary { cursor: pointer; }
+.academic-week-personal { display: grid; width: 100%; gap: 5px; border: 1px solid var(--academic-border); background: color-mix(in srgb, var(--ink-soft) 6%, var(--paper)); color: var(--ink-soft); border-radius: 5px; padding: 10px 9px; text-align: left; }
+.academic-week-personal small { font-size: 9px; }
+.academic-week-personal strong { font-size: 11px; font-weight: 500; overflow-wrap: anywhere; }
+.concentration-settings { border-top: 1px solid var(--academic-border); padding: 12px 20px; font-size: 11px; color: var(--ink-soft); }
+.concentration-settings > div { display: grid; gap: 12px; max-width: 540px; padding: 15px 0 5px; }
+.concentration-settings label { font-size: 11px; display: grid; gap: 5px; }
+.concentration-settings select, .concentration-settings input { width: 100%; min-width: 0; border: 1px solid var(--academic-border); border-radius: 6px; background: var(--paper); color: var(--ink); padding: 9px 11px; font-size: 12px; }
+.concentration-settings p { margin: 0; line-height: 1.7; }
+.concentration-settings .secondary-button { justify-self: start; }
+.focus-candidates { display: grid; gap: 5px; max-height: 300px; overflow-y: auto; }
+.focus-candidates label { display: flex; align-items: center; gap: 10px; padding: 10px 5px; border-bottom: 1px solid var(--academic-border); }
+.rpg-app .mission-modal .focus-candidates input { width: 18px; height: 18px; flex: none; margin: 0; accent-color: var(--forest); }
+.focus-candidates strong { display: block; font-size: 12px; font-weight: 500; }
+.focus-candidates small { display: block; font-size: 10px; margin-top: 4px; }
+.focus-total { display: block; font-size: 10px; color: #c9d9ca; margin-top: 5px; }
+.academic-focus.interval-focus { width: min(760px, calc(100vw - 270px)); }
+.rpg-app .academic-free-time > .academic-link { display: flex; margin-top: 12px; }
+@media (max-width: 700px) {
+  .weekly-load { padding: 16px; }
+  .load-metrics { gap: 12px; }
+  .load-metrics span { font-size: 10px; }
+  .load-metrics strong { font-size: 17px; }
+  .daily-focus > header { flex-wrap: wrap; }
+  .academic-focus.interval-focus { width: calc(100vw - 24px); }
+  .academic-focus.interval-focus > div { flex-basis: 100%; }
+  .academic-focus.interval-focus time { margin-right: auto; }
+  .academic-focus.interval-focus .focus-save { flex: none; }
+}

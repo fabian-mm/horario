@@ -46,6 +46,10 @@ Genera un secreto con un administrador de contraseñas o con `openssl rand -base
 - Catálogo de materias reutilizado por tareas y clases.
 - Control horario accesible: escritura flexible, ajustes de 15 minutos y validación visible.
 - Cronómetro persistente por usuario en este navegador, pausa/reanudación y reintento si falla el guardado.
+- Disponibilidad personal por días y horas, con compromisos recurrentes. La carga de la semana compara las estimaciones pendientes con el tiempo futuro disponible, descontando clases y compromisos sin descontar dos veces el estudio reservado.
+- Hasta tres misiones principales elegidas para hoy, aunque venzan otro día. No se duplican en las otras listas de Hoy ni se modifica su fecha límite; al cambiar el día se renueva la selección.
+- Concentración libre, 25/5, 50/10 o personalizada. Los descansos no suman estudio y el siguiente ciclo exige continuar manualmente. Cambiar el modo afecta únicamente a la próxima sesión.
+- Disponibilidad, prioridades y modo de concentración guardados por cuenta. Si falla el guardado, el formulario conserva los cambios para reintentar. La disponibilidad inicial es de 08:00 a 20:00 todos los días y puede ajustarse desde Hoy o Semana.
 - Registro de tiempo separado del estado de entrega, con identificador único para evitar duplicación al reintentar.
 - Estética RPG de exploración: pergamino, paisaje vectorial, insignias, nivel y rango. La experiencia existente (25/50/100 XP por prioridad) se calcula con las tareas completadas; reabrirlas recalcula el total, sin acumular recompensas duplicadas.
 - Celebración breve al completar desde el tablón; respeta la preferencia de movimiento reducido. La búsqueda no altera el progreso del personaje.

@@ -7,7 +7,11 @@ import { useMissions } from "@/hooks/use-missions";
 import { useSubjects } from "@/hooks/use-subjects";
 import { useTheme } from "@/hooks/use-theme";
 import { useWeeklyQuests } from "@/hooks/use-weekly-quests";
-import { academicWeek, durationLabel, freeStudySlots, minuteLabel, pendingTasks, studyBlocksOn } from "@/lib/academic";
+import { usePlanning } from "@/hooks/use-planning";
+import { availableSlots, commitmentsOn } from "@/lib/planning";
+import { AvailabilityDialog, WeeklyLoad } from "./time-planning";
+import { DailyFocus } from "./daily-focus";
+import { academicWeek, durationLabel, minuteLabel, pendingTasks, studyBlocksOn } from "@/lib/academic";
 import { calculatePlayerProgress, getMissionXp, getMissionStatus, sortMissionsByDateTime, toISODate, type Mission, type MissionStatus } from "@/lib/missions";
 import { getScheduledOccurrences } from "@/lib/schedule";
 import { resolveSubjectName } from "@/lib/subjects";
@@ -48,6 +52,10 @@ export function MissionPlanner() {
   const { missions, loading, error, upsert, setStatus, remove, recordStudy } = useMissions(Boolean(auth.user));
   const schedule = useWeeklyQuests(Boolean(auth.user));
   const catalog = useSubjects(Boolean(auth.user));
+  const planning = usePlanning(auth.user?.id);
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 60000); return () => window.clearInterval(timer); }, []);
   const [view, setView] = useState<View>("today");
   const [anchor, setAnchor] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => new Date());
@@ -71,10 +79,12 @@ export function MissionPlanner() {
   const matching = tasks.filter(task => !search || `${task.title} ${task.subject} ${task.project ?? ""}`.toLocaleLowerCase("es").includes(search));
   const priorities = pendingTasks(matching);
   const week = academicWeek(anchor);
-  const today = new Date();
+  const today = now;
   const todayIso = toISODate(today);
   const classesToday = getScheduledOccurrences(today, schedule.weeklyQuests);
-  const slots = freeStudySlots([...classesToday, ...studyBlocksOn(tasks, todayIso)]);
+  const slots = availableSlots(today, planning.data.availability, [...classesToday, ...studyBlocksOn(tasks, todayIso)], today).filter(slot => slot.end - slot.start >= 30);
+  const dailyIds = planning.data.dailyFocus?.date === todayIso ? planning.data.dailyFocus.missionIds : [];
+  const notHighlighted = (items: Mission[]) => items.filter(task => !dailyIds.includes(task.id));
   const projects = Array.from(new Set(tasks.map(task => task.project?.trim()).filter((name): name is string => Boolean(name))));
   const projectTasks = matching.filter(task => (!subject || task.subject === subject) && (!project || task.project === project) && (taskFilter === "all" || (taskFilter === "pending" ? getMissionStatus(task) !== "completed" : getMissionStatus(task) === "completed")));
   const openNew = (date = new Date()) => { setSelectedDate(date); setEditing(null); setFormOpen(true); };
@@ -104,32 +114,36 @@ export function MissionPlanner() {
     <section className="academic-content">
       <header className="academic-topbar"><span>Mi semestre <ChevronRight size={13} /> {view === "today" ? "Hoy" : view === "week" ? "Semana" : view === "routine" ? "Horario recurrente" : view === "subjects" ? "Materias" : "Proyectos"}</span><label className="academic-search"><Search size={16} /><input aria-label="Buscar tareas" placeholder="Buscar tareas, materias o proyectos" value={query} onChange={event => setQuery(event.target.value)} />{query && <button type="button" aria-label="Limpiar búsqueda" onClick={() => setQuery("")}><X size={14} /></button>}</label></header>
       {errors && <div className="sync-alert" role="alert"><AlertTriangle size={16} />{errors}</div>}
+      {planning.error && <div className="sync-alert" role="alert">{planning.error}{!planning.ready && <button type="button" onClick={planning.retry}>Reintentar planificación</button>}</div>}
       <div className="academic-workspace">
         {view === "today" && <>
           <header className="academic-heading"><div><span className="academic-eyebrow">{new Intl.DateTimeFormat("es-CO", { weekday: "long", day: "numeric", month: "long" }).format(today)}</span><h1>Tu aventura de hoy.</h1><p>Prepara tu equipo. Elige una misión. Avanza a tu ritmo.</p></div><button type="button" className="primary-button" onClick={() => openNew()}><Plus size={17} /> Nueva tarea</button></header>
           <AdventureProgress missions={tasks} />
           <div className="academic-summary"><span><b>{priorities.today.length}</b> {priorities.today.length === 1 ? "entrega hoy" : "entregas hoy"}</span><span><b>{classesToday.length}</b> {classesToday.length === 1 ? "clase" : "clases"}</span><span><b>{priorities.upcoming.length}</b> {priorities.upcoming.length === 1 ? "tarea próxima" : "tareas próximas"}</span></div>
+          <DailyFocus key={auth.user.id} tasks={tasks} date={todayIso} data={planning.data} ready={planning.ready && !loading} saving={planning.saving} onSave={planning.save} renderTasks={items => taskList(items, "")} />
           <StudyPlan tasks={tasks} date={todayIso} onEdit={openEdit} onStudy={setStudyTask} />
           <div className="academic-today-grid">
             <div>
-              <section className="academic-panel"><header><div><span className="academic-eyebrow">TABLÓN DE MISIONES</span><h2>Para hoy</h2></div><small>{priorities.today.length} {priorities.today.length === 1 ? "tarea" : "tareas"}</small></header>{taskList(priorities.today, loading ? "Cargando tus tareas…" : search ? "No hay coincidencias para hoy." : "Tu tablón está despejado. Puedes explorar una próxima misión o descansar.")}</section>
-              <section className="academic-panel"><header><h2>Próximas entregas</h2><button type="button" className="academic-link" onClick={() => setView("projects")}>Ver todas <ArrowUpRight size={15} /></button></header>{taskList(priorities.upcoming.slice(0, 5), "No hay próximas entregas.")}</section>
-              {priorities.overdue.length > 0 && <details className="academic-overdue"><summary><AlertTriangle size={15} /> {priorities.overdue.length} tareas con fecha pasada <span>Revisar</span></summary>{taskList(priorities.overdue, "")}</details>}
+              <section className="academic-panel"><header><div><span className="academic-eyebrow">TABLÓN DE MISIONES</span><h2>Para hoy</h2></div><small>{priorities.today.length} {priorities.today.length === 1 ? "tarea" : "tareas"}</small></header>{taskList(notHighlighted(priorities.today), loading ? "Cargando tus tareas…" : search ? "No hay coincidencias para hoy." : "No hay otras entregas para hoy. Revisa tus misiones principales o toma un descanso.")}</section>
+              <section className="academic-panel"><header><h2>Próximas entregas</h2><button type="button" className="academic-link" onClick={() => setView("projects")}>Ver todas <ArrowUpRight size={15} /></button></header>{taskList(notHighlighted(priorities.upcoming).slice(0, 5), "No hay próximas entregas.")}</section>
+              {priorities.overdue.length > 0 && <details className="academic-overdue"><summary><AlertTriangle size={15} /> {priorities.overdue.length} tareas con fecha pasada <span>Revisar</span></summary>{taskList(notHighlighted(priorities.overdue), "")}</details>}
             </div>
             <aside className="academic-day-plan"><section className="academic-panel"><header><h2>Tu horario de hoy</h2><CalendarDays size={18} /></header><div className="academic-timeline">{classesToday.map(activity => <button key={activity.occurrenceId} type="button" onClick={() => openRoutine(activity.weeklyQuestId)}><time>{activity.startTime}<small>{activity.endTime}</small></time><span><strong>{activity.title}</strong><small>{activity.subject}{activity.location && ` · ${activity.location}`}</small></span></button>)}{!classesToday.length && <p className="academic-empty">Hoy no tienes clases programadas.</p>}</div><button type="button" className="academic-panel-footer" onClick={() => { setAnchor(new Date()); setView("week"); }}>Ver mi semana <ArrowUpRight size={15} /></button></section>
-              <section className="academic-free-time"><Clock3 size={21} /><h3>Espacio para estudiar</h3><p>Según clases y bloques de estudio, entre las 8:00 y las 20:00.</p>{slots.slice(0, 3).map(slot => <div key={slot.start}><strong>{minuteLabel(slot.start)} — {minuteLabel(slot.end)}</strong><span>{durationLabel(slot.end - slot.start)}</span></div>)}{!slots.length && <p>No hay huecos de al menos 30 minutos.</p>}<small>Las fechas de entrega no se cuentan como tiempo ocupado.</small></section>
+              <section className="academic-free-time"><Clock3 size={21} /><h3>Espacio para estudiar</h3><p>Desde ahora, dentro de tu disponibilidad. Se descuentan clases, compromisos y bloques reservados.</p>{slots.slice(0, 3).map(slot => <div key={slot.start}><strong>{minuteLabel(slot.start)} — {minuteLabel(slot.end)}</strong><span>{durationLabel(slot.end - slot.start)}</span></div>)}{!slots.length && <p>No hay huecos de al menos 30 minutos.</p>}<small>Las fechas de entrega no se cuentan como tiempo ocupado.</small><button type="button" className="academic-link" disabled={!planning.ready} onClick={() => setAvailabilityOpen(true)}>Configurar disponibilidad</button></section>
             </aside>
           </div>
         </>}
         {view === "week" && <>
           <header className="academic-heading"><div><span className="academic-eyebrow">PLANIFICA TU TIEMPO</span><h1>Tu semana</h1><p>Clases y entregas juntas, con espacio para organizarte.</p></div><button type="button" className="secondary-button" onClick={() => openRoutine()}><Settings2 size={16} /> Organizar horario</button></header>
           <div className="academic-week-toolbar"><div><button type="button" aria-label="Semana anterior" onClick={() => { const next = new Date(anchor); next.setDate(next.getDate() - 7); setAnchor(next); }}><ChevronLeft size={18} /></button><strong>{dateLabel(week[0])} — {dateLabel(week[6])}, {week[6].getFullYear()}</strong><button type="button" aria-label="Semana siguiente" onClick={() => { const next = new Date(anchor); next.setDate(next.getDate() + 7); setAnchor(next); }}><ChevronRight size={18} /></button></div><button type="button" onClick={() => setAnchor(new Date())}>Esta semana</button></div>
+          {planning.ready && !loading && !schedule.loading && <WeeklyLoad anchor={anchor} reference={today} availability={planning.data.availability} tasks={tasks} schedules={schedule.weeklyQuests} onConfigure={() => setAvailabilityOpen(true)} />}
           <div className="academic-week-scroll"><div className="academic-week">{week.map(date => {
             const iso = toISODate(date);
             const classes = getScheduledOccurrences(date, schedule.weeklyQuests).filter(item => !search || `${item.title} ${item.subject}`.toLocaleLowerCase("es").includes(search));
             const due = matching.filter(task => task.date === iso);
             const study = studyBlocksOn(matching, iso);
-            return <section className={iso === todayIso ? "is-today" : ""} key={iso}><header><small>{new Intl.DateTimeFormat("es-CO", { weekday: "short" }).format(date)}</small><strong>{date.getDate()}</strong><button type="button" className="academic-reveal" aria-label={`Añadir tarea el ${iso}`} onClick={() => openNew(date)}><Plus size={16} /></button></header><div>{classes.map(item => <button type="button" className="academic-week-class" key={item.occurrenceId} onClick={() => openRoutine(item.weeklyQuestId)}><small>{item.startTime} — {item.endTime}</small><strong>{item.title}</strong><span>{item.subject}</span></button>)}{due.map(task => <button type="button" className={`academic-week-task ${getMissionStatus(task)}`} key={task.id} onClick={() => openEdit(task)}><small>ENTREGA · {task.time}</small><strong>{task.title}</strong><span>{task.subject}</span></button>)}{study.map(block => <button type="button" className="academic-week-study" key={`${block.taskId}:${block.id}`} onClick={() => openEdit(tasks.find(task => task.id === block.taskId)!)}><small>ESTUDIO · {block.startTime} — {block.endTime}</small><strong>{block.title}</strong><span>{block.subject}</span></button>)}{!classes.length && !due.length && !study.length && <span className="academic-week-empty">Sin actividades</span>}</div></section>;
+            const personal = commitmentsOn(planning.data.availability, date).filter(item => !search || item.title.toLocaleLowerCase("es").includes(search));
+            return <section className={iso === todayIso ? "is-today" : ""} key={iso}><header><small>{new Intl.DateTimeFormat("es-CO", { weekday: "short" }).format(date)}</small><strong>{date.getDate()}</strong><button type="button" className="academic-reveal" aria-label={`Añadir tarea el ${iso}`} onClick={() => openNew(date)}><Plus size={16} /></button></header><div>{classes.map(item => <button type="button" className="academic-week-class" key={item.occurrenceId} onClick={() => openRoutine(item.weeklyQuestId)}><small>{item.startTime} — {item.endTime}</small><strong>{item.title}</strong><span>{item.subject}</span></button>)}{due.map(task => <button type="button" className={`academic-week-task ${getMissionStatus(task)}`} key={task.id} onClick={() => openEdit(task)}><small>ENTREGA · {task.time}</small><strong>{task.title}</strong><span>{task.subject}</span></button>)}{study.map(block => <button type="button" className="academic-week-study" key={`${block.taskId}:${block.id}`} onClick={() => openEdit(tasks.find(task => task.id === block.taskId)!)}><small>ESTUDIO · {block.startTime} — {block.endTime}</small><strong>{block.title}</strong><span>{block.subject}</span></button>)}{personal.map(item => <button type="button" className="academic-week-personal" key={item.id} onClick={() => setAvailabilityOpen(true)}><small>PERSONAL · {item.startTime} — {item.endTime}</small><strong>{item.title}</strong></button>)}{!classes.length && !due.length && !study.length && !personal.length && <span className="academic-week-empty">Sin actividades</span>}</div></section>;
           })}</div></div><p className="academic-caption"><span className="class-dot" /> Clases <span className="task-dot" /> Entregas · Borde discontinuo: estudio · Abre una tarjeta para editar sus detalles.</p>
         </>}
         {view === "projects" && <>
@@ -148,8 +162,9 @@ export function MissionPlanner() {
     </section>
     <nav className="academic-mobile-nav" aria-label="Navegación móvil">{navigation.map(item => <button type="button" key={item.id} className={activeNav === item.id ? "active" : ""} aria-current={activeNav === item.id ? "page" : undefined} onClick={() => setView(item.id)}><item.icon size={20} />{item.label}</button>)}<button type="button" aria-label="Mi cuenta" onClick={() => setAccountOpen(true)}><Settings2 size={20} />Cuenta</button></nav>
     <MissionForm open={formOpen} initialDate={selectedDate} initialSubject={subject || undefined} initialProject={view === "projects" ? project : undefined} missions={tasks} schedules={schedule.weeklyQuests} mission={editing} onClose={() => setFormOpen(false)} onSave={upsert} onDelete={remove} subjects={catalog.subjects} onManageSubjects={() => setView("subjects")} />
+    {availabilityOpen && planning.ready && <AvailabilityDialog key={`availability:${auth.user.id}`} value={planning.data.availability} saving={planning.saving} onSave={availability => planning.save({ availability })} onClose={() => setAvailabilityOpen(false)} />}
     <AccountPanel open={accountOpen} user={auth.user} onClose={() => setAccountOpen(false)} onLogout={auth.logout} onUpdate={auth.updateAccount} theme={theme} onThemeChange={setTheme} />
-    <StudyFocus key={auth.user.id} userId={auth.user.id} requestedTask={studyTask} onRequestHandled={() => setStudyTask(null)} onSave={recordStudy} />
+    <StudyFocus key={auth.user.id} userId={auth.user.id} requestedTask={studyTask} configuration={planning.data.concentration} onRequestHandled={() => setStudyTask(null)} onSave={recordStudy} />
     <GameFeedback reward={!errors && reward && tasks.some(task => task.id === reward.missionId && getMissionStatus(task) === "completed") ? reward : null} onDismiss={() => setReward(null)} />
   </main>;
 }
