@@ -2,11 +2,18 @@ export type Priority = "normal" | "important" | "boss";
 export type MissionStatus = "pending" | "submitted" | "completed";
 export type StudyBlock = { id: string; date: string; startTime: string; endTime: string };
 export type Subtask = { id: string; title: string; completed: boolean };
+export const stageMeta = { research: "Investigación", draft: "Borrador", review: "Revisión", delivery: "Entrega" };
+export type ProjectStage = keyof typeof stageMeta;
+export const workStateMeta = { todo: "Por iniciar", in_progress: "En curso", blocked: "Bloqueada" };
 
 export type Mission = {
   id: string;
   title: string;
   project?: string;
+  stage?: ProjectStage | null;
+  workState?: keyof typeof workStateMeta;
+  blockedReason?: string;
+  dependsOn?: string[];
   estimatedMinutes?: number;
   studiedMinutes?: number;
   subtasks?: Subtask[];
@@ -33,6 +40,31 @@ export const statusMeta: Record<MissionStatus, { label: string; description: str
 
 export const getMissionStatus = (mission: Mission): MissionStatus =>
   mission.status ?? (mission.completed ? "completed" : "pending");
+
+export function unresolvedDependencies(task: Mission, tasks: Mission[]) {
+  return (task.dependsOn ?? []).filter(id => {
+    const dependency = tasks.find(item => item.id === id);
+    return !dependency || getMissionStatus(dependency) !== "completed";
+  });
+}
+export function effectiveWorkState(task: Mission, tasks: Mission[]) {
+  return unresolvedDependencies(task, tasks).length ? "blocked" : task.workState ?? "todo";
+}
+export function dependencyError(task: Mission, tasks: Mission[]): string | null {
+  const graph = new Map(tasks.map(item => [item.id, item.dependsOn ?? []]));
+  graph.set(task.id, task.dependsOn ?? []);
+  if ((task.dependsOn ?? []).some(id => id !== task.id && !graph.has(id))) return "Una dependencia ya no está disponible. Retírala y vuelve a guardar.";
+  const visited = new Set<string>();
+  const queue = [...(task.dependsOn ?? [])];
+  while (queue.length) {
+    const id = queue.pop()!;
+    if (id === task.id) return "Esta dependencia crea un ciclo: una tarea no puede depender de sí misma, ni indirectamente.";
+    if (visited.has(id)) continue;
+    visited.add(id);
+    queue.push(...(graph.get(id) ?? []));
+  }
+  return null;
+}
 
 export type SubjectAverage = {
   average: number | null;

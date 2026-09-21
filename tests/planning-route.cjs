@@ -28,3 +28,20 @@ test('configuración aislada por usuario y parches independientes',async()=>{
   assert.equal(f.writes[0].filter._id,'student-a'); assert.equal(f.writes[1].update.$set.dailyFocus,undefined);
   const body=await (await f.get()).json(); assert.deepEqual(body.dailyFocus.missionIds,['owned']); assert.equal(body.concentration.workMinutes,50); assert.equal(body.availability.startTime,'08:00');
 });
+test('guardar tarea valida dependencias con las misiones de la cuenta y rechaza ciclos', async () => {
+  const owned = [{id:'b',dependsOn:['a']}]; const writes=[]; const reads=[];
+  const code=ts.transpileModule(readFileSync(resolve(__dirname,'../app/api/missions/route.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+  const exports={};
+  const scoped=name=>name==='@/lib/auth'?{getSessionUserId:async()=>'student-a'}:name==='@/lib/mongodb'?{getDb:async()=>({collection:()=>({find:filter=>{reads.push(filter);return {toArray:async()=>owned};},updateOne:async(...args)=>writes.push(args)})})}:name==='@/lib/missions'?require('../.checks/missions.js'):name==='@/lib/validation'?require('../.checks/validation.js'):require(name);
+  vm.runInNewContext('(function(require,exports){'+code+'\n})',{})(scoped,exports);
+  const body={id:'a',title:'Informe',subject:'Física',date:'2026-09-21',time:'12:00',completed:false,priority:'normal',stage:'review',workState:'in_progress'};
+  const post=patch=>exports.POST(new Request('http://localhost/api/missions',{method:'POST',body:JSON.stringify({...body,...patch})}));
+  assert.equal((await post({dependsOn:['foreign']})).status,400);
+  assert.equal((await post({dependsOn:['b']})).status,400);
+  assert.equal(writes.length,0); assert.equal(reads[0].userId,'student-a');
+  owned[0].dependsOn=[];
+  assert.equal((await post({dependsOn:['b']})).status,200);
+  assert.equal(writes[0][0].userId,'student-a'); assert.equal(writes[0][1].$set.stage,'review');
+  assert.equal((await post({stage:null,dependsOn:[]})).status,200);
+  assert.equal(writes[1][1].$set.stage,null);
+});

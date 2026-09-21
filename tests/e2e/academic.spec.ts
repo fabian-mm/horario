@@ -10,6 +10,7 @@ async function setup(page: Page) {
   const schedules = [{ id: 'semester', title: 'Semestre 2026-2', active: true, startDate: '2026-08-01', dailyMissions: [{ id: 'class-a', title: 'Laboratorio de física', subject: 'Física', subjectId: 'physics', dayOfWeek: 2, startTime: '10:00', endTime: '12:00', location: 'Aula 204' }] }];
   const studies: { id: string; minutes: number }[] = [];
   let failStudy = true;
+  let failMission = false;
   let planning = structuredClone(defaultPlanning);
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
@@ -24,6 +25,7 @@ async function setup(page: Page) {
       return route.fulfill(failStudy ? { status: 503, json: { error: 'Fallo de conexión simulado' } } : { json: { studiedMinutes: route.request().postDataJSON().minutes } });
     }
     if (path === '/api/missions') {
+      if (route.request().method() === 'POST' && failMission) return route.fulfill({ status: 503, json: { error: 'Fallo de guardado simulado' } });
       if (route.request().method() === 'POST') { const task = route.request().postDataJSON(); const index = tasks.findIndex(t => t.id === task.id); if (index < 0) tasks.push(task); else tasks[index] = task; return route.fulfill({ json: task }); }
       return route.fulfill({ json: tasks });
     }
@@ -35,8 +37,50 @@ async function setup(page: Page) {
   });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Tu aventura de hoy.' })).toBeVisible();
-  return { tasks, schedules, studies, allowStudy: () => { failStudy = false; } };
+  return { tasks, schedules, studies, allowStudy: () => { failStudy = false; }, failMissionSave: (value: boolean) => { failMission = value; } };
 }
+
+test('etapas, bloqueo por dependencia y desbloqueo al completar', async ({ page }) => {
+  await setup(page);
+  await page.locator('.academic-task-copy').filter({ hasText: 'Terminar informe' }).click();
+  await page.getByText('Etapas y bloqueos', { exact: true }).click();
+  await page.getByRole('combobox', { name: 'Etapa del proyecto', exact: true }).selectOption('draft');
+  await page.getByRole('combobox', { name: 'Estado de trabajo', exact: true }).selectOption('in_progress');
+  await page.getByRole('combobox', { name: 'Añadir dependencia' }).selectOption('exam');
+  await page.getByRole('button', { name: 'Guardar tarea', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const report = page.locator('.academic-task').filter({ hasText: 'Terminar informe' });
+  await expect(report).toContainText('Borrador');
+  await expect(report).toContainText('Bloqueada');
+  await page.reload();
+  await expect(report).toContainText('Depende de: Preparar parcial');
+  await page.getByRole('button', { name: 'Completar Preparar parcial de cálculo', exact: true }).click();
+  await expect(report).toContainText('En curso');
+  await expect(report).not.toContainText('Bloqueada');
+  await expect(page.getByRole('button', { name: 'Completar Terminar informe de laboratorio', exact: true })).toBeVisible();
+  await page.getByRole('navigation', { name: 'Navegación principal' }).getByRole('button', { name: 'Proyectos' }).click();
+  await expect(page.locator('.project-stages').first()).toContainText('Borrador');
+  await page.screenshot({ path: 'test-results/proyectos-etapas.png', fullPage: true });
+});
+
+test('bloqueo manual conserva el borrador tras un fallo de guardado en móvil', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const f = await setup(page);
+  await page.locator('.academic-task-copy').filter({ hasText: 'Terminar informe' }).click();
+  await page.getByText('Etapas y bloqueos', { exact: true }).click();
+  await page.getByRole('combobox', { name: 'Estado de trabajo', exact: true }).selectOption('blocked');
+  await page.getByLabel('Motivo del bloqueo').fill('Esperando datos del equipo');
+  f.failMissionSave(true);
+  await page.getByRole('button', { name: 'Guardar tarea', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('Tus cambios siguen aquí');
+  await expect(page.getByLabel('Motivo del bloqueo')).toHaveValue('Esperando datos del equipo');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  f.failMissionSave(false);
+  await page.getByRole('button', { name: 'Guardar tarea', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('.academic-task').filter({ hasText: 'Terminar informe' })).toContainText('Bloqueada · Esperando datos del equipo');
+});
 
 test('agenda, semana y proyectos sin duplicar la navegación', async ({ page }) => {
   await setup(page);
@@ -53,7 +97,7 @@ test('agenda, semana y proyectos sin duplicar la navegación', async ({ page }) 
   await page.getByRole('combobox', { name: 'Filtrar por proyecto', exact: true }).selectOption('Laboratorio de movimiento');
   await expect(page.locator('.academic-task')).toHaveCount(1);
   await page.getByRole('button', { name: 'Nueva tarea', exact: true }).click();
-  await expect(page.getByRole('dialog').getByLabel('Proyecto', { exact: false })).toHaveValue('Laboratorio de movimiento');
+  await expect(page.getByRole('dialog').getByRole('textbox', { name: 'Proyecto (opcional)', exact: true })).toHaveValue('Laboratorio de movimiento');
 });
 
 test('90 minutos se conservan tras fallo y recarga, con el mismo identificador al reintentar', async ({ page }) => {

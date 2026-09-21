@@ -23,6 +23,10 @@ export const missionSchema = z.object({
   id: z.string().min(1).max(100),
   title: z.string().trim().min(1).max(180),
   project: z.string().trim().max(100).optional(),
+  stage: z.enum(["research", "draft", "review", "delivery"]).nullable().optional(),
+  workState: z.enum(["todo", "in_progress", "blocked"]).optional(),
+  blockedReason: z.string().trim().max(500).optional(),
+  dependsOn: z.array(z.string().min(1).max(100)).max(100).refine(ids => new Set(ids).size === ids.length).optional(),
   estimatedMinutes: z.number().int().min(0).max(60000).optional(),
   subtasks: z.array(z.object({ id: z.string().min(1).max(100), title: z.string().trim().min(1).max(180), completed: z.boolean() })).max(100).optional(),
   studyBlocks: z.array(z.object({

@@ -7,6 +7,8 @@ import { findSubject, Subject } from "@/lib/subjects";
 import { TimeField } from "@/components/time-field";
 import { MissionToolsFields } from "./mission-tools-fields";
 import type { WeeklyQuest } from "@/lib/schedule";
+import { dependencyError } from "@/lib/missions";
+import { ProjectWorkFields } from "./project-work-fields";
 
 type Props = {
   open: boolean;
@@ -61,6 +63,8 @@ export function MissionForm({ open, initialDate, initialSubject, initialProject,
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (saving) return;
+    const graphError = dependencyError(form, missions);
+    if (graphError) { setSaveError(graphError); return; }
     if (form.studyBlocks?.some(block => block.endTime <= block.startTime)) { setSaveError("Cada bloque debe terminar después de comenzar, dentro del mismo día."); return; }
     const draft = { ...form, id: form.id || crypto.randomUUID(), title: form.title.trim(), subject: form.subject.trim(), completed: form.status === "completed" };
     setForm(draft);
@@ -120,9 +124,10 @@ export function MissionForm({ open, initialDate, initialSubject, initialProject,
             </div>
           </fieldset>
           <MissionToolsFields task={form} onChange={setForm} missions={missions} schedules={schedules} />
+          <ProjectWorkFields task={form} tasks={missions} onChange={setForm} />
           <div className="form-row form-row-metrics">
             <label>
-              Estado
+              Estado de entrega
               <select value={form.status ?? "pending"} onChange={(event) => setForm({ ...form, status: event.target.value as MissionStatus })}>
                 {(Object.keys(statusMeta) as MissionStatus[]).map((status) => <option key={status} value={status}>{statusMeta[status].label}</option>)}
               </select>

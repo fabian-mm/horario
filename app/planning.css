@@ -83,3 +83,15 @@
   .academic-focus.interval-focus time { margin-right: auto; }
   .academic-focus.interval-focus .focus-save { flex: none; }
 }
+.project-work-fields { border-block: 1px solid var(--border, #dfd5bd); padding: 14px 0; }
+.project-work-fields summary { cursor: pointer; font-weight: 600; margin-bottom: 12px; }
+.project-work-fields > label { margin-top: 12px; }
+.dependency-list { list-style: none; padding: 0; margin: 10px 0; }
+.dependency-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: 12px; }
+.dependency-list li span { overflow-wrap: anywhere; }
+.task-work-summary { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; margin-top: 5px; overflow-wrap: anywhere; }
+.task-work-summary > span { white-space: normal; }
+.work-blocked { color: #94501c; }
+.project-stages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0; font-size: 12px; }
+.project-stages > span { border-left: 2px solid #b89851; padding-left: 8px; }
+.project-stages small { display: block; font-size: 10px; margin-top: 3px; }

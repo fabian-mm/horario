@@ -51,3 +51,18 @@ test('subtareas y bloques conservan validación, avisos y esfuerzo por proyecto'
   assert.equal(planningWarnings(t,[],[]).length,1);
   assert.equal(projectSummaries([t])[0].remainingMinutes,90);
 });
+test('etapas y dependencias: ciclos, referencias ausentes y desbloqueo sin alterar entregas', () => {
+  const { dependencyError, effectiveWorkState } = require('../.checks/missions.js');
+  const a = { id: 'a', dependsOn: ['b'], workState: 'in_progress' };
+  const b = { id: 'b', status: 'pending' };
+  assert.equal(effectiveWorkState(a, [a,b]), 'blocked');
+  assert.equal(effectiveWorkState(a, [a,{...b,status:'completed'}]), 'in_progress');
+  assert.equal(effectiveWorkState({...a,workState:'blocked'}, [a,{...b,status:'completed'}]), 'blocked');
+  assert.equal(effectiveWorkState(a, [a,{...b,status:'submitted'}]), 'blocked');
+  assert.equal(dependencyError(a,[b]), null);
+  assert.match(dependencyError({...b, dependsOn:['a']}, [a]), /ciclo/);
+  assert.match(dependencyError({...a,dependsOn:['a']}, [b]), /ciclo/);
+  assert.match(dependencyError(a, []), /disponible/);
+  assert.equal(missionSchema.safeParse({...task,stage:'review',workState:'blocked',dependsOn:['b']}).success,true);
+  assert.equal(missionSchema.safeParse({...task,dependsOn:['b','b']}).success,false);
+});

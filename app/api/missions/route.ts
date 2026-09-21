@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
 import { getDb } from "@/lib/mongodb";
-import type { Mission } from "@/lib/missions";
+import { dependencyError, type Mission } from "@/lib/missions";
 import { missionSchema } from "@/lib/validation";
 
 type MissionDocument = Mission & { userId: string; createdAt: string; updatedAt: string };
@@ -35,6 +35,11 @@ export async function POST(request: Request) {
     updatedAt: now,
   };
   const db = await getDb();
+  if (mission.dependsOn?.length) {
+    const owned = await db.collection<MissionDocument>("missions").find({ userId }).toArray();
+    const error = dependencyError(mission, owned);
+    if (error) return NextResponse.json({ error }, { status: 400 });
+  }
   await db.collection<MissionDocument>("missions").updateOne(
     { userId, id: mission.id },
     { $set: mission, $setOnInsert: { createdAt: now } },

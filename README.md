@@ -42,6 +42,8 @@ Genera un secreto con un administrador de contraseñas o con `openssl rand -base
 - Hoy: entregas del día, próximas tareas, clases y huecos entre clases.
 - Semana: los siete días con clases y entregas diferenciadas y navegación entre semanas.
 - Proyectos: tareas agrupadas mediante filtros de materia, proyecto y estado.
+- Etapas por tarea: Investigación, Borrador, Revisión y Entrega, con avance por etapa en el resumen del proyecto. Abre una tarea y despliega «Etapas y bloqueos» para configurarlas.
+- Estado de trabajo independiente de la entrega: Por iniciar, En curso o Bloqueada, con motivo opcional. Las dependencias pendientes muestran un bloqueo informativo; al completarlas se recupera el estado elegido. Las dependencias eliminadas quedan señaladas para revisarlas, no se dan por completadas. Se rechazan referencias ajenas y ciclos al guardar; no se cambian automáticamente entregas, notas, tiempo ni XP.
 - Horarios recurrentes: arrastrar clases entre días, copiar con Ctrl al soltar y copiar/pegar entre horarios. En móvil, abrir una clase para cambiar su día o copiarla.
 - Catálogo de materias reutilizado por tareas y clases.
 - Control horario accesible: escritura flexible, ajustes de 15 minutos y validación visible.
