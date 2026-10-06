@@ -49,7 +49,7 @@ test('subtareas y bloques conservan validación, avisos y esfuerzo por proyecto'
   assert.equal(missionSchema.safeParse(t).success,true);
   assert.equal(missionSchema.safeParse({...t,studyBlocks:[{...t.studyBlocks[0],date:'2026-02-31'}]}).success,false);
   assert.equal(planningWarnings(t,[],[]).length,1);
-  assert.equal(projectSummaries([t])[0].remainingMinutes,90);
+  assert.equal(projectSummaries([t])[0].remainingMinutes,120);
 });
 test('etapas y dependencias: ciclos, referencias ausentes y desbloqueo sin alterar entregas', () => {
   const { dependencyError, effectiveWorkState } = require('../.checks/missions.js');

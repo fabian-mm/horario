@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { academicWeek, studyBlocksOn } from "./academic";
-import { getMissionStatus, toISODate, type Mission } from "./missions";
+import { getMissionStatus, remainingEstimate, toISODate, type Mission } from "./missions";
 import { getScheduledOccurrences, type WeeklyQuest } from "./schedule";
 
 const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
@@ -56,6 +56,6 @@ export function weeklyCapacity(anchor: Date, availability: Availability, tasks: 
     capacity += sum(availableSlots(day, availability, classes, reference));
     unreserved += sum(availableSlots(day, availability, [...classes, ...studyBlocksOn(tasks, toISODate(day))], reference));
   }
-  const workload = relevant.reduce((sum, task) => sum + Math.max(0, (task.estimatedMinutes ?? 0) - (task.studiedMinutes ?? 0)), 0);
-  return { capacity, unreserved, reserved: capacity - unreserved, workload, shortage: Math.max(0, workload - capacity), unestimated: relevant.filter(task => !task.estimatedMinutes).length };
+  const workload = relevant.reduce((sum, task) => sum + remainingEstimate(task), 0);
+  return { capacity, unreserved, reserved: capacity - unreserved, workload, shortage: Math.max(0, workload - capacity), unestimated: relevant.filter(task => task.remainingMinutes == null && task.estimatedMinutes == null).length };
 }

@@ -24,6 +24,8 @@ export function MissionToolsFields({ task, onChange, missions, schedules }: { ta
       <summary><CalendarClock size={16} /> Reservar tiempo de estudio <span>{blocks.length} bloques</span></summary>
       <p>Reserva uno o varios momentos para trabajar, sin cambiar la fecha de entrega. Se mostrarán en Hoy y Semana.</p>
       {blocks.map((block, index) => <div className="study-block-edit" key={block.id}>
+        {block.topic && <span className="block-topic">{block.topic}</span>}
+        <label className="block-completion"><input type="checkbox" aria-label={`Bloque ${index + 1} realizado`} checked={block.status === "done"} onChange={event => onChange({ ...task, studyBlocks: blocks.map(value => value.id === block.id ? { ...value, status: event.target.checked ? "done" : "planned" } : value) })} /> Realizado</label>
         <label>Día de estudio<input aria-label={`Día del bloque ${index + 1}`} type="date" required value={block.date} onChange={event => onChange({ ...task, studyBlocks: blocks.map(value => value.id === block.id ? { ...value, date: event.target.value } : value) })} /></label>
         <label>Inicio<input aria-label={`Inicio del bloque ${index + 1}`} type="time" required value={block.startTime} onChange={event => onChange({ ...task, studyBlocks: blocks.map(value => value.id === block.id ? { ...value, startTime: event.target.value } : value) })} /></label>
         <label>Fin<input aria-label={`Fin del bloque ${index + 1}`} type="time" required min={block.startTime} value={block.endTime} onChange={event => onChange({ ...task, studyBlocks: blocks.map(value => value.id === block.id ? { ...value, endTime: event.target.value } : value) })} /></label>

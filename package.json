@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "tsc lib/academic.ts lib/missions.ts lib/planning.ts lib/study-session.ts lib/validation.ts --module commonjs --target es2022 --skipLibCheck --outDir .checks && node --test tests/academic.cjs tests/study-route.cjs tests/planning.cjs tests/planning-route.cjs",
+    "test": "tsc lib/academic.ts lib/missions.ts lib/planning.ts lib/semester.ts lib/study-session.ts lib/validation.ts --module commonjs --target es2022 --skipLibCheck --outDir .checks && node --test tests/academic.cjs tests/study-route.cjs tests/planning.cjs tests/planning-route.cjs tests/semester.cjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {

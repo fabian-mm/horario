@@ -9,6 +9,8 @@ import { MissionToolsFields } from "./mission-tools-fields";
 import type { WeeklyQuest } from "@/lib/schedule";
 import { dependencyError } from "@/lib/missions";
 import { ProjectWorkFields } from "./project-work-fields";
+import { ExamPreparation } from "./exam-preparation";
+import type { Availability } from "@/lib/planning";
 
 type Props = {
   open: boolean;
@@ -20,6 +22,7 @@ type Props = {
   onSave: (mission: Mission) => void | boolean | Promise<void | boolean>;
   missions?: Mission[];
   schedules?: WeeklyQuest[];
+  availability?: Availability;
   onDelete?: (id: string) => void;
   subjects: Subject[];
   onManageSubjects: () => void;
@@ -43,7 +46,7 @@ const emptyForm = (date: Date, subject = "", subjects: Subject[] = []): Mission 
   };
 };
 
-export function MissionForm({ open, initialDate, initialSubject, initialProject, mission, onClose, onSave, onDelete, subjects, onManageSubjects, missions = [], schedules = [] }: Props) {
+export function MissionForm({ open, initialDate, initialSubject, initialProject, mission, onClose, onSave, onDelete, subjects, onManageSubjects, missions = [], schedules = [], availability }: Props) {
   const [form, setForm] = useState<Mission>(emptyForm(initialDate));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -66,7 +69,9 @@ export function MissionForm({ open, initialDate, initialSubject, initialProject,
     const graphError = dependencyError(form, missions);
     if (graphError) { setSaveError(graphError); return; }
     if (form.studyBlocks?.some(block => block.endTime <= block.startTime)) { setSaveError("Cada bloque debe terminar después de comenzar, dentro del mismo día."); return; }
-    const draft = { ...form, id: form.id || crypto.randomUUID(), title: form.title.trim(), subject: form.subject.trim(), completed: form.status === "completed" };
+    const topics = [...new Set((form.examTopics ?? []).map(topic => topic.trim()).filter(Boolean))];
+    if (topics.length > 40 || topics.some(topic => topic.length > 180)) { setSaveError("Usa hasta 40 temas de máximo 180 caracteres cada uno."); return; }
+    const draft = { ...form, examTopics: topics, id: form.id || crypto.randomUUID(), title: form.title.trim(), subject: form.subject.trim(), completed: form.status === "completed" };
     setForm(draft);
     setSaving(true);
     setSaveError("");
@@ -93,6 +98,7 @@ export function MissionForm({ open, initialDate, initialSubject, initialProject,
             ¿Qué necesitas hacer?
             <input required autoFocus value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Ej. Parcial de Termodinámica" />
           </label>
+          <label>Tipo de actividad<select aria-label="Tipo de actividad" value={form.kind ?? "task"} onChange={event => setForm({ ...form, kind: event.target.value as Mission["kind"] })}><option value="task">Tarea</option><option value="exam">Examen / parcial</option><option value="major">Gran entrega</option></select></label>
           <div className="subject-select-field">
             <label>
               Materia o curso
@@ -124,6 +130,8 @@ export function MissionForm({ open, initialDate, initialSubject, initialProject,
             </div>
           </fieldset>
           <MissionToolsFields task={form} onChange={setForm} missions={missions} schedules={schedules} />
+          {form.kind === "exam" && <ExamPreparation key={`${form.id}:${form.date}:${form.time}`} task={form} tasks={missions} schedules={schedules} availability={availability} onChange={setForm} />}
+          <details className="project-work-fields"><summary>Reestimar trabajo pendiente</summary><label>Tiempo restante estimado (min)<input type="number" min={0} max={60000} value={form.remainingMinutes ?? ""} onChange={event => setForm({ ...form, remainingMinutes: event.target.value === "" ? null : Number(event.target.value) })} placeholder="Sin revisar: se usa la estimación inicial" /></label><p className="planning-help">Solo tú decides cuánto falta. El cronómetro no descuenta trabajo ni completa la tarea. Vacío: usa la estimación inicial.</p></details>
           <ProjectWorkFields task={form} tasks={missions} onChange={setForm} />
           <div className="form-row form-row-metrics">
             <label>

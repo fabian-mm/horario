@@ -1,9 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
 import { defaultPlanning } from '../../lib/planning';
+import type { Mission } from '../../lib/missions';
 
 async function setup(page: Page) {
   await page.clock.install({ time: new Date('2026-09-08T14:00:00Z') });
-  const tasks = [
+  const tasks: Mission[] = [
     { id: 'report', title: 'Terminar informe de laboratorio', subject: 'Física', subjectId: 'physics', project: 'Laboratorio de movimiento', date: '2026-09-08', time: '18:00', priority: 'normal', status: 'pending', completed: false, estimatedMinutes: 90 },
     { id: 'exam', title: 'Preparar parcial de cálculo', subject: 'Cálculo', subjectId: 'math', project: 'Primer parcial', date: '2026-09-10', time: '10:00', priority: 'important', status: 'pending', completed: false, estimatedMinutes: 120 },
   ];
@@ -39,6 +40,88 @@ async function setup(page: Page) {
   await expect(page.getByRole('heading', { name: 'Tu aventura de hoy.' })).toBeVisible();
   return { tasks, schedules, studies, allowStudy: () => { failStudy = false; }, failMissionSave: (value: boolean) => { failMission = value; } };
 }
+
+test('semestre y preparación: propone, confirma y conserva sesiones tras fallo sin duplicarlas', async ({ page }) => {
+  const f = await setup(page);
+  f.tasks[1].kind = 'exam'; f.tasks[1].date = '2026-09-15'; f.tasks[0].kind = 'major';
+  await page.reload();
+  await page.getByRole('navigation', { name: 'Navegación principal' }).getByRole('button', { name: 'Semana', exact: true }).click();
+  await page.getByRole('button', { name: 'Semestre', exact: true }).click();
+  await expect(page.locator('.semester-event')).toHaveCount(2);
+  await page.locator('.semester-event').filter({ hasText: 'Preparar parcial' }).click();
+  await page.getByText('Preparar este examen', { exact: true }).click();
+  await page.getByLabel('Temas del examen').fill('Límites\nDerivadas\nPráctica');
+  await page.getByRole('button', { name: 'Proponer sesiones' }).click();
+  await expect(page.locator('.exam-preview li')).toHaveCount(3);
+  expect(f.tasks[1].studyBlocks).toBeUndefined();
+  await page.getByRole('button', { name: 'Añadir sesiones al borrador' }).click();
+  f.failMissionSave(true);
+  await page.getByRole('button', { name: 'Guardar tarea', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('Tus cambios siguen aquí');
+  await expect(page.getByLabel('Temas del examen')).toHaveValue('Límites\nDerivadas\nPráctica');
+  f.failMissionSave(false);
+  await page.getByRole('button', { name: 'Guardar tarea', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(f.tasks[1].studyBlocks).toHaveLength(3);
+  expect(f.tasks[1].studyBlocks!.every(block => block.date < '2026-09-15')).toBe(true);
+  await page.screenshot({ path: 'test-results/semestre-desktop.png', fullPage: true });
+  await page.locator('.semester-event').filter({ hasText: 'Preparar parcial' }).click();
+  await page.getByText('Preparar este examen', { exact: true }).click();
+  await page.getByRole('button', { name: 'Proponer sesiones' }).click();
+  await expect(page.getByRole('dialog')).toContainText('0 sesiones propuestas');
+});
+
+test('revisión semanal reprograma con confirmación, conserva borrador y no altera entrega ni minutos', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const f = await setup(page);
+  f.tasks[0].studyBlocks = [{id:'old',date:'2026-09-07',startTime:'13:00',endTime:'14:00',topic:'Bibliografía'}];
+  f.tasks[0].studiedMinutes = 120;
+  f.tasks[0].studySessions = [{id:'s1',minutes:30,finishedAt:'2026-09-08T13:00:00Z'},{id:'s2',minutes:90,finishedAt:'2026-09-01T13:00:00Z'}];
+  await page.reload();
+  await page.getByRole('navigation', { name: 'Navegación móvil' }).getByRole('button', { name: 'Semana', exact: true }).click();
+  await page.getByRole('button', { name: 'Revisión semanal', exact: true }).click();
+  await expect(page.locator('.weekly-review .load-metrics')).toContainText('30 min registrados esta semana');
+  await page.getByRole('button', { name: 'Reprogramar bloque' }).click();
+  await page.getByLabel('Nueva fecha').fill('2026-09-08');
+  expect(f.tasks[0].studyBlocks[0].date).toBe('2026-09-07');
+  await page.getByRole('button', { name: 'Cancelar cambio' }).click();
+  expect(f.tasks[0].studyBlocks[0].date).toBe('2026-09-07');
+  await page.getByRole('button', { name: 'Reprogramar bloque' }).click();
+  await page.getByLabel('Nueva fecha').fill('2026-09-08');
+  f.failMissionSave(true);
+  await page.getByRole('button', { name: 'Confirmar nueva fecha' }).click();
+  await expect(page.locator('.review-block')).toContainText('Conservamos la propuesta');
+  await expect(page.getByLabel('Nueva fecha')).toHaveValue('2026-09-08');
+  await page.screenshot({ path: 'test-results/revision-mobile.png', fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  f.failMissionSave(false);
+  await page.getByRole('button', { name: 'Confirmar nueva fecha' }).click();
+  await expect(page.locator('.review-block')).toHaveCount(0);
+  expect(f.tasks[0].studyBlocks[0].id).toBe('old');
+  expect(f.tasks[0].studyBlocks[0].date).toBe('2026-09-08');
+  expect(f.tasks[0].studiedMinutes).toBe(120); expect(f.tasks[0].status).toBe('pending'); expect(f.tasks[0].date).toBe('2026-09-08');
+});
+
+test('confirmar un bloque no suma tiempo y la reestimación restante es manual', async ({ page }) => {
+  const f = await setup(page);
+  f.tasks[0].studyBlocks = [{id:'done',date:'2026-09-07',startTime:'13:00',endTime:'14:00'}];
+  f.tasks[0].studiedMinutes = 120;
+  await page.reload();
+  await page.getByRole('navigation', { name: 'Navegación principal' }).getByRole('button', { name: 'Semana', exact: true }).click();
+  await expect(page.locator('.load-metrics')).toContainText('3 h 30 min pendientes estimados');
+  await page.getByRole('button', { name: 'Revisión semanal', exact: true }).click();
+  await page.getByRole('button', { name: 'Marcar realizado', exact: true }).click();
+  await expect(page.locator('.review-block')).toContainText('Bloque marcado como realizado');
+  expect(f.tasks[0].studiedMinutes).toBe(120); expect(f.tasks[0].status).toBe('pending');
+  await page.locator('.review-task').filter({ hasText: 'Terminar informe' }).first().click();
+  await page.getByText('Reestimar trabajo pendiente', { exact: true }).click();
+  await page.getByLabel('Tiempo restante estimado (min)').fill('30');
+  await page.getByRole('button', { name: 'Guardar tarea', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('group', { name: 'Vistas de planificación' }).getByRole('button', { name: 'Semana', exact: true }).click();
+  await expect(page.locator('.load-metrics')).toContainText('2 h 30 min pendientes estimados');
+  expect(f.tasks[0].status).toBe('pending');
+});
 
 test('etapas, bloqueo por dependencia y desbloqueo al completar', async ({ page }) => {
   await setup(page);

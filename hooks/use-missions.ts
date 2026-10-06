@@ -41,20 +41,22 @@ export function useMissions(enabled: boolean) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(mission),
+      signal: AbortSignal.timeout(20000),
     });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error ?? "No se pudo guardar la misión.");
     return body as Mission;
   };
 
-  const upsert = async (mission: Mission) => {
+  const upsert = async (mission: Mission, optimistic = true) => {
     const previous = missions.find(item => item.id === mission.id);
-    setMissions((current) => current.some((item) => item.id === mission.id)
+    if (optimistic) setMissions((current) => current.some((item) => item.id === mission.id)
       ? current.map((item) => item.id === mission.id ? mission : item)
       : [...current, mission]);
     setError(null);
     try {
       await saveRemote(mission);
+      if (!optimistic) setMissions(current => current.some(item => item.id === mission.id) ? current.map(item => item.id === mission.id ? { ...item, ...mission, studiedMinutes: item.studiedMinutes, studySessions: item.studySessions } : item) : [...current, mission]);
       return true;
     } catch (requestError) {
       setMissions(current => current.flatMap(item => item === mission ? (previous ? [previous] : []) : [item]));
@@ -115,7 +117,7 @@ export function useMissions(enabled: boolean) {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error ?? "No se pudo guardar el tiempo.");
       if (!Number.isFinite(body.studiedMinutes)) throw new Error("La respuesta de guardado no es válida. Puedes reintentar sin duplicar tu tiempo.");
-      setMissions(current => current.map(task => task.id === missionId ? { ...task, studiedMinutes: body.studiedMinutes } : task));
+      setMissions(current => current.map(task => task.id === missionId ? { ...task, studiedMinutes: body.studiedMinutes, studySessions: [...(task.studySessions ?? []).filter(item => item.id !== record.id), record] } : task));
       return true;
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "No se pudo guardar el tiempo.");

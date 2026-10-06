@@ -1,6 +1,6 @@
 export type Priority = "normal" | "important" | "boss";
 export type MissionStatus = "pending" | "submitted" | "completed";
-export type StudyBlock = { id: string; date: string; startTime: string; endTime: string };
+export type StudyBlock = { id: string; date: string; startTime: string; endTime: string; topic?: string; status?: "planned" | "done" };
 export type Subtask = { id: string; title: string; completed: boolean };
 export const stageMeta = { research: "Investigación", draft: "Borrador", review: "Revisión", delivery: "Entrega" };
 export type ProjectStage = keyof typeof stageMeta;
@@ -15,6 +15,10 @@ export type Mission = {
   blockedReason?: string;
   dependsOn?: string[];
   estimatedMinutes?: number;
+  remainingMinutes?: number | null;
+  kind?: "task" | "exam" | "major";
+  examTopics?: string[];
+  studySessions?: { id: string; minutes: number; finishedAt: string }[];
   studiedMinutes?: number;
   subtasks?: Subtask[];
   studyBlocks?: StudyBlock[];
@@ -31,6 +35,10 @@ export type Mission = {
   createdAt?: string;
   updatedAt?: string;
 };
+
+// A clock measures effort, not the amount of work left. Only a student's
+// explicit reassessment changes the remaining estimate.
+export const remainingEstimate = (task: Mission) => task.remainingMinutes ?? task.estimatedMinutes ?? 0;
 
 export const statusMeta: Record<MissionStatus, { label: string; description: string }> = {
   pending: { label: "Pendiente", description: "Por trabajar" },

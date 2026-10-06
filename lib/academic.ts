@@ -1,4 +1,4 @@
-import { getMissionStatus, sortMissionsByDateTime, toISODate, type Mission } from "./missions";
+import { getMissionStatus, remainingEstimate, sortMissionsByDateTime, toISODate, type Mission } from "./missions";
 import { getScheduledOccurrences, type WeeklyQuest } from "./schedule";
 
 export function academicWeek(anchor: Date) {
@@ -41,7 +41,7 @@ export const durationLabel = (minutes: number) => minutes >= 60 ? `${Math.floor(
 
 export function studyBlocksOn(missions: Mission[], date: string) {
   return missions.filter(task => getMissionStatus(task) === "pending").flatMap(task =>
-    (task.studyBlocks ?? []).filter(block => block.date === date).map(block => ({ ...block, taskId: task.id, title: task.title, subject: task.subject })),
+    (task.studyBlocks ?? []).filter(block => block.date === date && block.status !== "done").map(block => ({ ...block, taskId: task.id, title: block.topic ? `${task.title} · ${block.topic}` : task.title, subject: task.subject })),
   ).sort((a, b) => a.startTime.localeCompare(b.startTime));
 }
 
@@ -70,8 +70,8 @@ export function projectSummaries(missions: Mission[]) {
     return { key, name: tasks[0].project!.trim(), subject: tasks[0].subject, total: tasks.length,
       completed: tasks.filter(task => getMissionStatus(task) === "completed").length,
       awaiting: tasks.filter(task => getMissionStatus(task) === "submitted").length,
-      remainingMinutes: pending.reduce((sum, task) => sum + Math.max(0, (task.estimatedMinutes ?? 0) - (task.studiedMinutes ?? 0)), 0),
-      unestimated: pending.filter(task => !task.estimatedMinutes).length,
+      remainingMinutes: pending.reduce((sum, task) => sum + remainingEstimate(task), 0),
+      unestimated: pending.filter(task => task.remainingMinutes == null && task.estimatedMinutes == null).length,
       nextDeadline: pending[0]?.date,
     };
   }).sort((a, b) => (a.nextDeadline ?? "9999").localeCompare(b.nextDeadline ?? "9999") || a.name.localeCompare(b.name, "es"));

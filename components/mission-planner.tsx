@@ -24,6 +24,8 @@ import { StudyFocus } from "./study-focus";
 import { StudyPlan } from "./study-plan";
 import { ProjectOverview } from "./project-overview";
 import { TaskWorkSummary } from "./task-work-summary";
+import { SemesterView } from "./semester-view";
+import { WeeklyReview } from "./weekly-review";
 import { AdventureProgress } from "./adventure-progress";
 import { GameFeedback, type RewardEvent } from "./game-feedback";
 
@@ -58,6 +60,7 @@ export function MissionPlanner() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 60000); return () => window.clearInterval(timer); }, []);
   const [view, setView] = useState<View>("today");
+  const [weekMode, setWeekMode] = useState<"week" | "semester" | "review">("week");
   const [anchor, setAnchor] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [query, setQuery] = useState("");
@@ -136,7 +139,13 @@ export function MissionPlanner() {
         </>}
         {view === "week" && <>
           <header className="academic-heading"><div><span className="academic-eyebrow">PLANIFICA TU TIEMPO</span><h1>Tu semana</h1><p>Clases y entregas juntas, con espacio para organizarte.</p></div><button type="button" className="secondary-button" onClick={() => openRoutine()}><Settings2 size={16} /> Organizar horario</button></header>
+          <div className="planning-view-tabs" role="group" aria-label="Vistas de planificación">{([['week', 'Semana'], ['semester', 'Semestre'], ['review', 'Revisión semanal']] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={weekMode === id} onClick={() => setWeekMode(id)}>{label}</button>)}</div>
+          {weekMode !== "semester" && <>
           <div className="academic-week-toolbar"><div><button type="button" aria-label="Semana anterior" onClick={() => { const next = new Date(anchor); next.setDate(next.getDate() - 7); setAnchor(next); }}><ChevronLeft size={18} /></button><strong>{dateLabel(week[0])} — {dateLabel(week[6])}, {week[6].getFullYear()}</strong><button type="button" aria-label="Semana siguiente" onClick={() => { const next = new Date(anchor); next.setDate(next.getDate() + 7); setAnchor(next); }}><ChevronRight size={18} /></button></div><button type="button" onClick={() => setAnchor(new Date())}>Esta semana</button></div>
+          </>}
+          {weekMode === "semester" && (loading ? <p>Cargando el semestre…</p> : <SemesterView tasks={matching} anchor={anchor} onWeek={date => { setAnchor(date); setWeekMode("week"); }} onEdit={openEdit} onNew={() => openNew()} />)}
+          {weekMode === "review" && (loading ? <p>Cargando tu revisión…</p> : <WeeklyReview key={toISODate(week[0])} tasks={tasks} anchor={anchor} now={today} schedules={schedule.weeklyQuests} availability={planning.ready && !schedule.loading && !schedule.error ? planning.data.availability : undefined} onSave={task => upsert(task, false)} onEdit={openEdit} />)}
+          {weekMode === "week" && <>
           {planning.ready && !loading && !schedule.loading && <WeeklyLoad anchor={anchor} reference={today} availability={planning.data.availability} tasks={tasks} schedules={schedule.weeklyQuests} onConfigure={() => setAvailabilityOpen(true)} />}
           <div className="academic-week-scroll"><div className="academic-week">{week.map(date => {
             const iso = toISODate(date);
@@ -146,6 +155,7 @@ export function MissionPlanner() {
             const personal = commitmentsOn(planning.data.availability, date).filter(item => !search || item.title.toLocaleLowerCase("es").includes(search));
             return <section className={iso === todayIso ? "is-today" : ""} key={iso}><header><small>{new Intl.DateTimeFormat("es-CO", { weekday: "short" }).format(date)}</small><strong>{date.getDate()}</strong><button type="button" className="academic-reveal" aria-label={`Añadir tarea el ${iso}`} onClick={() => openNew(date)}><Plus size={16} /></button></header><div>{classes.map(item => <button type="button" className="academic-week-class" key={item.occurrenceId} onClick={() => openRoutine(item.weeklyQuestId)}><small>{item.startTime} — {item.endTime}</small><strong>{item.title}</strong><span>{item.subject}</span></button>)}{due.map(task => <button type="button" className={`academic-week-task ${getMissionStatus(task)}`} key={task.id} onClick={() => openEdit(task)}><small>ENTREGA · {task.time}</small><strong>{task.title}</strong><span>{task.subject}</span></button>)}{study.map(block => <button type="button" className="academic-week-study" key={`${block.taskId}:${block.id}`} onClick={() => openEdit(tasks.find(task => task.id === block.taskId)!)}><small>ESTUDIO · {block.startTime} — {block.endTime}</small><strong>{block.title}</strong><span>{block.subject}</span></button>)}{personal.map(item => <button type="button" className="academic-week-personal" key={item.id} onClick={() => setAvailabilityOpen(true)}><small>PERSONAL · {item.startTime} — {item.endTime}</small><strong>{item.title}</strong></button>)}{!classes.length && !due.length && !study.length && !personal.length && <span className="academic-week-empty">Sin actividades</span>}</div></section>;
           })}</div></div><p className="academic-caption"><span className="class-dot" /> Clases <span className="task-dot" /> Entregas · Borde discontinuo: estudio · Abre una tarjeta para editar sus detalles.</p>
+          </>}
         </>}
         {view === "projects" && <>
           <header className="academic-heading"><div><span className="academic-eyebrow">DEL OBJETIVO A LA ENTREGA</span><h1>Proyectos y tareas</h1><p>Reúne los pasos de cada proyecto y sigue su avance.</p></div><button type="button" className="primary-button" onClick={() => openNew()}><Plus size={17} /> Nueva tarea</button></header>
@@ -162,7 +172,7 @@ export function MissionPlanner() {
       </div>
     </section>
     <nav className="academic-mobile-nav" aria-label="Navegación móvil">{navigation.map(item => <button type="button" key={item.id} className={activeNav === item.id ? "active" : ""} aria-current={activeNav === item.id ? "page" : undefined} onClick={() => setView(item.id)}><item.icon size={20} />{item.label}</button>)}<button type="button" aria-label="Mi cuenta" onClick={() => setAccountOpen(true)}><Settings2 size={20} />Cuenta</button></nav>
-    <MissionForm open={formOpen} initialDate={selectedDate} initialSubject={subject || undefined} initialProject={view === "projects" ? project : undefined} missions={tasks} schedules={schedule.weeklyQuests} mission={editing} onClose={() => setFormOpen(false)} onSave={upsert} onDelete={remove} subjects={catalog.subjects} onManageSubjects={() => setView("subjects")} />
+    <MissionForm open={formOpen} initialDate={selectedDate} initialSubject={subject || undefined} initialProject={view === "projects" ? project : undefined} missions={tasks} schedules={schedule.weeklyQuests} availability={planning.ready && !schedule.loading && !schedule.error ? planning.data.availability : undefined} mission={editing} onClose={() => setFormOpen(false)} onSave={upsert} onDelete={remove} subjects={catalog.subjects} onManageSubjects={() => setView("subjects")} />
     {availabilityOpen && planning.ready && <AvailabilityDialog key={`availability:${auth.user.id}`} value={planning.data.availability} saving={planning.saving} onSave={availability => planning.save({ availability })} onClose={() => setAvailabilityOpen(false)} />}
     <AccountPanel open={accountOpen} user={auth.user} onClose={() => setAccountOpen(false)} onLogout={auth.logout} onUpdate={auth.updateAccount} theme={theme} onThemeChange={setTheme} />
     <StudyFocus key={auth.user.id} userId={auth.user.id} requestedTask={studyTask} configuration={planning.data.concentration} onRequestHandled={() => setStudyTask(null)} onSave={recordStudy} />
